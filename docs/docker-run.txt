@@ -1,0 +1,74 @@
+EXECUCAO LOCAL COM DOCKER
+
+Este guia explica como iniciar e testar a API Go e o PostgreSQL localmente.
+
+SERVICOS INICIADOS
+
+- app: API Go na porta 8080.
+- postgres: banco PostgreSQL na porta 5432.
+
+PRE-REQUISITO
+
+- Docker Desktop instalado e em execucao.
+
+COMO INICIAR
+
+Na raiz do repositorio, execute:
+
+  docker compose up --build
+
+O Docker cria a imagem da API, inicia o PostgreSQL e aguarda o banco ficar
+saudavel antes de iniciar a aplicacao.
+
+COMO TESTAR A API
+
+Em outro terminal, execute:
+
+  curl http://localhost:8080/health
+
+Resposta esperada:
+
+  {"status":"ok"}
+
+COMO VER OS CONTAINERS
+
+  docker compose ps
+
+COMO VER OS LOGS DA API
+
+  docker compose logs -f app
+
+Use Ctrl + C para sair da visualizacao dos logs.
+
+COMO ACESSAR O POSTGRESQL
+
+  docker compose exec postgres psql -U oficina -d oficina
+
+Dentro do PostgreSQL, use:
+
+  \dt
+
+Para sair, use:
+
+  \q
+
+CONFIGURACAO LOCAL DO BANCO
+
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=oficina
+DB_USER=oficina
+DB_PASSWORD=oficina
+
+As variaveis sao entregues ao container da API pelo docker-compose.yml.
+
+COMO PARAR
+
+  docker compose down
+
+COMO REMOVER TAMBEM OS DADOS LOCAIS DO BANCO
+
+  docker compose down -v
+
+Atencao: o ultimo comando remove o volume local do PostgreSQL e todos os
+dados armazenados nele.
