@@ -11,9 +11,12 @@
 
 ---
 
-## 1. Nome do arquivo — regra obrigatória
+## 1. Nome e localização dos arquivos — regra obrigatória
 
-**O nome do arquivo é o nome do contexto delimitado + o sufixo `-cd`.**
+Um contexto pode usar um único arquivo ou uma pasta dedicada, conforme o volume de requisitos.
+
+**Contexto em arquivo único:** o nome do arquivo é o nome do contexto delimitado + o sufixo
+`-cd`.
 
 ```
 <nome-do-contexto-delimitado>-cd.md
@@ -30,7 +33,7 @@ Regras de formação:
 | Contexto delimitado | Nome do arquivo |
 |---|---|
 | Peças e Insumos | `pecas-e-insumos-cd.md` |
-| Ordem de Serviço | `ordem-de-servico-cd.md` |
+| Ordem de Serviço | `ordem-de-servico/` |
 | Orçamento | `orcamento-cd.md` |
 | Cliente | `cliente-cd.md` |
 | Veículo | `veiculo-cd.md` |
@@ -39,8 +42,20 @@ Regras de formação:
 Exemplos **errados**: `Pecas.md`, `estoque_cd.md`, `04-pecas-cd.md`, `pecas-e-insumos.md`,
 `peças-e-insumos-cd.md`, `lazaro-estoque.md`.
 
-Todos os documentos ficam direto em `docs/`. Material de apoio (PDFs, exports do Miro,
-imagens) vai em `docs/files/`.
+**Contexto em pasta dedicada:** a pasta recebe o nome do contexto, sem acentos, e cada tarefa
+fica em um arquivo próprio com o nome da tarefa. A pasta contém ainda `pontos-em-aberto.md`, que
+centraliza as pendências e referencia os arquivos afetados.
+
+```text
+docs/
+└── ordem-de-servico/
+    ├── iniciar-diagnostico.md
+    ├── registrar-servicos-necessarios.md
+    └── pontos-em-aberto.md
+```
+
+Os arquivos únicos e as pastas de contexto ficam diretamente em `docs/`. Material de apoio
+(PDFs, exports do Miro e imagens) vai em `docs/files/`.
 
 ---
 
@@ -86,13 +101,21 @@ Depois do frontmatter, o documento segue sempre esta ordem:
 ## Pontos em aberto                          ← sempre a última seção
 ```
 
-Regras:
+Regras para contexto em arquivo único:
 
 - **Um documento por contexto delimitado**, com **todos** os requisitos daquele contexto dentro.
 - Cada requisito é uma seção `##` numerada, com o separador `·` (`1 · Consultar Estoque`).
 - Cada requisito tem **os três blocos**, sempre nessa ordem e sempre com esses nomes.
 - Requisito sem os três blocos não entra no documento — entra em **Pontos em aberto**.
 - Separe cada requisito com uma linha `---`.
+
+Regras para contexto em pasta dedicada:
+
+- Cada tarefa fica em um arquivo e mantém os três blocos obrigatórios.
+- Os números e IDs dos requisitos continuam únicos dentro do contexto.
+- Pontos pendentes não ficam repetidos nos arquivos das tarefas; são centralizados em
+  `pontos-em-aberto.md`.
+- A tabela de pontos em aberto contém `#`, `Ponto`, `Arquivo relacionado` e `Responsável`.
 
 ---
 

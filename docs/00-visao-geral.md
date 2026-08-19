@@ -93,7 +93,7 @@ documentação e pela manutenção das regras.
 |---|---|---|---|
 | Cliente | `Cliente` | `cliente-cd.md` | a documentar |
 | Veículo | `Veículo` | `veiculo-cd.md` | a documentar |
-| Ordem de Serviço | `Ordem de Serviço` | `ordem-de-servico-cd.md` | a documentar |
+| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 2 requisitos refinados |
 | Orçamento | `Orçamento` | `orcamento-cd.md` | a documentar |
 | Serviços | `Serviço` | `servicos-cd.md` | a documentar |
 | Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md) | 9 requisitos refinados |
