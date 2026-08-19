@@ -1,1 +1,0 @@
-Diretorio reservado para testes unitarios de infraestrutura.
