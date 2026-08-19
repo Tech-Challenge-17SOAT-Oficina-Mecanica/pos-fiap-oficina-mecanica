@@ -91,8 +91,8 @@ documentação e pela manutenção das regras.
 
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
-| Cliente | `Cliente` | `cliente-cd.md` | a documentar |
-| Veículo | `Veículo` | `veiculo-cd.md` | a documentar |
+| Cliente | `Cliente` | [`cliente/`](cliente/) | 4 requisitos refinados |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 2 requisitos refinados |
 | Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 2 requisitos refinados |
 | Orçamento | `Orçamento` | `orcamento-cd.md` | a documentar |
 | Serviços | `Serviço` | `servicos-cd.md` | a documentar |

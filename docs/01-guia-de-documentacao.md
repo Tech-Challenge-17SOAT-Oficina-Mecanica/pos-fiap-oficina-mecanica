@@ -35,8 +35,8 @@ Regras de formação:
 | Peças e Insumos | `pecas-e-insumos-cd.md` |
 | Ordem de Serviço | `ordem-de-servico/` |
 | Orçamento | `orcamento-cd.md` |
-| Cliente | `cliente-cd.md` |
-| Veículo | `veiculo-cd.md` |
+| Cliente | `cliente/` |
+| Veículo | `veiculo/` |
 | Serviços | `servicos-cd.md` |
 
 Exemplos **errados**: `Pecas.md`, `estoque_cd.md`, `04-pecas-cd.md`, `pecas-e-insumos.md`,
