@@ -1,0 +1,1 @@
+Diretorio reservado para testes de integracao de dominio.

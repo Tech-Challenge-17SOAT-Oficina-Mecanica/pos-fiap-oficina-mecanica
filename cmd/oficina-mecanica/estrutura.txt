@@ -1,0 +1,1 @@
+Diretorio reservado para o ponto de entrada da aplicacao Go.
