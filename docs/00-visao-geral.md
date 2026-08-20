@@ -93,8 +93,8 @@ documentação e pela manutenção das regras.
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
 | Veículo | `Veículo` | [`veiculo/`](veiculo/) | 3 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 6 de 18 tarefas refinadas |
-| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 5 de 8 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 7 de 18 tarefas refinadas |
+| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
 | Serviços | `Serviço` | `servicos/` | a documentar |
 | Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
 
@@ -188,6 +188,10 @@ para cada uma.
 |---|---|
 | [`00-visao-geral.md`](00-visao-geral.md) | Este documento: o que é o projeto e onde está cada coisa |
 | [`01-guia-de-documentacao.md`](01-guia-de-documentacao.md) | Como escrever um documento de contexto: nome do arquivo, estrutura, convenções |
+| [`cliente/`](cliente/) | Contexto de Cliente: refinamentos separados por tarefa |
+| [`veiculo/`](veiculo/) | Contexto de Veículo: refinamentos separados por tarefa |
+| [`ordem-de-servico/`](ordem-de-servico/) | Contexto de Ordem de Serviço: refinamentos separados por tarefa |
+| [`orcamento/`](orcamento/) | Contexto de Orçamento: refinamentos separados por tarefa |
 | [`pecas-e-insumos/`](pecas-e-insumos/) | Contexto de Peças & Insumos: um arquivo por tarefa, mais os pontos em aberto do contexto |
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
 | [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
