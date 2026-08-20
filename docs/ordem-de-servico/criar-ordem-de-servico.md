@@ -120,12 +120,12 @@ status dos serviços.
 **Endpoint**
 
 ```http
-POST /api/v1/ordens-servico
+POST /ordens-servico
 ```
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `POST /api/v1/ordens-servico`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `POST /ordens-servico` foi descartada por não usar o prefixo `/api/v1/`.
+> `POST /ordens-servico`, alinhada ao padrão compartilhado do projeto. A alternativa
+> `POST /ordens-servico` foi descartada por não usar o prefixo `/`.
 
 **Autenticação / Autorização**
 
@@ -343,7 +343,7 @@ POST /api/v1/ordens-servico
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /api/v1/ordens-servico`
+- [ ] Implementar `POST /ordens-servico`
 - [ ] Criar DTO/request de entrada
 - [ ] Criar DTO/response de saída
 - [ ] Implementar validação do payload

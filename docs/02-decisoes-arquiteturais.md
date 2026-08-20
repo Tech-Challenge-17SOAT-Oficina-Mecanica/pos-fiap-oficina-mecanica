@@ -10,7 +10,7 @@ status: em discussao
 
 Este documento reúne as decisões que precisam ser tomadas em equipe. Cada uma nasceu de uma
 dúvida real levantada durante o refinamento do contexto de Peças & Insumos
-([`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md)), mas quase todas valem para os cinco
+([`pecas-e-insumos/`](pecas-e-insumos/)), mas quase todas valem para os cinco
 contextos — quem decidir sozinho vai gerar retrabalho no contexto do vizinho.
 
 **Como usar:** cada decisão traz a pergunta, onde ela aparece, as opções com a consequência
@@ -274,7 +274,7 @@ categoria), texto livre é risco real de dado sujo.
 
 | Opção | Regra | Consequência |
 |---|---|---|
-| A | Expor `version` na listagem e criar `GET /api/v1/estoque/itens/{itemId}` com o detalhe completo | Contrato coerente; um endpoint a mais |
+| A | Expor `version` na listagem e criar `GET /estoque/itens/{itemId}` com o detalhe completo | Contrato coerente; um endpoint a mais |
 | B | Colocar todos os campos na listagem | Sem endpoint novo; payload de lista mais pesado |
 
 **Recomendação: A.** É o desenho usual de catálogo: lista enxuta para a tela de busca, detalhe
@@ -400,10 +400,10 @@ Registradas aqui para não voltarem à pauta.
 
 | # | Decisão | Onde está documentada |
 |---|---|---|
-| DT-01 | Não existe perfil `ESTOQUISTA`. As operações de estoque são feitas pelo `MECANICO` e pelo `GESTOR`, com o corte de permissão feito por **escopo** (`estoque:ler`, `estoque:escrever`, `estoque:movimentar`, `compras:escrever`), não por perfil. | Requisitos 2 a 9 de `pecas-e-insumos-cd.md` |
-| DT-02 | Compras **não** é contexto delimitado separado: `pedido_compra` pertence ao contexto de Peças & Insumos, e o recebimento atualiza o pedido na mesma transação. | Decisão de projeto no requisito 8 de `pecas-e-insumos-cd.md` |
-| DT-03 | Insumo não é reservado: a baixa acontece direto na execução do serviço. | Requisito 6 de `pecas-e-insumos-cd.md` |
-| DT-04 | Peça e insumo compartilham o recurso `pedido_compra`; o tipo do item diferencia as regras. | Decisão de projeto no requisito 9 de `pecas-e-insumos-cd.md` |
+| DT-01 | Não existe perfil `ESTOQUISTA`. As operações de estoque são feitas pelo `MECANICO` e pelo `GESTOR`, com o corte de permissão feito por **escopo** (`estoque:ler`, `estoque:escrever`, `estoque:movimentar`, `compras:escrever`), não por perfil. | Tarefas do contexto em `docs/pecas-e-insumos/` |
+| DT-02 | Compras **não** é contexto delimitado separado: `pedido_compra` pertence ao contexto de Peças & Insumos, e o recebimento atualiza o pedido na mesma transação. | Decisão de projeto em [`solicitar-compra-de-pecas.md`](pecas-e-insumos/solicitar-compra-de-pecas.md) |
+| DT-03 | Insumo não é reservado: a baixa acontece direto na execução do serviço. | [`registrar-consumo-e-saida.md`](pecas-e-insumos/registrar-consumo-e-saida.md) |
+| DT-04 | Peça e insumo compartilham o recurso `pedido_compra`; o tipo do item diferencia as regras. | Decisão de projeto em [`solicitar-compra-de-insumos.md`](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 
 ---
 

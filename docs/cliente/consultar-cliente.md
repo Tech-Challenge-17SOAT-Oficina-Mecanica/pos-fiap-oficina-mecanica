@@ -93,14 +93,14 @@ Serviço sem rastreabilidade adequada.
 **Endpoint**
 
 ```http
-GET /api/v1/clientes
+GET /clientes
 ```
 
 Consulta por CPF/CNPJ via query param.
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `GET /api/v1/clientes?documento=...`, alinhada ao padrão compartilhado do projeto. A
-> alternativa `GET /clientes` foi descartada por não usar o prefixo `/api/v1/`.
+> `GET /clientes?documento=...`, alinhada ao padrão compartilhado do projeto. A
+> alternativa `GET /clientes` foi descartada por não usar o prefixo `/`.
 
 **Autenticação / Autorização**
 
@@ -229,7 +229,7 @@ Consulta por CPF/CNPJ via query param.
 
 **Handler HTTP**
 
-- [ ] Implementar `GET /api/v1/clientes`
+- [ ] Implementar `GET /clientes`
 - [ ] Implementar leitura do parâmetro `documento` via query param
 - [ ] Criar DTO/response de saída com os dados do cliente e veículos
 - [ ] Aplicar autenticação JWT na rota

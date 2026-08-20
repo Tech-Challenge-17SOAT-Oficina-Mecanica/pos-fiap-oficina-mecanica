@@ -99,14 +99,14 @@ entrou nessa etapa nem impedir transições de situação indevidas.
 **Endpoint**
 
 ```http
-PATCH /api/v1/ordens-servico/{id}/diagnostico/iniciar
+PATCH /ordens-servico/{id}/diagnostico/iniciar
 ```
 
 O endpoint executa a transição da Ordem de Serviço de `RECEBIDA` para `EM_DIAGNOSTICO`.
 
 > **Decisão de projeto.** Foi adotada uma ação explícita na rota porque iniciar o diagnóstico é
 > uma transição de domínio, e não uma alteração genérica de campos. A alternativa seria usar
-> `PATCH /api/v1/ordens-servico/{id}` com uma nova situação, mas isso permitiria que o cliente da
+> `PATCH /ordens-servico/{id}` com uma nova situação, mas isso permitiria que o cliente da
 > API tentasse controlar diretamente a máquina de estados.
 
 **Autenticação / Autorização**
@@ -250,7 +250,7 @@ O caso de uso não consulta os contextos de Estoque, Orçamento, Cliente ou Veí
 
 **Handler HTTP**
 
-- [ ] Implementar `PATCH /api/v1/ordens-servico/{id}/diagnostico/iniciar`
+- [ ] Implementar `PATCH /ordens-servico/{id}/diagnostico/iniciar`
 - [ ] Obter o identificador do usuário a partir do JWT
 - [ ] Retornar a representação atualizada com status `200`
 - [ ] Mapear erros para os códigos HTTP documentados

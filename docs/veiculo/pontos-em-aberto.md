@@ -18,5 +18,6 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Veí
 | 4 | Definir o padrão definitivo de validação de placa, incluindo placa Mercosul e placa antiga. | [`consultar-veiculo.md`](consultar-veiculo.md) | — |
 | 5 | Confirmar se o escopo definitivo para cadastro de veículos será `veiculos:escrever` ou outro nome padronizado pelo time. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) | — |
 | 6 | Definir as validações de negócio para o campo `ano`, incluindo ano mínimo e se ano futuro é permitido. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) | — |
-
-
+| 7 | O refinamento de Deletar Veículo trazia a persona como Atendente e pedia restringir a operação aos perfis `ATENDENTE` e `GESTOR`, além de dizer que `MECANICO` recebe `403` logo depois de listar `MECANICO` entre os perfis permitidos. Foi padronizado como persona Mecânico e perfis `MECANICO` e `GESTOR`. Confirmar. | [`deletar-veiculo.md`](deletar-veiculo.md) | — |
+| 8 | A exclusão lógica depende de índice parcial `UNIQUE (placa) WHERE ativo = true` e da ausência de `ON DELETE CASCADE` nas foreign keys de OS. Confirmar com quem cuidar da migration. | [`deletar-veiculo.md`](deletar-veiculo.md) | — |
+| 9 | A reativação de veículo exige cliente proprietário ativo e devolve `422` nesse caso. Confirmar se `422` é o código certo, considerando a padronização de `409` e `422` discutida em [`02-decisoes-arquiteturais.md`](../02-decisoes-arquiteturais.md). | [`deletar-veiculo.md`](deletar-veiculo.md) | — |

@@ -109,7 +109,7 @@ autorizado pelo cliente.
 **Endpoint**
 
 ```http
-POST /api/v1/ordens-servico/{id}/servicos
+POST /ordens-servico/{id}/servicos
 ```
 
 O endpoint cria uma ou mais associações entre serviços do catálogo e uma Ordem de Serviço em
@@ -295,7 +295,7 @@ e não é alterado por este caso de uso.
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /api/v1/ordens-servico/{id}/servicos`
+- [ ] Implementar `POST /ordens-servico/{id}/servicos`
 - [ ] Obter o usuário autenticado a partir do JWT
 - [ ] Retornar os serviços registrados e a nova versão com status `201`
 - [ ] Mapear erros para os códigos HTTP documentados

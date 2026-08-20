@@ -93,12 +93,12 @@ não pode ser acompanhado corretamente ao longo dos atendimentos.
 **Endpoint**
 
 ```http
-POST /api/v1/veiculos
+POST /veiculos
 ```
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `POST /api/v1/veiculos`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `POST /veiculos` foi descartada por não usar o prefixo `/api/v1/`.
+> `POST /veiculos`, alinhada ao padrão compartilhado do projeto. A alternativa
+> `POST /veiculos` foi descartada por não usar o prefixo `/`.
 
 **Autenticação / Autorização**
 
@@ -232,7 +232,7 @@ POST /api/v1/veiculos
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /api/v1/veiculos`
+- [ ] Implementar `POST /veiculos`
 - [ ] Criar DTO/request de entrada
 - [ ] Criar DTO/response de saída com os dados do veículo cadastrado
 - [ ] Implementar validação do payload

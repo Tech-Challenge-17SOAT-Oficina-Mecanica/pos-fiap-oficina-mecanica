@@ -94,12 +94,12 @@ podem gerar atendimento duplicado, vínculo errado com veículo e perda de rastr
 **Endpoint**
 
 ```http
-PUT /api/v1/clientes/{clienteId}
+PUT /clientes/{clienteId}
 ```
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `PUT /api/v1/clientes/{clienteId}`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `PUT /clientes/{clienteId}` foi descartada por não usar o prefixo `/api/v1/`.
+> `PUT /clientes/{clienteId}`, alinhada ao padrão compartilhado do projeto. A alternativa
+> `PUT /clientes/{clienteId}` foi descartada por não usar o prefixo `/`.
 >
 > **Decisão de projeto.** O campo do documento foi padronizado como `documento`, o mesmo usado
 > nos requisitos de consulta e cadastro. A alternativa `cpfCnpj` foi descartada para evitar dois
@@ -249,7 +249,7 @@ PUT /api/v1/clientes/{clienteId}
 
 **Handler HTTP**
 
-- [ ] Implementar `PUT /api/v1/clientes/{clienteId}`
+- [ ] Implementar `PUT /clientes/{clienteId}`
 - [ ] Criar DTO/request de entrada
 - [ ] Criar DTO/response de saída com os dados atualizados do cliente
 - [ ] Implementar validação do parâmetro `clienteId`

@@ -5,7 +5,7 @@
 > todos os integrantes seguem. O objetivo é simples: qualquer pessoa (ou agente de IA)
 > deve conseguir abrir qualquer documento do projeto e encontrar a mesma coisa no mesmo lugar.
 >
-> **Documento de referência:** [`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md) — é o exemplo
+> **Documento de referência:** [`pecas-e-insumos/consultar-estoque.md`](pecas-e-insumos/consultar-estoque.md) — é o exemplo
 > real e aprovado do padrão. Em caso de dúvida entre o guia e o exemplo, siga o exemplo e
 > abra um PR corrigindo o guia.
 
@@ -148,7 +148,7 @@ Como o sistema entrega o que o bloco 1 pediu. Campos, nesta ordem:
 
 | Campo | O que escrever |
 |---|---|
-| **Endpoint** | Método e rota em bloco `http`, sempre com o prefixo `/api/v1/`. Um requisito pode expor mais de um endpoint (por exemplo, criar e liberar) — liste todos no mesmo bloco e explique em uma linha o papel de cada um. |
+| **Endpoint** | Método e rota em bloco `http`, sem prefixo de versão. Um requisito pode expor mais de um endpoint (por exemplo, criar e liberar) — liste todos no mesmo bloco e explique em uma linha o papel de cada um. |
 | **Autenticação / Autorização** | Token exigido, perfis permitidos e escopo. |
 | **Entrada** | Tabela: parâmetro, tipo, descrição. Diga o que é obrigatório e os defaults. |
 | **Validações** | Lista objetiva de limites e formatos. Se não houver regra de negócio, diga isso explicitamente. |
@@ -237,7 +237,8 @@ documentos: `Ordem de Serviço`, nunca "chamado", "ticket" ou "pedido".
 
 **Padrões de API compartilhados** — valem para todos os contextos:
 
-- Prefixo de rota: `/api/v1/`
+- Rotas sem prefixo de versão: o recurso começa na raiz, por exemplo `/clientes`
+- Toda rota nova entra no [`03-endpoints.md`](03-endpoints.md) no mesmo PR do documento da tarefa
 - Autenticação: `Bearer <JWT>` nas APIs administrativas
 - Escopo no formato `recurso:acao` (`estoque:ler`, `os:escrever`)
 - Envelope paginado: `data`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`
@@ -279,7 +280,7 @@ ou um registro em **Pontos em aberto**.
 ## 10. Fluxo de contribuição
 
 1. Crie a branch `docs/<contexto>-cd`.
-2. Copie o modelo da seção 11 (ou o [`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md)) e preencha.
+2. Copie o modelo da seção 11 (ou um arquivo de [`pecas-e-insumos/`](pecas-e-insumos/)) e preencha.
 3. Abra o PR com `status: em revisao`, marcando dois revisores — um deles do contexto vizinho.
 4. Divergência de termo entre contextos se resolve escolhendo **um** termo, e os dois
    documentos são atualizados no mesmo PR.
@@ -364,7 +365,7 @@ Este documento reúne, para cada requisito levantado da aplicação, três bloco
 **Endpoint**
 
 ```http
-GET /api/v1/<recurso>
+GET /<recurso>
 ```
 
 **Autenticação / Autorização**

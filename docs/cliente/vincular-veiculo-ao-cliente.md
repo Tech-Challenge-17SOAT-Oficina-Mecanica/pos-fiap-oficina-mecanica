@@ -100,12 +100,12 @@ Ordem de Serviço pode ser aberta para a combinação errada de cliente e veícu
 **Endpoint**
 
 ```http
-POST /api/v1/clientes/{clienteId}/veiculos/{veiculoId}
+POST /clientes/{clienteId}/veiculos/{veiculoId}
 ```
 
 > **Decisão de projeto.** Foi adotada a rota subordinada ao cliente porque o caso de uso altera
 > o vínculo observado a partir do cadastro do cliente. A alternativa seria
-> `POST /api/v1/veiculos/{veiculoId}/clientes/{clienteId}`, mas ela desloca a ação para o
+> `POST /veiculos/{veiculoId}/clientes/{clienteId}`, mas ela desloca a ação para o
 > contexto de Veículo sem mudar a regra de negócio.
 
 **Autenticação / Autorização**
@@ -240,7 +240,7 @@ A operação não recebe corpo.
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /api/v1/clientes/{clienteId}/veiculos/{veiculoId}`
+- [ ] Implementar `POST /clientes/{clienteId}/veiculos/{veiculoId}`
 - [ ] Criar DTO/response de saída com confirmação do vínculo
 - [ ] Implementar validação do parâmetro `clienteId`
 - [ ] Implementar validação do parâmetro `veiculoId`

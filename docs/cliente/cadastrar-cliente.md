@@ -92,12 +92,12 @@ rastreabilidade e o histórico do cliente fica fragmentado ou inexistente.
 **Endpoint**
 
 ```http
-POST /api/v1/clientes
+POST /clientes
 ```
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `POST /api/v1/clientes`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `POST /clientes` foi descartada por não usar o prefixo `/api/v1/`.
+> `POST /clientes`, alinhada ao padrão compartilhado do projeto. A alternativa
+> `POST /clientes` foi descartada por não usar o prefixo `/`.
 
 **Autenticação / Autorização**
 
@@ -226,7 +226,7 @@ POST /api/v1/clientes
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /api/v1/clientes`
+- [ ] Implementar `POST /clientes`
 - [ ] Criar DTO/request de entrada
 - [ ] Criar DTO/response de saída com os dados do cliente cadastrado
 - [ ] Implementar validação do payload

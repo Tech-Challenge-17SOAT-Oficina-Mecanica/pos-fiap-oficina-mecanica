@@ -88,14 +88,14 @@ do veículo pode ficar incompleto ou ser associado ao cliente errado.
 **Endpoint**
 
 ```http
-GET /api/v1/veiculos
+GET /veiculos
 ```
 
 Consulta por placa via query param.
 
 > **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `GET /api/v1/veiculos?placa=...`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `GET /veiculos` foi descartada por não usar o prefixo `/api/v1/`.
+> `GET /veiculos?placa=...`, alinhada ao padrão compartilhado do projeto. A alternativa
+> `GET /veiculos` foi descartada por não usar o prefixo `/`.
 
 **Autenticação / Autorização**
 
@@ -204,7 +204,7 @@ Consulta por placa via query param.
 
 **Handler HTTP**
 
-- [ ] Implementar `GET /api/v1/veiculos`
+- [ ] Implementar `GET /veiculos`
 - [ ] Implementar leitura do parâmetro `placa` via query param
 - [ ] Criar DTO/request para entrada da consulta
 - [ ] Criar DTO/response de saída com os dados do veículo

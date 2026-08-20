@@ -91,12 +91,12 @@ documentação e pela manutenção das regras.
 
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
-| Cliente | `Cliente` | [`cliente/`](cliente/) | 4 requisitos refinados |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 2 requisitos refinados |
-| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 2 requisitos refinados |
-| Orçamento | `Orçamento` | `orcamento-cd.md` | a documentar |
-| Serviços | `Serviço` | `servicos-cd.md` | a documentar |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md) | 9 requisitos refinados |
+| Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 3 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 6 de 18 tarefas refinadas |
+| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 5 de 8 tarefas refinadas |
+| Serviços | `Serviço` | `servicos/` | a documentar |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
@@ -160,7 +160,7 @@ Termos já estabelecidos. Cada contexto amplia esta lista no seu próprio docume
 
 ### Acordadas pelo time até agora
 
-- Prefixo de rota `/api/v1/`.
+- Rotas sem prefixo de versão: o recurso começa na raiz, por exemplo `/clientes`.
 - Autorização por **escopo** no token (`estoque:ler`, `estoque:escrever`, `estoque:movimentar`,
   `compras:escrever`), e não por perfil. Os perfis existentes são `MECANICO`, `GESTOR` e
   `SERVICO`; **não existe perfil `ESTOQUISTA`**.
@@ -188,8 +188,9 @@ para cada uma.
 |---|---|
 | [`00-visao-geral.md`](00-visao-geral.md) | Este documento: o que é o projeto e onde está cada coisa |
 | [`01-guia-de-documentacao.md`](01-guia-de-documentacao.md) | Como escrever um documento de contexto: nome do arquivo, estrutura, convenções |
-| [`pecas-e-insumos-cd.md`](pecas-e-insumos-cd.md) | Contexto de Peças & Insumos, com os nove requisitos refinados |
+| [`pecas-e-insumos/`](pecas-e-insumos/) | Contexto de Peças & Insumos: um arquivo por tarefa, mais os pontos em aberto do contexto |
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
+| [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
 | [`files/`](files/) | Material de apoio: enunciado do Tech Challenge, board de Event Storming, levantamento dos fluxos atuais |
 
 Cada contexto delimitado tem um arquivo próprio, nomeado como
