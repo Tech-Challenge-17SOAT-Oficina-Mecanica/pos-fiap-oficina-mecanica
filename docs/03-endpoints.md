@@ -2,7 +2,7 @@
 documento: Catálogo de Endpoints
 dono: José Lázaro
 versao: 0.1
-atualizado_em: 2026-08-19
+atualizado_em: 2026-08-20
 status: em construcao
 ---
 
@@ -91,8 +91,11 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 ## Serviços
 
-Nenhuma rota refinada ainda. O contexto de Serviços (cadastrar, consultar, atualizar e desativar
-serviço) está pendente — ver [pontos-cobertos.md](../pontos-cobertos.md).
+| Método | Rota | O que faz | Escopo | Documento |
+|---|---|---|---|---|
+| `GET` | `/servicos` | Lista serviços cadastrados no catálogo, com filtros e paginação | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
+| `GET` | `/servicos/{id}` | Consulta os detalhes de um serviço específico | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
+| `POST` | `/servicos` | Cadastra um novo serviço no catálogo | `servicos:escrever` | [cadastrar-servico.md](servicos/cadastrar-servico.md) |
 
 ---
 
@@ -105,8 +108,8 @@ serviço) está pendente — ver [pontos-cobertos.md](../pontos-cobertos.md).
 | Ordem de Serviço | 7 |
 | Orçamento | 4 |
 | Peças & Insumos | 15 |
-| Serviços | 0 |
-| **Total** | **36** |
+| Serviços | 3 |
+| **Total** | **39** |
 
 ---
 

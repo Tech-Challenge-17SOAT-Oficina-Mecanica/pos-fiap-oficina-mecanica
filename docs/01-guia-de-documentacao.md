@@ -37,7 +37,7 @@ Regras de formação:
 | Orçamento | `orcamento-cd.md` |
 | Cliente | `cliente/` |
 | Veículo | `veiculo/` |
-| Serviços | `servicos-cd.md` |
+| Serviços | `servicos/` |
 
 Exemplos **errados**: `Pecas.md`, `estoque_cd.md`, `04-pecas-cd.md`, `pecas-e-insumos.md`,
 `peças-e-insumos-cd.md`, `lazaro-estoque.md`.
