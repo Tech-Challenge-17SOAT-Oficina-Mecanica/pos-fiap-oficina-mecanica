@@ -21,3 +21,7 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Serv
 | 7 | Definir se `tempoEstimadoMinutos` será obrigatório no MVP ou opcional. | [`cadastrar-servico.md`](cadastrar-servico.md) | — |
 | 8 | Definir a regra de geração do código funcional `SER-000001`, incluindo sequência, reset anual ou sequência global. | [`cadastrar-servico.md`](cadastrar-servico.md) | — |
 | 9 | Confirmar se o escopo definitivo para cadastro de serviços será `servicos:escrever` ou outro nome padronizado pelo time. | [`cadastrar-servico.md`](cadastrar-servico.md) | — |
+| 10 | Confirmar se atualização de serviço deve usar controle otimista com header `If-Match`, como outras operações de escrita do projeto. | [`atualizar-servico.md`](atualizar-servico.md) | — |
+| 11 | Definir se `PATCH /servicos/{id}` aceitará atualização parcial real ou payload completo dos campos editáveis. | [`atualizar-servico.md`](atualizar-servico.md) | — |
+| 12 | Confirmar quais campos são imutáveis na atualização, especialmente `codigo`, `status` e identificadores técnicos. | [`atualizar-servico.md`](atualizar-servico.md) | — |
+| 13 | Definir como os valores históricos de serviços em OS e orçamentos serão preservados: cópia do valor no momento do uso ou histórico versionado do serviço. | [`atualizar-servico.md`](atualizar-servico.md) | — |

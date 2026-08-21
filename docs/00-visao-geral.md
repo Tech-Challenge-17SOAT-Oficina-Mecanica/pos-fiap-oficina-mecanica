@@ -95,7 +95,7 @@ documentação e pela manutenção das regras.
 | Veículo | `Veículo` | [`veiculo/`](veiculo/) | 3 tarefas refinadas |
 | Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 7 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
-| Serviços | `Serviço` | [`servicos/`](servicos/) | 2 requisitos refinados |
+| Serviços | `Serviço` | [`servicos/`](servicos/) | 3 requisitos refinados |
 | Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em

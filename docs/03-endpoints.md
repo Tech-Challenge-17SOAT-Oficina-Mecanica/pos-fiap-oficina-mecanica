@@ -96,6 +96,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `GET` | `/servicos` | Lista serviços cadastrados no catálogo, com filtros e paginação | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
 | `GET` | `/servicos/{id}` | Consulta os detalhes de um serviço específico | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
 | `POST` | `/servicos` | Cadastra um novo serviço no catálogo | `servicos:escrever` | [cadastrar-servico.md](servicos/cadastrar-servico.md) |
+| `PATCH` | `/servicos/{id}` | Atualiza os dados cadastrais de um serviço | `servicos:escrever` | [atualizar-servico.md](servicos/atualizar-servico.md) |
 
 ---
 
@@ -108,8 +109,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Ordem de Serviço | 7 |
 | Orçamento | 4 |
 | Peças & Insumos | 15 |
-| Serviços | 3 |
-| **Total** | **39** |
+| Serviços | 4 |
+| **Total** | **40** |
 
 ---
 
