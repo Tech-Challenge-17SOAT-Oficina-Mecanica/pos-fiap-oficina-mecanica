@@ -1,7 +1,7 @@
 ---
 documento: Catálogo de Endpoints
 dono: José Lázaro
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-19
 status: em construcao
 ---
@@ -58,6 +58,10 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/ordens-servico/{osId}/execucao/iniciar` | Inicia a execução dos serviços autorizados | `os:escrever` | [iniciar-execucao.md](ordem-de-servico/iniciar-execucao.md) |
 | `GET` | `/ordens-servico/{osId}/tempo-execucao` | Retorna o tempo de execução de uma OS | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 | `GET` | `/ordens-servico/tempos-execucao` | Lista os tempos de execução e o tempo médio do período | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
+| `POST` | `/ordens-servico/{osId}/finalizar` | Finaliza os serviços autorizados e notifica o cliente | `os:escrever` | [finalizar-servico.md](ordem-de-servico/finalizar-servico.md) |
+| `POST` | `/ordens-servico/{osId}/entrega` | Registra o pagamento e a entrega do veículo, encerrando a OS | `os:escrever` | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
+| `GET` | `/ordens-servico/{osId}` | Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos | `os:ler` | [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
+| `GET` | `/ordens-servico` | Lista OS com filtro por status, documento do cliente e placa | `os:ler` | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) |
 
 ## Orçamento
 
@@ -91,8 +95,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 ## Serviços
 
-Nenhuma rota refinada ainda. O contexto de Serviços (cadastrar, consultar, atualizar e desativar
-serviço) está pendente — ver [pontos-cobertos.md](../pontos-cobertos.md).
+| Método | Rota | O que faz | Escopo | Documento |
+|---|---|---|---|---|
+| `PATCH` | `/servicos/{servicoId}/desativar` | Desativa o serviço no catálogo, preservando o histórico | `servicos:escrever` | [desativar-servico.md](servicos/desativar-servico.md) |
+
+Cadastrar, consultar e atualizar serviço ainda não foram refinados — ver
+[pontos-cobertos.md](../pontos-cobertos.md).
 
 ---
 
@@ -102,11 +110,11 @@ serviço) está pendente — ver [pontos-cobertos.md](../pontos-cobertos.md).
 |---|---|
 | Cliente | 6 |
 | Veículo | 4 |
-| Ordem de Serviço | 7 |
+| Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Peças & Insumos | 15 |
-| Serviços | 0 |
-| **Total** | **36** |
+| Serviços | 1 |
+| **Total** | **41** |
 
 ---
 
@@ -165,6 +173,8 @@ rota nova (então entra na tabela) e se alguma rota deixou de existir (então sa
 |---|---|---|
 | 1 | `GET /fila-atendimento` está na raiz, fora de `/ordens-servico`. Definir se a fila é recurso próprio ou uma visão da OS. | [consultar-fila-de-atendimento.md](ordem-de-servico/consultar-fila-de-atendimento.md) |
 | 2 | `POST /compras/pedidos` atende peça e insumo na mesma rota, diferenciando pelo tipo do item. Confirmar se fica assim ou se haverá rotas separadas. | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
-| 3 | A desativação usa `DELETE` em Peças & Insumos, Cliente e Veículo, mas o refinamento de Serviços propunha `PATCH /servicos/{id}/desativar`. Padronizar quando o contexto de Serviços for escrito. | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) |
+| 3 | A desativação usa `DELETE` em Peças & Insumos, Cliente e Veículo, mas Serviços usa `PATCH /servicos/{servicoId}/desativar`. Padronizar o verbo da exclusão lógica entre os contextos. | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) e [desativar-servico.md](servicos/desativar-servico.md) |
 | 4 | Gerar Orçamento não tem endpoint: é disparado internamente ao fim do diagnóstico. Confirmar se o MVP precisa de uma rota administrativa para reprocessar a geração. | [gerar-orcamento.md](orcamento/gerar-orcamento.md) |
-| 5 | Não existe rota de consulta ou listagem de OS, embora sejam tarefas previstas e o cliente precise acompanhar o progresso pela API. | [pontos-cobertos.md](../pontos-cobertos.md) |
+| 5 | `GET /ordens-servico` serve a listagem e também a busca das OS de um cliente por CPF/CNPJ, enquanto `GET /ordens-servico/{osId}` faz o detalhamento. Confirmar essa divisão entre listar e consultar. | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) e [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
+| 6 | A entrega do veículo depende da confirmação do pagamento, mas pagamento não é um contexto documentado nem tem rota. Definir se entra no MVP. | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
+| 7 | O path param da OS aparecia como `{id}`, `{ordemServicoId}` e `{osId}` nos refinamentos. Foi padronizado `{osId}` — alinhar os documentos que estão sendo reenviados. | Todas as rotas de `/ordens-servico` |
