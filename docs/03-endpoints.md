@@ -110,6 +110,44 @@ serviço) está pendente — ver [pontos-cobertos.md](../pontos-cobertos.md).
 
 ---
 
+## Documentos aguardando reenvio
+
+As rotas abaixo continuam valendo como contrato, mas o documento de origem foi retirado do
+repositório e será reenviado em versão atualizada. Enquanto isso, os links dessas linhas da tabela
+não resolvem. Ao reenviar, conferir método, rota, escopo e atualizar as linhas correspondentes.
+
+**Orçamento** — a pasta inteira, incluindo o `pontos-em-aberto.md` do contexto:
+
+- `gerar-orcamento.md` (sem endpoint)
+- `consultar-orcamento.md` — `GET /orcamentos`
+- `aprovar-orcamento.md` — `POST /orcamentos/{orcamentoId}/aprovar`
+- `recusar-orcamento.md` — `POST /orcamentos/{orcamentoId}/recusar`
+- `gerar-orcamento-complementar.md` — `POST /ordens-servico/{osId}/orcamentos-complementares`
+
+**Ordem de Serviço** — restou apenas `monitorar-tempo-medio-de-execucao.md`; o `pontos-em-aberto.md`
+do contexto também saiu:
+
+- `criar-ordem-de-servico.md` — `POST /ordens-servico`
+- `iniciar-diagnostico.md` — `PATCH /ordens-servico/{osId}/diagnostico/iniciar`
+- `registrar-servicos-necessarios.md` — `POST /ordens-servico/{osId}/servicos`
+- `consultar-fila-de-atendimento.md` — `GET /fila-atendimento`
+- `iniciar-execucao.md` — `POST /ordens-servico/{osId}/execucao/iniciar`
+
+**Peças & Insumos** — os cadastros, atualizações e exclusões permaneceram:
+
+- `consultar-estoque.md` — `GET /estoque/itens`
+- `consultar-pecas-faltantes.md` — `GET /estoque/itens/faltantes`
+- `registrar-entrada-de-estoque.md` — `POST /estoque/entradas`
+- `reservar-peca-para-os.md` — `POST /estoque/reservas` e `DELETE /estoque/reservas/ordens-servico/{osId}`
+- `registrar-consumo-e-saida.md` — `POST /estoque/saidas`
+- `solicitar-compra-de-pecas.md` — `POST /compras/pedidos` e `DELETE /compras/pedidos/{pedidoId}`
+- `solicitar-compra-de-insumos.md` — `POST /compras/pedidos` e `GET /estoque/insumos/{insumoId}/sugestao-compra`
+
+Ao reenviar, verificar também: se a rota mudou de caminho, se o escopo mudou de nome, se apareceu
+rota nova (então entra na tabela) e se alguma rota deixou de existir (então sai).
+
+---
+
 ## Como manter este arquivo
 
 1. Ao refinar uma tarefa nova, copie o método e a rota exatamente como estão no bloco `http` do

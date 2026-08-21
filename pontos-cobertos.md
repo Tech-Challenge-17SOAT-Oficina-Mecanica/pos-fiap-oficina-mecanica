@@ -1,7 +1,7 @@
 ---
 documento: Pontos Cobertos — Checklist de Refinamento
 dono: José Lázaro
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-19
 status: em andamento
 ---
@@ -14,15 +14,15 @@ implementada em código.
 
 ## Resumo
 
-| Contexto | Documentadas | Total |
-|---|---|---|
-| Cliente | 5 | 5 |
-| Veículo | 3 | 3 |
-| Ordem de Serviço | 6 | 18 |
-| Orçamento | 5 | 8 |
-| Serviços | 0 | 4 |
-| Peças & Insumos | 13 | 13 |
-| **Total** | **32** | **51** |
+| Contexto | Documentadas | Aguardando reenvio | Total |
+|---|---|---|---|
+| Cliente | 5 | 0 | 5 |
+| Veículo | 3 | 0 | 3 |
+| Ordem de Serviço | 1 | 5 | 18 |
+| Orçamento | 0 | 5 | 8 |
+| Serviços | 0 | 0 | 4 |
+| Peças & Insumos | 6 | 7 | 13 |
+| **Total** | **15** | **17** | **51** |
 
 ---
 
@@ -42,11 +42,11 @@ implementada em código.
 
 ## Ordem de Serviço
 
-- [x] Criar ordem de serviço — [criar-ordem-de-servico.md](docs/ordem-de-servico/criar-ordem-de-servico.md)
-- [x] Iniciar diagnóstico — [iniciar-diagnostico.md](docs/ordem-de-servico/iniciar-diagnostico.md)
-- [x] Registrar serviços necessários — [registrar-servicos-necessarios.md](docs/ordem-de-servico/registrar-servicos-necessarios.md)
-- [x] Consultar fila de atendimentos — [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md)
-- [x] Iniciar execução — [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md)
+- [ ] Criar ordem de serviço — `criar-ordem-de-servico.md` aguardando reenvio
+- [ ] Iniciar diagnóstico — `iniciar-diagnostico.md` aguardando reenvio
+- [ ] Registrar serviços necessários — `registrar-servicos-necessarios.md` aguardando reenvio
+- [ ] Consultar fila de atendimentos — `consultar-fila-de-atendimento.md` aguardando reenvio
+- [ ] Iniciar execução — `iniciar-execucao.md` aguardando reenvio
 - [x] Monitorar tempo médio de execução — [monitorar-tempo-medio-de-execucao.md](docs/ordem-de-servico/monitorar-tempo-medio-de-execucao.md)
 - [ ] Registrar peças necessárias
 - [ ] Registrar insumos necessários
@@ -63,11 +63,11 @@ implementada em código.
 
 ## Orçamento
 
-- [x] Gerar orçamento — [gerar-orcamento.md](docs/orcamento/gerar-orcamento.md)
-- [x] Consultar orçamento — [consultar-orcamento.md](docs/orcamento/consultar-orcamento.md)
-- [x] Aprovar orçamento — [aprovar-orcamento.md](docs/orcamento/aprovar-orcamento.md)
-- [x] Recusar orçamento — [recusar-orcamento.md](docs/orcamento/recusar-orcamento.md)
-- [x] Gerar orçamento complementar — [gerar-orcamento-complementar.md](docs/orcamento/gerar-orcamento-complementar.md)
+- [ ] Gerar orçamento — `gerar-orcamento.md` aguardando reenvio
+- [ ] Consultar orçamento — `consultar-orcamento.md` aguardando reenvio
+- [ ] Aprovar orçamento — `aprovar-orcamento.md` aguardando reenvio
+- [ ] Recusar orçamento — `recusar-orcamento.md` aguardando reenvio
+- [ ] Gerar orçamento complementar — `gerar-orcamento-complementar.md` aguardando reenvio
 - [ ] Enviar orçamento
 - [ ] Aprovar orçamento complementar
 - [ ] Recusar orçamento complementar
@@ -81,19 +81,19 @@ implementada em código.
 
 ## Peças & Insumos
 
-- [x] Consultar estoque — [consultar-estoque.md](docs/pecas-e-insumos/consultar-estoque.md)
+- [ ] Consultar estoque — `consultar-estoque.md` aguardando reenvio
 - [x] Cadastrar peça — [cadastrar-peca.md](docs/pecas-e-insumos/cadastrar-peca.md)
 - [x] Atualizar peça — [atualizar-peca.md](docs/pecas-e-insumos/atualizar-peca.md)
 - [x] Deletar peça — [deletar-peca.md](docs/pecas-e-insumos/deletar-peca.md)
 - [x] Cadastrar insumo — [cadastrar-insumo.md](docs/pecas-e-insumos/cadastrar-insumo.md)
 - [x] Atualizar insumo — [atualizar-insumo.md](docs/pecas-e-insumos/atualizar-insumo.md)
 - [x] Deletar insumo — [deletar-insumo.md](docs/pecas-e-insumos/deletar-insumo.md)
-- [x] Registrar entrada de estoque — [registrar-entrada-de-estoque.md](docs/pecas-e-insumos/registrar-entrada-de-estoque.md)
-- [x] Reservar peças para OS — [reservar-peca-para-os.md](docs/pecas-e-insumos/reservar-peca-para-os.md)
-- [x] Registrar consumo e saída — [registrar-consumo-e-saida.md](docs/pecas-e-insumos/registrar-consumo-e-saida.md)
-- [x] Consultar peças faltantes — [consultar-pecas-faltantes.md](docs/pecas-e-insumos/consultar-pecas-faltantes.md)
-- [x] Solicitar compra de peças — [solicitar-compra-de-pecas.md](docs/pecas-e-insumos/solicitar-compra-de-pecas.md)
-- [x] Solicitar compra de insumos — [solicitar-compra-de-insumos.md](docs/pecas-e-insumos/solicitar-compra-de-insumos.md)
+- [ ] Registrar entrada de estoque — `registrar-entrada-de-estoque.md` aguardando reenvio
+- [ ] Reservar peças para OS — `reservar-peca-para-os.md` aguardando reenvio
+- [ ] Registrar consumo e saída — `registrar-consumo-e-saida.md` aguardando reenvio
+- [ ] Consultar peças faltantes — `consultar-pecas-faltantes.md` aguardando reenvio
+- [ ] Solicitar compra de peças — `solicitar-compra-de-pecas.md` aguardando reenvio
+- [ ] Solicitar compra de insumos — `solicitar-compra-de-insumos.md` aguardando reenvio
 
 ---
 
@@ -117,5 +117,12 @@ implementada em código.
   está registrado como ponto em aberto do contexto de Orçamento.
 - Todos os contextos documentados seguem a mesma estrutura: uma pasta por contexto, com um arquivo
   por tarefa e um `pontos-em-aberto.md`.
-- O maior bloco pendente é Ordem de Serviço, com 12 tarefas — a maior parte do fluxo de execução,
-  do registro do diagnóstico até a entrega do veículo.
+- **Reenvio em andamento.** Dezenove documentos foram retirados do repositório para serem
+  substituídos por versões atualizadas: a pasta de Orçamento inteira, cinco tarefas de Ordem de
+  Serviço e sete de Peças & Insumos, mais os `pontos-em-aberto.md` de Orçamento e de Ordem de
+  Serviço. As 17 tarefas correspondentes estão **desmarcadas** e sinalizadas como *aguardando
+  reenvio*, para voltarem a contar quando os arquivos novos chegarem. As rotas dessas tarefas
+  continuam listadas em [03-endpoints.md](docs/03-endpoints.md), na seção *Documentos aguardando
+  reenvio*.
+- O maior bloco a refinar de fato continua sendo Ordem de Serviço, com 12 tarefas nunca escritas —
+  a maior parte do fluxo de execução, do registro do diagnóstico até a entrega do veículo.
