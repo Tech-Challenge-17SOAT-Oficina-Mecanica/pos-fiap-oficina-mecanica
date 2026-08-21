@@ -1,7 +1,7 @@
 ---
 documento: Pontos Cobertos — Checklist de Refinamento
 dono: José Lázaro
-versao: 0.3
+versao: 0.4
 atualizado_em: 2026-08-19
 status: em andamento
 ---
@@ -18,11 +18,11 @@ implementada em código.
 |---|---|---|---|
 | Cliente | 5 | 0 | 5 |
 | Veículo | 3 | 0 | 3 |
-| Ordem de Serviço | 1 | 5 | 18 |
+| Ordem de Serviço | 5 | 5 | 18 |
 | Orçamento | 0 | 5 | 8 |
-| Serviços | 0 | 0 | 4 |
+| Serviços | 1 | 0 | 4 |
 | Peças & Insumos | 6 | 7 | 13 |
-| **Total** | **15** | **17** | **51** |
+| **Total** | **20** | **17** | **51** |
 
 ---
 
@@ -56,10 +56,10 @@ implementada em código.
 - [ ] Registrar problema adicional
 - [ ] Registrar peças adicionais
 - [ ] Registrar insumos adicionais
-- [ ] Finalizar serviço
-- [ ] Registrar entrega do veículo
-- [ ] Consultar ordem de serviço
-- [ ] Listar ordens de serviço
+- [x] Finalizar serviço — [finalizar-servico.md](docs/ordem-de-servico/finalizar-servico.md)
+- [x] Registrar entrega do veículo — [registrar-entrega-de-veiculo.md](docs/ordem-de-servico/registrar-entrega-de-veiculo.md)
+- [x] Consultar ordem de serviço — [consultar-ordem-de-servico.md](docs/ordem-de-servico/consultar-ordem-de-servico.md)
+- [x] Listar ordens de serviço — [listar-ordens-de-servico.md](docs/ordem-de-servico/listar-ordens-de-servico.md)
 
 ## Orçamento
 
@@ -77,7 +77,7 @@ implementada em código.
 - [ ] Cadastrar serviço
 - [ ] Consultar serviços
 - [ ] Atualizar serviço
-- [ ] Remover ou desativar serviço
+- [x] Remover ou desativar serviço — [desativar-servico.md](docs/servicos/desativar-servico.md)
 
 ## Peças & Insumos
 
@@ -124,5 +124,7 @@ implementada em código.
   reenvio*, para voltarem a contar quando os arquivos novos chegarem. As rotas dessas tarefas
   continuam listadas em [03-endpoints.md](docs/03-endpoints.md), na seção *Documentos aguardando
   reenvio*.
-- O maior bloco a refinar de fato continua sendo Ordem de Serviço, com 12 tarefas nunca escritas —
-  a maior parte do fluxo de execução, do registro do diagnóstico até a entrega do veículo.
+- O que falta refinar de fato: oito tarefas de Ordem de Serviço (registro do diagnóstico, peças e
+  insumos necessários e adicionais, problema adicional, fila e seleção da próxima OS), três de
+  Orçamento (enviar orçamento, aprovar e recusar complementar) e três de Serviços (cadastrar,
+  consultar e atualizar).
