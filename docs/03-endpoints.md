@@ -44,6 +44,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 |---|---|---|---|---|
 | `GET` | `/veiculos` | Consulta veículo pela placa | `veiculos:ler` | [consultar-veiculo.md](veiculo/consultar-veiculo.md) |
 | `POST` | `/veiculos` | Cadastra um novo veículo | `veiculos:escrever` | [cadastrar-veiculo.md](veiculo/cadastrar-veiculo.md) |
+| `PUT` | `/veiculos/{veiculoId}` | Atualiza os dados cadastrais do veículo | `veiculos:escrever` | [atualizar-veiculo.md](veiculo/atualizar-veiculo.md) |
 | `DELETE` | `/veiculos/{veiculoId}` | Inativa o veículo (exclusão lógica) | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 | `POST` | `/veiculos/{veiculoId}/reativacao` | Reativa um veículo inativado | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 
@@ -105,12 +106,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Contexto | Endpoints |
 |---|---|
 | Cliente | 6 |
-| Veículo | 4 |
+| Veículo | 5 |
 | Ordem de Serviço | 7 |
 | Orçamento | 4 |
 | Peças & Insumos | 15 |
 | Serviços | 4 |
-| **Total** | **40** |
+| **Total** | **41** |
 
 ---
 

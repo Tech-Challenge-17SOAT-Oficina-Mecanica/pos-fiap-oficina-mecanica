@@ -92,7 +92,7 @@ documentação e pela manutenção das regras.
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 3 tarefas refinadas |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 4 tarefas refinadas |
 | Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 7 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
 | Serviços | `Serviço` | [`servicos/`](servicos/) | 3 requisitos refinados |
