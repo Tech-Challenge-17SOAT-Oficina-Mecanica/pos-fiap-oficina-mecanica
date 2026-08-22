@@ -492,6 +492,9 @@ historico imutavel e a origem dos saldos correntes.
 | `ativo` | `boolean` | Exclusao logica |
 | `inativado_em` | `datetime` | Nulo enquanto ativo |
 | `inativado_por` | `uuid` | Usuario responsavel |
+| `data_criacao` | `datetime` | Imutavel |
+| `data_atualizacao` | `datetime` | Alterada a cada atualizacao |
+| `usuario_atualizacao` | `uuid` | Usuario responsavel pela ultima atualizacao |
 | `version` | `integer` | Controle otimista |
 
 Relacionamento: 1:N com `PEDIDO_COMPRA`. Pertence a Peças e e referenciado por Insumos.

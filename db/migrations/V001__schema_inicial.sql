@@ -232,6 +232,8 @@ CREATE TABLE fornecedor (
     inativado_por UUID,
     version INTEGER NOT NULL DEFAULT 1,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    usuario_atualizacao UUID,
     CONSTRAINT ck_fornecedor_tipo_documento CHECK (tipo_documento IN ('CPF', 'CNPJ')),
     CONSTRAINT ck_fornecedor_contato CHECK (telefone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_fornecedor_prazo CHECK (prazo_entrega_dias >= 0),
