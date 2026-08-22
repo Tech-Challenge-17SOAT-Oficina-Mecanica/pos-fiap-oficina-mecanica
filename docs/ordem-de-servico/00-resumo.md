@@ -1,7 +1,7 @@
 ---
 documento: Resumo do Contexto — Ordem de Serviço
 dono: A definir
-versao: 0.1
+versao: 0.3
 atualizado_em: 2026-08-22
 status: em construcao
 ---
@@ -25,19 +25,22 @@ consultados por ele ou reagem a ele.
 
 | # | Tarefa | Rota | Escopo | Arquivo |
 |---|---|---|---|---|
-| 3 | Criar Ordem de Serviço | `POST /ordens-servico` | `os:escrever` | [criar-ordem-de-servico.md](criar-ordem-de-servico.md) |
-| 1 | Registrar Problema Relatado | `POST /ordens-servico/{osId}/problema-relatado` | `os:escrever` | [registrar-problema-relatado.md](registrar-problema-relatado.md) |
-| 11 | Registrar Problema Encontrado | `POST /ordens-servico/{osId}/problemas` | `os:escrever` | [registrar-problema-encontrado.md](registrar-problema-encontrado.md) |
-| 2 | Registrar Serviços Necessários | `POST /ordens-servico/{osId}/servicos` | `os:escrever` | [registrar-servicos-necessarios.md](registrar-servicos-necessarios.md) |
-| 13 | Registrar Peças e Insumos Necessários | rota a definir | `os:escrever` | [registrar-pecas-e-insumos-necessarios.md](registrar-pecas-e-insumos-necessarios.md) |
-| 12 | Incluir OS na Fila de Atendimento | sem endpoint, caso de uso interno | — | [incluir-os-na-fila-de-atendimento.md](incluir-os-na-fila-de-atendimento.md) |
-| 4 | Consultar Fila de Atendimento | `GET /fila-atendimento` | `os:ler` | [consultar-fila-de-atendimento.md](consultar-fila-de-atendimento.md) |
-| 5 | Iniciar Execução | `POST /ordens-servico/{osId}/execucao/iniciar` | `os:escrever` | [iniciar-execucao.md](iniciar-execucao.md) |
-| 7 | Finalizar Serviço | `POST /ordens-servico/{osId}/finalizar` | `os:escrever` | [finalizar-servico.md](finalizar-servico.md) |
-| 8 | Registrar Entrega de Veículo | `POST /ordens-servico/{osId}/entrega` | `os:escrever` | [registrar-entrega-de-veiculo.md](registrar-entrega-de-veiculo.md) |
-| 9 | Consultar Ordem de Serviço | `GET /ordens-servico/{osId}` | `os:ler` | [consultar-ordem-de-servico.md](consultar-ordem-de-servico.md) |
-| 10 | Listar Ordens de Serviço | `GET /ordens-servico` | `os:ler` | [listar-ordens-de-servico.md](listar-ordens-de-servico.md) |
-| 6 | Monitorar Tempo Médio de Execução | `GET /ordens-servico/{osId}/tempo-execucao` e `GET /ordens-servico/tempos-execucao` | `os:ler` | [monitorar-tempo-medio-de-execucao.md](monitorar-tempo-medio-de-execucao.md) |
+| 1 | Criar Ordem de Serviço | `POST /ordens-servico` | `os:escrever` | [criar-ordem-de-servico.md](criar-ordem-de-servico.md) |
+| 2 | Registrar Problema Relatado | `POST /ordens-servico/{osId}/problema-relatado` | `os:escrever` | [registrar-problema-relatado.md](registrar-problema-relatado.md) |
+| 3 | Registrar Problema Encontrado | `POST /ordens-servico/{osId}/problemas` | `os:escrever` | [registrar-problema-encontrado.md](registrar-problema-encontrado.md) |
+| 4 | Registrar Serviços Necessários | `POST /ordens-servico/{osId}/servicos` | `os:escrever` | [registrar-servicos-necessarios.md](registrar-servicos-necessarios.md) |
+| 5 | Registrar Peças e Insumos Necessários | `POST /ordens-servico/{osId}/pecas`, `POST /ordens-servico/{osId}/insumos` e `GET /ordens-servico/{osId}/orcamento` | `os:escrever` e `os:ler` | [registrar-pecas-e-insumos-necessarios.md](registrar-pecas-e-insumos-necessarios.md) |
+| 6 | Incluir OS na Fila de Atendimento | sem endpoint, caso de uso interno | — | [incluir-os-na-fila-de-atendimento.md](incluir-os-na-fila-de-atendimento.md) |
+| 7 | Consultar Fila de Atendimento | `GET /fila-atendimento` | `os:ler` | [consultar-fila-de-atendimento.md](consultar-fila-de-atendimento.md) |
+| 8 | Iniciar Execução | `POST /ordens-servico/{osId}/execucao/iniciar` | `os:escrever` | [iniciar-execucao.md](iniciar-execucao.md) |
+| 9 | Finalizar Serviço | `POST /ordens-servico/{osId}/finalizar` | `os:escrever` | [finalizar-servico.md](finalizar-servico.md) |
+| 10 | Registrar Entrega de Veículo | `POST /ordens-servico/{osId}/entrega` | `os:escrever` | [registrar-entrega-de-veiculo.md](registrar-entrega-de-veiculo.md) |
+| 11 | Consultar Ordem de Serviço | `GET /ordens-servico/{osId}` | `os:ler` | [consultar-ordem-de-servico.md](consultar-ordem-de-servico.md) |
+| 12 | Listar Ordens de Serviço | `GET /ordens-servico` | `os:ler` | [listar-ordens-de-servico.md](listar-ordens-de-servico.md) |
+| 13 | Monitorar Tempo Médio de Execução | `GET /ordens-servico/{osId}/tempo-execucao` e `GET /ordens-servico/tempos-execucao` | `os:ler` | [monitorar-tempo-medio-de-execucao.md](monitorar-tempo-medio-de-execucao.md) |
+
+As tarefas estão numeradas **na ordem do fluxo de atendimento**, e os IDs de requisito seguem a
+mesma ordem: `RF-OS-01` a `RF-OS-124` e `RNF-OS-01` a `RNF-OS-65`, sem repetição.
 
 ## Tipos do contexto
 
@@ -52,11 +55,44 @@ consultados por ele ou reagem a ele.
 | `AGUARDANDO_EXECUCAO` | Orçamento aprovado e recursos disponíveis; OS na fila. |
 | `EM_EXECUCAO` | Mecânico iniciou a execução. |
 | `FINALIZADA` | Serviços concluídos, veículo aguardando retirada. |
-| `ENTREGUE` | Pagamento confirmado e veículo entregue. |
+| `ENTREGUE` | Veículo entregue e valor final registrado. |
 | `CANCELADA` | Orçamento recusado. |
 
-> `AGUARDANDO_RECURSOS` e `AGUARDANDO_EXECUCAO` não constam no enunciado do Tech Challenge — ver
-> ponto 2 de [`pontos-em-aberto.md`](pontos-em-aberto.md).
+**Máquina de estados**
+
+```
+RECEBIDA
+  └─ registrar problema relatado ─────────────→ EM_DIAGNOSTICO
+       └─ calcular e enviar orçamento ────────→ AGUARDANDO_APROVACAO
+            ├─ cliente recusa o principal ────→ CANCELADA
+            └─ cliente aprova ───────────────→ processamento dos itens
+                 ├─ algum item comprado ─────→ AGUARDANDO_RECURSOS
+                 │     └─ entrada de estoque, sem pendência → AGUARDANDO_EXECUCAO
+                 └─ tudo reservado ──────────→ AGUARDANDO_EXECUCAO
+                       └─ iniciar execução ──→ EM_EXECUCAO
+                            ├─ problema encontrado → orçamento COMPLEMENTAR em CRIADO,
+                            │    a OS volta a AGUARDANDO_APROVACAO até a decisão do cliente
+                            └─ finalizar ────→ FINALIZADA
+                                 └─ entrega ─→ ENTREGUE
+```
+
+Quem manda a transição:
+
+- **RECEBIDA → EM_DIAGNOSTICO**: registrar problema relatado.
+- **EM_DIAGNOSTICO → AGUARDANDO_APROVACAO**: envio do orçamento ao cliente.
+- **AGUARDANDO_APROVACAO → AGUARDANDO_RECURSOS ou AGUARDANDO_EXECUCAO**: a aprovação do orçamento
+  chama o processamento de itens, e o resultado define o estado — pendente de compra ou pronto.
+- **AGUARDANDO_RECURSOS → AGUARDANDO_EXECUCAO**: entrada de estoque, quando não resta item pendente.
+- **AGUARDANDO_EXECUCAO → EM_EXECUCAO**: início da execução.
+- **EM_EXECUCAO → FINALIZADA**: finalização, bloqueada enquanto houver reserva sem baixa.
+- **FINALIZADA → ENTREGUE**: entrega, que não depende de pagamento.
+- **qualquer estado → CANCELADA**: recusa do orçamento principal, com devolução dos itens ao
+  estoque. Recusa de complementar **não** cancela a OS.
+
+> `AGUARDANDO_RECURSOS` e `AGUARDANDO_EXECUCAO` não constam no enunciado do Tech Challenge: são
+> estados que o fluxo de estoque exigiu. `AGUARDANDO_RECURSOS` existe porque a OS pode ficar parada
+> esperando compra chegar, e `AGUARDANDO_EXECUCAO` distingue "pronta para começar" de "em
+> andamento" — sem ele, a fila de atendimento não teria como ser montada.
 
 **Ordem de Serviço**
 
@@ -87,8 +123,9 @@ substitui o status atual da OS.
 
 - Rotas sem prefixo de versão; path param `{osId}`; ações de transição como sub-recurso com verbo
   de negócio (`/execucao/iniciar`, `/finalizar`, `/entrega`).
-- Autenticação `Bearer <JWT>`; escopos `os:ler` e `os:escrever`; perfis `MECANICO` e `GESTOR`, com
-  o indicador de tempo médio restrito ao `GESTOR`.
+- Autenticação `Bearer <JWT>`; escopos `os:ler` e `os:escrever`; perfil `MECANICO`, com o
+  indicador de tempo médio restrito a quem tiver o escopo `os:ler` de gestão. O `CLIENTE`
+  acompanha apenas a própria OS.
 - A **regra de transição pertence ao domínio**: os casos de uso chamam métodos da OS
   (`iniciarExecucao()`, `finalizar()`, `entregar()`), e não mudam status no handler.
 - A **fila não é persistida**: uma OS pertence à fila quando tem `status = AGUARDANDO_EXECUCAO` e
@@ -99,5 +136,5 @@ substitui o status atual da OS.
 ## O que este contexto não faz
 
 - Não calcula nem aprova orçamento: consulta o contexto de Orçamento.
-- Não movimenta estoque: consulta e é notificado pelo contexto de Peças & Insumos.
+- Não movimenta estoque: consulta e é chamado pelos contextos de Peças e de Insumos.
 - Não trata pagamento, embora a entrega dependa da confirmação dele.

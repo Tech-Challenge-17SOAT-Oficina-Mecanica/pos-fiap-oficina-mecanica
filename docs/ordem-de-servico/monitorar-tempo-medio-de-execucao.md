@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Monitorar Tempo Médio de Execução
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -11,13 +11,13 @@ status: rascunho
 Este documento detalha a tarefa Monitorar Tempo Médio de Execução dos Serviços do contexto de
 Ordem de Serviço.
 
-## 6 · Monitorar Tempo Médio de Execução
+## 13 · Monitorar Tempo Médio de Execução
 
-### 6.1 Refinamento de Produto
+### 13.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -37,19 +37,19 @@ para acompanhar a eficiência operacional. É o indicador exigido pelo enunciado
 
 | ID | Requisito |
 |---|---|
-| RF-OS-38 | Permitir consultar o tempo médio de execução das Ordens de Serviço. |
-| RF-OS-39 | Considerar apenas OS que possuam `dataInicioExecucao` e `dataFinalizacao`. |
-| RF-OS-40 | Exibir a quantidade de Ordens de Serviço utilizadas no cálculo. |
-| RF-OS-41 | Desconsiderar OS ainda em execução ou sem as datas necessárias. |
-| RF-OS-42 | Calcular o indicador a partir dos dados já registrados na OS. |
+| RF-OS-120 | Permitir consultar o tempo médio de execução das Ordens de Serviço. |
+| RF-OS-121 | Considerar apenas OS que possuam `dataInicioExecucao` e `dataFinalizacao`. |
+| RF-OS-122 | Exibir a quantidade de Ordens de Serviço utilizadas no cálculo. |
+| RF-OS-123 | Desconsiderar OS ainda em execução ou sem as datas necessárias. |
+| RF-OS-124 | Calcular o indicador a partir dos dados já registrados na OS. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-23 | O cálculo deve ser realizado sem alterar os dados das Ordens de Serviço. |
-| RNF-OS-24 | O indicador deve ser retornado de forma consistente para o mesmo conjunto de dados. |
-| RNF-OS-25 | Apenas usuários autorizados devem acessar a informação. |
+| RNF-OS-63 | O cálculo deve ser realizado sem alterar os dados das Ordens de Serviço. |
+| RNF-OS-64 | O indicador deve ser retornado de forma consistente para o mesmo conjunto de dados. |
+| RNF-OS-65 | Apenas usuários autorizados devem acessar a informação. |
 
 **Fluxo Principal**
 
@@ -79,7 +79,7 @@ para acompanhar a eficiência operacional. É o indicador exigido pelo enunciado
 
 ---
 
-### 6.2 Refinamento Técnico
+### 13.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -99,7 +99,7 @@ os tempos das OS finalizadas, com o tempo médio do conjunto filtrado.
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `os:ler`.
 
 **Entrada**
@@ -109,14 +109,14 @@ os tempos das OS finalizadas, com o tempo médio do conjunto filtrado.
 | Path | `osId` | uuid | Identificador da OS, na consulta individual. |
 | Query | `dataInicio` | date | Opcional; início do período. |
 | Query | `dataFim` | date | Opcional; fim do período. |
-| Query | `page` / `size` | int | Paginação da listagem; `size` com máximo definido pela aplicação. |
+| Query | `pagina` / `tamanho` | inteiro | Paginação da listagem; `pagina` inicia em zero e `tamanho` tem máximo de 100. |
 
 **Validações**
 
 *Técnicas*
 
 - `osId` em formato UUID válido.
-- Parâmetros de paginação válidos, respeitando o limite de `size`.
+- Parâmetros de paginação válidos, respeitando o limite de `tamanho`.
 - Quando informados, `dataInicio` não pode ser posterior a `dataFim`.
 
 *Negócio*
@@ -229,7 +229,7 @@ Consulta geral:
 
 ---
 
-### 6.3 Checklist de Implementação
+### 13.3 Checklist de Implementação
 
 **Domínio**
 

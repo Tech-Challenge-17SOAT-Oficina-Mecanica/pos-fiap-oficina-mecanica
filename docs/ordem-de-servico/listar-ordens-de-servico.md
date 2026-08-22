@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Listar Ordens de Serviço
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.3
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Listar Ordens de Serviço do contexto de Ordem de Serviço.
 
-## 10 · Listar Ordens de Serviço
+## 12 · Listar Ordens de Serviço
 
-### 10.1 Refinamento de Produto
+### 12.1 Refinamento de Produto
 
 **Persona**
 
@@ -37,20 +37,20 @@ causadas por controle manual ou planilhas.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-77 | Permitir listar Ordens de Serviço. |
-| RF-OS-78 | Permitir detalhar Ordens de Serviço a partir da listagem. |
-| RF-OS-79 | Exibir o status atual das Ordens de Serviço. |
-| RF-OS-80 | Permitir o acompanhamento do andamento dos serviços. |
-| RF-OS-81 | Permitir a consulta administrativa das Ordens de Serviço, com filtro por status, cliente e veículo. |
+| RF-OS-115 | Permitir listar Ordens de Serviço. |
+| RF-OS-116 | Permitir detalhar Ordens de Serviço a partir da listagem. |
+| RF-OS-117 | Exibir o status atual das Ordens de Serviço. |
+| RF-OS-118 | Permitir o acompanhamento do andamento dos serviços. |
+| RF-OS-119 | Permitir a consulta administrativa das Ordens de Serviço, com filtro por status, cliente e veículo. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-45 | A listagem deve ser feita por API RESTful. |
-| RNF-OS-46 | A operação deve ser acessível somente por usuário autorizado. |
-| RNF-OS-47 | A listagem não deve alterar dados das Ordens de Serviço. |
-| RNF-OS-48 | A resposta deve ser consistente com os status atuais das Ordens de Serviço. |
+| RNF-OS-59 | A listagem deve ser feita por API RESTful. |
+| RNF-OS-60 | A operação deve ser acessível somente por usuário autorizado. |
+| RNF-OS-61 | A listagem não deve alterar dados das Ordens de Serviço. |
+| RNF-OS-62 | A resposta deve ser consistente com os status atuais das Ordens de Serviço. |
 
 **Fluxo Principal**
 
@@ -84,7 +84,7 @@ causadas por controle manual ou planilhas.
 
 ---
 
-### 10.2 Refinamento Técnico
+### 12.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -97,10 +97,15 @@ GET /ordens-servico
 > detalhamento de uma OS específica fica em `GET /ordens-servico/{osId}`, descrito em
 > [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md).
 
+> **Decisão de projeto.** A divisão entre as duas consultas fica assim: **`GET /ordens-servico`
+> lista** com filtros — status, documento do cliente e placa — e paginação; **`GET
+> /ordens-servico/{osId}` detalha** uma OS, com problemas, orçamentos e histórico. As duas tarefas
+> chegaram propondo a mesma rota; esta é a divisão confirmada pelo time.
+
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `os:ler`.
 
 **Entrada** — query params, todos opcionais:
@@ -110,7 +115,7 @@ GET /ordens-servico
 | `status` | enum | Filtra por status da OS |
 | `documento` | string | Filtra pelo CPF/CNPJ do cliente |
 | `placa` | string | Filtra pela placa do veículo |
-| `page` / `size` | int | Paginação; `size` com máximo de 100 |
+| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 100 |
 
 Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACAO`,
 `AGUARDANDO_EXECUCAO`, `EM_EXECUCAO`, `FINALIZADA`, `ENTREGUE`, `CANCELADA`.
@@ -229,7 +234,7 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 
 ---
 
-### 10.3 Checklist de Implementação
+### 12.3 Checklist de Implementação
 
 **Domínio**
 

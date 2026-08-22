@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Consultar Ordem de Serviço
 dono: A definir
-versao: 0.1
+versao: 0.3
 atualizado_em: 2026-08-19
 status: rascunho
 ---
@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Consultar Ordem de Serviço do contexto de Ordem de Serviço.
 
-## 9 · Consultar Ordem de Serviço
+## 11 · Consultar Ordem de Serviço
 
-### 9.1 Refinamento de Produto
+### 11.1 Refinamento de Produto
 
 **Persona**
 
@@ -39,31 +39,31 @@ de o cliente acompanhar o progresso via API.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-63 | Permitir consultar uma Ordem de Serviço pelo identificador da OS. |
-| RF-OS-64 | Permitir consultar Ordem de Serviço pelo CPF/CNPJ do cliente. |
-| RF-OS-65 | Retornar o status atual da Ordem de Serviço. |
-| RF-OS-66 | Retornar os dados do cliente vinculado à Ordem de Serviço. |
-| RF-OS-67 | Retornar os dados do veículo vinculado à Ordem de Serviço. |
-| RF-OS-68 | Retornar os problemas vinculados à Ordem de Serviço, sem expor o tipo do problema na resposta. |
-| RF-OS-69 | Retornar os orçamentos vinculados à Ordem de Serviço. |
-| RF-OS-70 | Retornar os itens de cada orçamento. |
-| RF-OS-71 | Identificar cada orçamento como `PRINCIPAL` ou `COMPLEMENTAR`. |
-| RF-OS-72 | Retornar o vínculo entre orçamento complementar e orçamento original, quando houver. |
-| RF-OS-73 | Retornar o valor total geral dos orçamentos. |
-| RF-OS-74 | Retornar os eventos da Ordem de Serviço em `event_data`. |
-| RF-OS-75 | Permitir que o cliente acompanhe o progresso da Ordem de Serviço via API. |
-| RF-OS-76 | Permitir o detalhamento administrativo da Ordem de Serviço. |
+| RF-OS-101 | Permitir consultar uma Ordem de Serviço pelo identificador da OS. |
+| RF-OS-102 | Permitir consultar Ordem de Serviço pelo CPF/CNPJ do cliente. |
+| RF-OS-103 | Retornar o status atual da Ordem de Serviço. |
+| RF-OS-104 | Retornar os dados do cliente vinculado à Ordem de Serviço. |
+| RF-OS-105 | Retornar os dados do veículo vinculado à Ordem de Serviço. |
+| RF-OS-106 | Retornar os problemas da OS com o orçamento a que cada um está vinculado. |
+| RF-OS-107 | Retornar os orçamentos vinculados à Ordem de Serviço. |
+| RF-OS-108 | Retornar os itens de cada orçamento. |
+| RF-OS-109 | Identificar cada orçamento como `PRINCIPAL` ou `COMPLEMENTAR`. |
+| RF-OS-110 | Retornar o vínculo entre orçamento complementar e orçamento original, quando houver. |
+| RF-OS-111 | Retornar o valor total geral dos orçamentos. |
+| RF-OS-112 | Retornar os eventos da Ordem de Serviço em `eventos`. |
+| RF-OS-113 | Permitir que o cliente acompanhe o progresso da Ordem de Serviço via API. |
+| RF-OS-114 | Permitir o detalhamento administrativo da Ordem de Serviço. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-39 | A consulta deve ser feita por API RESTful. |
-| RNF-OS-40 | A operação deve respeitar autenticação e autorização. |
-| RNF-OS-41 | A consulta não deve alterar os dados da Ordem de Serviço. |
-| RNF-OS-42 | A consulta não deve alterar dados de orçamento, cliente, veículo ou eventos. |
-| RNF-OS-43 | A resposta deve refletir o status atual da Ordem de Serviço. |
-| RNF-OS-44 | O `event_data` deve funcionar como histórico técnico e de negócio, sem substituir o status atual da OS. |
+| RNF-OS-53 | A consulta deve ser feita por API RESTful. |
+| RNF-OS-54 | A operação deve respeitar autenticação e autorização. |
+| RNF-OS-55 | A consulta não deve alterar os dados da Ordem de Serviço. |
+| RNF-OS-56 | A consulta não deve alterar dados de orçamento, cliente, veículo ou eventos. |
+| RNF-OS-57 | A resposta deve refletir o status atual da Ordem de Serviço. |
+| RNF-OS-58 | O `eventos` deve funcionar como histórico técnico e de negócio, sem substituir o status atual da OS. |
 
 **Fluxo Principal**
 
@@ -75,7 +75,7 @@ de o cliente acompanhar o progresso via API.
 6. O sistema consulta os dados do cliente e do veículo vinculados.
 7. O sistema consulta os problemas vinculados à OS.
 8. O sistema consulta os orçamentos vinculados e os itens de cada um.
-9. O sistema consulta os eventos da OS em `event_data`.
+9. O sistema consulta os eventos da OS em `eventos`.
 10. O sistema calcula o valor total geral dos orçamentos.
 11. O sistema retorna os detalhes consolidados da Ordem de Serviço.
 
@@ -89,13 +89,13 @@ de o cliente acompanhar o progresso via API.
 | A4 | Usuário sem autorização | Impede a consulta. |
 | A5 | Cliente consultando OS de outro cliente | Impede o acesso. |
 | A6 | Nenhum orçamento encontrado | Retorna a OS com lista de orçamentos vazia. |
-| A7 | Nenhum evento encontrado | Retorna a OS com `event_data` vazio. |
+| A7 | Nenhum evento encontrado | Retorna a OS com `eventos` vazio. |
 | A8 | Erro ao consultar | Informa que não foi possível concluir a consulta. |
 
 **Saída**
 
 - Dados da Ordem de Serviço, com status atual, cliente, veículo, problemas, orçamentos e seus
-  itens, valor total geral e eventos em `event_data`.
+  itens, valor total geral e eventos em `eventos`.
 
 **Pós-condições**
 
@@ -105,7 +105,7 @@ de o cliente acompanhar o progresso via API.
 
 ---
 
-### 9.2 Refinamento Técnico
+### 11.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -116,15 +116,32 @@ GET /ordens-servico/{osId}
 A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md), com o filtro `documento`.
 
-> **Decisão de projeto.** O `event_data` é o histórico técnico e de negócio da OS: cada registro
+> **Decisão de projeto.** Esta rota **detalha uma OS**; a listagem com filtros é
+> [listar-ordens-de-servico.md](listar-ordens-de-servico.md), em `GET /ordens-servico`. As duas
+> tarefas chegaram propondo a mesma rota, e esta é a divisão confirmada.
+
+> **Decisão de projeto.** O bloco chama-se **`eventos`**, e não `event_data`: era o único campo em
+> `snake_case` numa resposta toda em `camelCase`, e os campos internos estavam em inglês. Foram
+> traduzidos junto — `agregado`, `agregadoId`, `tipoEvento`, `dados`, `metadados`, `ocorridoEm` e
+> `registradoEm`.
+
+> **Decisão de projeto.** Este histórico é **trilha de auditoria**, não mensageria: ele sobreviveu à
+> decisão de não usar eventos de domínio no projeto (DT-35). Ninguém publica nem consome esses
+> registros; eles são gravados para contar o que aconteceu com a OS.
+
+> **Decisão de projeto.** O `eventos` é o histórico técnico e de negócio da OS: cada registro
 > guarda o agregado de origem, o tipo de evento, a transição de status e o payload do que
 > aconteceu. Ele **não** substitui o status atual da OS — o status vive na própria Ordem de
-> Serviço, e o `event_data` explica como ela chegou até ele.
+> Serviço, e o `eventos` explica como ela chegou até ele.
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`. O cliente pode consultar o progresso da própria OS.
+- Perfis: `MECANICO` e `CLIENTE`. O cliente consulta apenas o progresso da própria OS.
+
+> **Decisão de projeto.** O cliente se autentica por **token de escopo reduzido**, emitido no envio
+> do orçamento e válido apenas para aquela OS. É o mesmo mecanismo já adotado em Orçamento para
+> aprovar e recusar, e evita criar cadastro com senha para cliente no MVP (DT-30).
 - Escopo: `os:ler`.
 
 **Entrada**
@@ -153,14 +170,14 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 4. Carregar os dados do cliente e do veículo.
 5. Carregar os problemas vinculados à OS.
 6. Carregar os orçamentos vinculados e os itens de cada orçamento.
-7. Carregar os eventos da OS em `event_data`.
+7. Carregar os eventos da OS em `eventos`.
 8. Calcular o `valorTotalGeral` somando os valores totais dos orçamentos retornados.
 9. Retornar os dados consolidados da OS.
 
 **Persistência**
 
 - Consulta: `ordem_servico`, `cliente`, `veiculo`, problemas da OS, `orcamento`, `orcamento_item`,
-  `event_data`.
+  `eventos`.
 - Altera: nada.
 
 **Saída da API**
@@ -184,6 +201,7 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
     {
       "problemaId": "a3f60c81-7d24-4e59-b016-8c5f2b93ea47",
       "descricao": "Barulho ao frear",
+      "orcamentoId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
       "exigeNovaAprovacao": false,
       "identificadoEm": "2026-08-18T10:00:00-03:00"
     }
@@ -230,45 +248,45 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
     }
   ],
   "valorTotalGeral": 350.0,
-  "event_data": [
+  "eventos": [
     {
       "id": "2f8c1a47-6b03-4d92-9e75-40ab3c186de5",
-      "aggregateType": "ORDEM_SERVICO",
-      "aggregateId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
+      "agregado": "ORDEM_SERVICO",
+      "agregadoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
       "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
-      "eventType": "ORDEM_SERVICO_CRIADA",
+      "tipoEvento": "ORDEM_SERVICO_CRIADA",
       "statusAnterior": null,
       "statusNovo": "RECEBIDA",
       "etapa": "ATENDIMENTO",
-      "payload": {
+      "dados": {
         "clienteId": "c7f3a9b2-1e4d-4c8a-9f21-0b6d5e2a7c14",
         "veiculoId": "1a2b3c44-5d6e-4f70-8a91-b2c3d4e5f607"
       },
-      "metadata": {
+      "metadados": {
         "usuarioId": "0e93b571-2ac6-4d18-95f7-8b40e6c31a29"
       },
-      "occurredAt": "2026-08-18T09:30:00-03:00",
-      "createdAt": "2026-08-18T09:30:01-03:00"
+      "ocorridoEm": "2026-08-18T09:30:00-03:00",
+      "registradoEm": "2026-08-18T09:30:01-03:00"
     },
     {
       "id": "7e05b93c-8f14-42a6-b0d7-51c9a2e63f80",
-      "aggregateType": "ORCAMENTO",
-      "aggregateId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
+      "agregado": "ORCAMENTO",
+      "agregadoId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
       "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
-      "eventType": "ORCAMENTO_GERADO",
+      "tipoEvento": "ORCAMENTO_GERADO",
       "statusAnterior": null,
       "statusNovo": null,
       "etapa": "ORCAMENTO",
-      "payload": {
+      "dados": {
         "orcamentoId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
         "tipo": "PRINCIPAL",
         "valorTotal": 200.0
       },
-      "metadata": {
+      "metadados": {
         "usuarioId": "0e93b571-2ac6-4d18-95f7-8b40e6c31a29"
       },
-      "occurredAt": "2026-08-18T10:30:00-03:00",
-      "createdAt": "2026-08-18T10:30:01-03:00"
+      "ocorridoEm": "2026-08-18T10:30:00-03:00",
+      "registradoEm": "2026-08-18T10:30:01-03:00"
     }
   ]
 }
@@ -301,15 +319,22 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 - Cálculo do `valorTotalGeral` como soma dos orçamentos retornados.
 - Orçamento principal com tipo `PRINCIPAL` e `orcamentoOriginalId` nulo.
 - Orçamento complementar com tipo `COMPLEMENTAR` e `orcamentoOriginalId` preenchido.
-- Problemas retornados sem o campo de tipo.
-- `event_data` não substitui o status atual da OS.
+- Cada problema retornado com o `orcamentoId` a que está vinculado.
+
+> **Decisão de projeto.** O problema **não tem tipo próprio** — quem tem tipo é o orçamento
+> (`PRINCIPAL` ou `COMPLEMENTAR`), deduzido do status da OS, como definido em
+> [registrar-problema-encontrado.md](registrar-problema-encontrado.md). Para o consumidor saber se
+> o problema veio do diagnóstico ou apareceu na execução, a resposta expõe o `orcamentoId` do
+> vínculo: o tipo do orçamento correspondente responde a pergunta. A tabela `orcamento_problema` já
+> guarda esse vínculo; ele só não vinha na consulta.
+- `eventos` não substitui o status atual da OS.
 
 *Integração*
 
 - Consulta pelo identificador retorna `200` com os dados consolidados.
 - A resposta traz cliente, veículo, problemas, orçamentos, itens e eventos.
 - OS sem orçamento retorna lista de orçamentos vazia.
-- OS sem evento retorna `event_data` vazio.
+- OS sem evento retorna `eventos` vazio.
 - Identificador inválido retorna `400`.
 - OS inexistente retorna `404`.
 - Sem token retorna `401`.
@@ -318,13 +343,13 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 
 ---
 
-### 9.3 Checklist de Implementação
+### 11.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Garantir que a Ordem de Serviço possua identificador único e status atual
 - [ ] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
-- [ ] Criar ou ajustar o modelo `ProblemaDaOS`, permitindo retorno sem o campo de tipo
+- [ ] Retornar cada problema com o `orcamentoId` do vínculo em `orcamento_problema`
 - [ ] Garantir que `Orcamento` tenha `tipo` `PRINCIPAL` ou `COMPLEMENTAR` e possa referenciar o orçamento original
 - [ ] Criar ou ajustar o modelo `ItemOrcamento`
 - [ ] Criar ou ajustar o modelo `EventData` como histórico técnico e de negócio da OS
@@ -361,11 +386,11 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 - [ ] Ordem de Serviço inexistente
 - [ ] Usuário sem permissão
 - [ ] Retorno do status atual, do cliente e do veículo
-- [ ] Problemas retornados sem o campo de tipo
+- [ ] Problemas retornados com o `orcamentoId` do vínculo
 - [ ] Orçamento principal e complementar com os tipos corretos
 - [ ] Vínculo do complementar com o orçamento original
 - [ ] Cálculo do valor total geral
-- [ ] Retorno dos eventos em `event_data`
+- [ ] Retorno dos eventos em `eventos`
 
 **Testes de integração**
 

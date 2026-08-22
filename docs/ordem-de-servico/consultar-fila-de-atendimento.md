@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Consultar Fila de Atendimento
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Consultar Fila de Atendimento do contexto de Ordem de Serviço.
 
-## 4 · Consultar Fila de Atendimento
+## 7 · Consultar Fila de Atendimento
 
-### 4.1 Refinamento de Produto
+### 7.1 Refinamento de Produto
 
 **Persona**
 
@@ -39,24 +39,24 @@ atendimentos já vinculados a um mecânico sejam apresentados primeiro.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-121 | Permitir consultar as OS disponíveis para execução. |
-| RF-OS-122 | Considerar como fila as OS em `AGUARDANDO_EXECUCAO` com data de entrada registrada. |
-| RF-OS-123 | Exibir OS com mecânico responsável antes das OS sem mecânico. |
-| RF-OS-124 | Manter na consulta as OS que já possuem mecânico responsável. |
-| RF-OS-125 | Ordenar as OS pela data de entrada na fila dentro de cada grupo. |
-| RF-OS-126 | Permitir paginação. |
-| RF-OS-127 | Apresentar dados suficientes para identificação da OS e do veículo. |
-| RF-OS-128 | Não apresentar OS que não estejam aptas por falta de recursos necessários. |
+| RF-OS-61 | Permitir consultar as OS disponíveis para execução. |
+| RF-OS-62 | Considerar como fila as OS em `AGUARDANDO_EXECUCAO` com data de entrada registrada. |
+| RF-OS-63 | Exibir OS com mecânico responsável antes das OS sem mecânico. |
+| RF-OS-64 | Manter na consulta as OS que já possuem mecânico responsável. |
+| RF-OS-65 | Ordenar as OS pela data de entrada na fila dentro de cada grupo. |
+| RF-OS-66 | Permitir paginação. |
+| RF-OS-67 | Apresentar dados suficientes para identificação da OS e do veículo. |
+| RF-OS-68 | Não apresentar OS que não estejam aptas por falta de recursos necessários. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-65 | A consulta deve refletir o estado atual das Ordens de Serviço. |
-| RNF-OS-66 | A consulta não deve alterar dados. |
-| RNF-OS-67 | O acesso deve exigir autenticação e autorização. |
-| RNF-OS-68 | A ordenação deve ser determinística. |
-| RNF-OS-69 | A fila não deve exigir estrutura própria de persistência. |
+| RNF-OS-30 | A consulta deve refletir o estado atual das Ordens de Serviço. |
+| RNF-OS-31 | A consulta não deve alterar dados. |
+| RNF-OS-32 | O acesso deve exigir autenticação e autorização. |
+| RNF-OS-33 | A ordenação deve ser determinística. |
+| RNF-OS-34 | A fila não deve exigir estrutura própria de persistência. |
 
 **Fluxo Principal**
 
@@ -92,7 +92,7 @@ atendimentos já vinculados a um mecânico sejam apresentados primeiro.
 
 ---
 
-### 4.2 Refinamento Técnico
+### 7.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -109,20 +109,20 @@ GET /fila-atendimento
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `os:ler`.
 
 **Entrada** — query params, todos opcionais:
 
 | Param | Tipo | Descrição |
 |---|---|---|
-| `page` / `size` | int | Paginação; `size` com máximo de 100. |
+| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 100. |
 
 **Validações**
 
 *Técnicas*
 
-- Parâmetros de paginação válidos, respeitando o limite de `size`.
+- Parâmetros de paginação válidos, respeitando o limite de `tamanho`.
 
 *Negócio*
 
@@ -145,7 +145,7 @@ com entrada às 09:00, que por sua vez aparece antes da OS C, sem mecânico e co
 
 **Processamento**
 
-1. Receber `page` e `size` e validar a autenticação, a autorização e os parâmetros.
+1. Receber `pagina` e `tamanho` e validar a autenticação, a autorização e os parâmetros.
 2. Consultar OS com `status = AGUARDANDO_EXECUCAO` e `dataEntradaFila` não nula.
 3. Consultar as peças e insumos necessários das OS.
 4. Validar a disponibilidade ou reserva dos itens e excluir as OS com recurso indisponível.
@@ -237,7 +237,7 @@ com entrada às 09:00, que por sua vez aparece antes da OS C, sem mecânico e co
 
 ---
 
-### 4.3 Checklist de Implementação
+### 7.3 Checklist de Implementação
 
 **Domínio**
 
@@ -269,7 +269,7 @@ com entrada às 09:00, que por sua vez aparece antes da OS C, sem mecânico e co
 **Handler HTTP**
 
 - [ ] Criar o handler para `GET /fila-atendimento`
-- [ ] Validar `page` e `size`
+- [ ] Validar `pagina` e `tamanho`
 - [ ] Criar DTO de resposta com dados da OS e do veículo, incluindo `mecanicoResponsavelId`
 - [ ] Implementar o envelope de resposta paginado
 - [ ] Aplicar autenticação JWT e autorização na rota
