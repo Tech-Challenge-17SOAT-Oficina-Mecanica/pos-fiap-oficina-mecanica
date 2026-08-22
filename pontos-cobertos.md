@@ -14,15 +14,15 @@ implementada em código.
 
 ## Resumo
 
-| Contexto | Documentadas | Total |
-|---|---|---|
-| Cliente | 5 | 5 |
-| Veículo | 4 | 4 |
-| Ordem de Serviço | 11 | 15 |
-| Orçamento | 4 | 8 |
-| Serviços | 4 | 4 |
-| Peças & Insumos | 10 | 14 |
-| **Total** | **38** | **50** |
+| Contexto         | Documentadas | Total  |
+| ---------------- | ------------ | ------ |
+| Cliente          | 5            | 5      |
+| Veículo          | 4            | 4      |
+| Ordem de Serviço | 11           | 15     |
+| Orçamento        | 4            | 8      |
+| Serviços         | 4            | 4      |
+| Peças & Insumos  | 10           | 14     |
+| **Total**        | **38**       | **50** |
 
 ---
 
@@ -109,7 +109,7 @@ implementada em código.
 - **Documentos removidos e a reescrever:** criar ordem de serviço, incluir OS na fila, enviar
   orçamento, gerar orçamento complementar, consultar estoque, consultar peças faltantes, registrar
   consumo e saída, e reservar peças para OS. As rotas correspondentes estão listadas em
-  [03-endpoints.md](docs/03-endpoints.md), na seção *Rotas sem documento no momento*.
+  [03-endpoints.md](docs/03-endpoints.md), na seção _Rotas sem documento no momento_.
 - **Iniciar diagnóstico deixou de existir como tarefa.** Registrar problema relatado a substitui:
   o mesmo endpoint grava o relato do cliente, marca a data de início e muda a OS para
   `EM_DIAGNOSTICO`.
