@@ -111,7 +111,7 @@ status dos serviços.
 - Serviços solicitados ficam associados à Ordem de Serviço, quando informados.
 - Peças e insumos necessários ficam associados à Ordem de Serviço, quando informados.
 - A Ordem de Serviço fica disponível para consulta e acompanhamento.
-- O fluxo pode seguir para Iniciar Diagnóstico.
+- O fluxo pode seguir para Registrar Problema Relatado, que inicia o diagnóstico.
 
 ---
 

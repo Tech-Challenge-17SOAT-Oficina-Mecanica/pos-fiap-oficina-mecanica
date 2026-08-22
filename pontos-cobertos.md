@@ -18,11 +18,11 @@ implementada em código.
 |---|---|---|
 | Cliente | 5 | 5 |
 | Veículo | 4 | 4 |
-| Ordem de Serviço | 12 | 18 |
+| Ordem de Serviço | 11 | 18 |
 | Orçamento | 6 | 8 |
 | Serviços | 4 | 4 |
 | Peças & Insumos | 13 | 13 |
-| **Total** | **44** | **52** |
+| **Total** | **43** | **52** |
 
 ---
 
@@ -52,7 +52,7 @@ implementada em código.
 - [ ] Registrar peças necessárias
 - [ ] Registrar insumos necessários
 - [x] Registrar problema encontrado — [registrar-problema-encontrado.md](docs/ordem-de-servico/registrar-problema-encontrado.md), antes chamada Registrar diagnóstico
-- [x] Incluir OS na fila de atendimento — [incluir-os-na-fila-de-atendimento.md](docs/ordem-de-servico/incluir-os-na-fila-de-atendimento.md)
+- [ ] Incluir OS na fila de atendimento — documento removido, o time vai reescrever
 - [ ] Selecionar próxima OS para execução
 - [ ] Registrar problema adicional
 - [ ] Registrar peças adicionais
@@ -105,14 +105,16 @@ implementada em código.
   para 50 tarefas distintas.
 - **Monitorar tempo médio de execução** não estava na lista original, mas foi refinada e entrou no
   checklist — é o indicador exigido pelo enunciado do Tech Challenge. Com ela, o total sobe para 51.
-- "Iniciar diagnóstico" e "registrar diagnóstico" seguem separados: o primeiro é a transição de
-  status da OS e já está documentado; o segundo é o registro do resultado do diagnóstico e
-  continua pendente. Se forem a mesma tarefa, vale unificar.
-- "Incluir OS na fila de atendimento" e "selecionar próxima OS para execução" continuam pendentes,
-  mas já aparecem como pré-condição e como fluxo em
-  [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md) e
-  [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md). Vale confirmar se são tarefas
-  próprias ou parte dessas duas.
+- **Iniciar diagnóstico deixou de existir como tarefa.** Registrar problema relatado a substitui:
+  o mesmo endpoint grava o relato do cliente, marca a data de início e muda a OS para
+  `EM_DIAGNOSTICO`. O documento antigo foi removido.
+- **Incluir OS na fila de atendimento** voltou a ficar pendente: existiam duas versões concorrentes
+  do documento e o time vai reescrever a tarefa. A regra em vigor está em
+  [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md), que
+  define a fila como as OS em `AGUARDANDO_EXECUCAO` com data de entrada preenchida.
+- "Selecionar próxima OS para execução" continua pendente, mas já aparece como fluxo em
+  [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md). Vale confirmar se é tarefa
+  própria.
 - Aprovar e recusar **orçamento complementar** ainda não têm documento próprio. Os documentos de
   aprovar e recusar cobrem só o orçamento principal, e o efeito da decisão sobre um complementar
   está registrado como ponto em aberto do contexto de Orçamento.
@@ -122,9 +124,6 @@ implementada em código.
   as versões atualizadas do time. Não há mais nada aguardando reenvio.
 - **Calcular orçamento** substituiu Gerar orçamento, e **Atualizar veículo** entrou no contexto de
   Veículo. Com as duas, o total passa de 51 para 52 tarefas.
-- O arquivo `iniciar-diagnostico.md` voltou pelo `origin`, mas não conta como tarefa própria: o
-  refinamento de **Registrar problema relatado** declara que o substitui. A decisão de remover um
-  dos dois está registrada nos pontos em aberto de Ordem de Serviço.
 - O que falta refinar de fato: oito tarefas de Ordem de Serviço (registro do diagnóstico, peças e
   insumos necessários e adicionais, problema adicional, fila e seleção da próxima OS), três de
   Orçamento (enviar orçamento, aprovar e recusar complementar) e três de Serviços (cadastrar,
