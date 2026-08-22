@@ -1,35 +1,40 @@
 ---
-documento: Refinamento de Requisitos — Retornar Peça e Insumo ao Estoque
+documento: Refinamento de Requisitos — Retornar Peça ao Estoque
 dono: A definir
 versao: 0.1
 atualizado_em: 2026-08-22
 status: rascunho
 ---
 
-# Refinamento de Requisitos — Retornar Peça e Insumo ao Estoque
+# Refinamento de Requisitos — Retornar Peça ao Estoque
 
-Este documento detalha a tarefa Retornar Peça e Insumo ao Estoque do contexto de Peças & Insumos.
+Este documento detalha a tarefa Retornar Peça ao Estoque do contexto de Peças.
 
-## 14 · Retornar Peça e Insumo ao Estoque
+> **Escopo deste documento.** A devolução é disparada uma vez por recusa de orçamento e percorre
+> todos os itens da OS. Este documento descreve a parte que toca **peças**; a parte de insumos
+> está em [retornar-insumo-ao-estoque.md](../insumos/retornar-insumo-ao-estoque.md). O caso de uso é o mesmo e roda
+> na mesma transação: o que muda são as regras de saldo e as validações de cada tipo de item.
 
-### 14.1 Refinamento de Produto
+## 9 · Retornar Peça ao Estoque
+
+### 9.1 Refinamento de Produto
 
 **Persona**
 
-Sistema, dentro do fluxo de recusa do orçamento. Beneficiários: o mecânico e quem cuida do
-estoque, que voltam a enxergar as peças e os insumos disponíveis para outras OS.
+Sistema, dentro do fluxo de recusa do orçamento. Beneficiário: o mecânico, que volta a enxergar
+as peças disponíveis para outras OS.
 
 **Objetivo**
 
-Devolver ao estoque as peças e os insumos vinculados à OS quando o orçamento é recusado, liberando
-as reservas e retornando o que já havia sido baixado.
+Devolver ao estoque as peças vinculadas à OS quando o orçamento é recusado, liberando as reservas e
+retornando o que já havia sido baixado.
 
 **Problema**
 
-Quando o cliente recusa o orçamento, o serviço não vai acontecer, mas as peças e os insumos
-continuam comprometidos: a reserva segue de pé e o que já saiu do estoque não volta. O resultado é
-estoque que existe mas aparece como indisponível, outra OS parando por falta de um item que está
-na prateleira, e compra sendo solicitada sem necessidade.
+Quando o cliente recusa o orçamento, o serviço não vai acontecer, mas as peças continuam
+comprometidas: a reserva segue de pé e o que já saiu do estoque não volta. O resultado é estoque
+que existe mas aparece como indisponível, outra OS parando por falta de um item que está na
+prateleira, e compra sendo solicitada sem necessidade.
 
 **Gatilho**
 
@@ -39,33 +44,33 @@ endpoint próprio, tela própria nem acionamento manual.
 **Pré-condições**
 
 - A OS deve existir e estar carregada pelo caso de uso chamador.
-- A OS deve possuir peças ou insumos vinculados.
+- A OS deve possuir peças vinculadas.
 - A operação ocorre dentro da transação já aberta pela recusa.
 
 **Requisitos Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RF-EST-131 | Identificar as peças e os insumos a devolver. |
-| RF-EST-132 | Identificar quais itens estão reservados e quais já foram baixados do estoque. |
-| RF-EST-133 | Liberar as reservas ativas desses itens. |
-| RF-EST-134 | Reduzir o saldo reservado na quantidade liberada. |
-| RF-EST-135 | Retornar ao saldo físico as quantidades já baixadas. |
-| RF-EST-136 | Desvincular da OS os itens vinculados apenas a pedido de compra ainda não recebido. |
-| RF-EST-137 | Registrar as movimentações de liberação e de retorno no histórico de estoque. |
-| RF-EST-138 | Marcar os itens da OS como devolvidos. |
-| RF-EST-139 | Ignorar os itens já marcados como devolvidos. |
-| RF-EST-140 | Devolver ao caso de uso chamador o resultado do que foi liberado, retornado e desvinculado. |
+| RF-PEC-78 | Identificar as peças a devolver. |
+| RF-PEC-79 | Identificar quais itens estão reservados e quais já foram baixados do estoque. |
+| RF-PEC-80 | Liberar as reservas ativas desses itens. |
+| RF-PEC-81 | Reduzir o saldo reservado na quantidade liberada. |
+| RF-PEC-82 | Retornar ao saldo físico as quantidades já baixadas. |
+| RF-PEC-83 | Desvincular da OS os itens vinculados apenas a pedido de compra ainda não recebido. |
+| RF-PEC-84 | Registrar as movimentações de liberação e de retorno no histórico de estoque. |
+| RF-PEC-85 | Marcar os itens da OS como devolvidos. |
+| RF-PEC-86 | Ignorar os itens já marcados como devolvidos. |
+| RF-PEC-87 | Devolver ao caso de uso chamador o resultado do que foi liberado, retornado e desvinculado. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-95 | A devolução deve ocorrer dentro da transação aberta pelo caso de uso chamador, sem abrir transação própria. |
-| RNF-EST-96 | O saldo reservado nunca pode ficar negativo. |
-| RNF-EST-97 | A operação não deve alterar o status da OS, o orçamento nem os itens do orçamento. |
-| RNF-EST-98 | As movimentações registradas devem ser auditáveis e imutáveis. |
-| RNF-EST-99 | A operação deve ser protegida contra concorrência, com lock de linha nos itens. |
+| RNF-PEC-50 | A devolução deve ocorrer dentro da transação aberta pelo caso de uso chamador, sem abrir transação própria. |
+| RNF-PEC-51 | O saldo reservado nunca pode ficar negativo. |
+| RNF-PEC-52 | A operação não deve alterar o status da OS, o orçamento nem os itens do orçamento. |
+| RNF-PEC-53 | As movimentações registradas devem ser auditáveis e imutáveis. |
+| RNF-PEC-54 | A operação deve ser protegida contra concorrência, com lock de linha nos itens. |
 
 **Fluxo Principal**
 
@@ -109,7 +114,7 @@ endpoint próprio, tela própria nem acionamento manual.
 
 ---
 
-### 14.2 Refinamento Técnico
+### 9.2 Refinamento Técnico
 
 **Gatilho**
 
@@ -122,6 +127,15 @@ RecusarOrcamento
 ├── DevolverItensAoEstoque(ordemServico)   ← esta tarefa
 └── confirma a transação
 ```
+
+> **Decisão de projeto.** A marcação de devolução e o vínculo com o pedido de compra vivem na
+> **reserva** (`reserva_estoque`), não no item da OS. A reserva já é quem conhece a quantidade
+> comprometida, a OS e o pedido de origem; guardar a marcação no item da OS obrigaria o outro
+> contexto a escrever num agregado que não é dele.
+
+> **Decisão de projeto.** A devolução é disparada em **qualquer transição da OS para
+> `CANCELADA`**, e não só na recusa do orçamento. Cancelamento por outro motivo deixava a peça
+> reservada para sempre, com o saldo disponível sumindo sem explicação.
 
 > **Decisão de projeto.** Sem endpoint, sem evento e sem mensageria: a entrada e a saída são
 > objetos de domínio, não payloads HTTP. O commit é do caso de uso chamador, e qualquer exceção
@@ -153,7 +167,8 @@ quem expõe o endpoint.
 
 *Negócio*
 
-- A OS deve possuir itens vinculados; sem itens, o resultado volta vazio, sem erro.
+- A OS deve possuir peças vinculadas; sem peças, o resultado volta vazio, sem erro.
+- Quantidades de peça são **inteiras**: não há fração de peça em nenhuma etapa da devolução.
 - Só são liberadas reservas com status `ATIVA` vinculadas à OS.
 - Só retornam ao estoque as quantidades efetivamente baixadas.
 - Itens vinculados apenas a pedido de compra não recebido são desvinculados sem movimentação de estoque.
@@ -176,10 +191,11 @@ quem expõe o endpoint.
 
 **Persistência**
 
-- Consulta: itens necessários da OS, `reserva_estoque`, `pedido_compra`, `item_estoque`.
+- Consulta: itens necessários da OS do tipo `PECA`, `reserva_estoque`, `pedido_compra`,
+  `item_estoque`.
 - Altera: `reserva_estoque` (status `LIBERADA`), `item_estoque` (`saldoReservado` e `saldoFisico`),
   `movimentacao_estoque` (insert), itens da OS (marcação de devolução e desvínculo).
-- Não altera: `ordem_servico.status`, `orcamento`, `orcamento_adicao` e `orcamento_item`.
+- Não altera: `ordem_servico.status`, `orcamento` e `orcamento_item`.
 
 **Resultado retornado**
 
@@ -189,7 +205,7 @@ quem expõe o endpoint.
   "reservasLiberadas": [
     {
       "itemId": "b62d4f18-9e33-4a71-8c05-1d7f2ab63e90",
-      "codigo": "PC-0311",
+      "codigo": "PEC-000311",
       "descricao": "Disco de freio ventilado",
       "tipo": "PECA",
       "quantidade": 5,
@@ -199,18 +215,17 @@ quem expõe o endpoint.
   "itensRetornadosAoEstoque": [
     {
       "itemId": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
-      "codigo": "IN-0031",
-      "descricao": "Óleo lubrificante 15W40",
-      "tipo": "INSUMO",
-      "unidadeMedida": "L",
-      "quantidade": 12.0,
-      "saldoFisicoApos": 56.0
+      "codigo": "PEC-000208",
+      "descricao": "Filtro de óleo",
+      "tipo": "PECA",
+      "quantidade": 2,
+      "saldoFisicoApos": 18
     }
   ],
   "itensSemDevolucao": [
     {
       "itemId": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
-      "codigo": "PC-0142",
+      "codigo": "PEC-000142",
       "descricao": "Pastilha de freio dianteira",
       "tipo": "PECA",
       "quantidade": 10,
@@ -251,7 +266,7 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 - Retorno de item baixado aumentando o saldo físico.
 - Item pendente de compra desvinculado sem movimentação.
 - Item já devolvido ignorado.
-- Processamento conjunto de peça e insumo.
+- Processamento de vários peças na mesma devolução.
 - OS sem itens concluindo com resultado vazio.
 - Cálculo de `saldoReservadoApos` e `saldoFisicoApos`.
 - Status da OS inalterado pelo serviço.
@@ -272,7 +287,7 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 
 ---
 
-### 14.3 Checklist de Implementação
+### 9.3 Checklist de Implementação
 
 **Domínio**
 
@@ -317,7 +332,7 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 - [ ] Retorno de item baixado aumentando o saldo físico
 - [ ] Item pendente de compra desvinculado sem movimentação
 - [ ] Item já devolvido ignorado
-- [ ] Processamento conjunto de peça e insumo
+- [ ] Processamento de vários peças na mesma devolução
 - [ ] OS sem itens concluindo com resultado vazio
 - [ ] Cálculo de `saldoReservadoApos` e `saldoFisicoApos`
 - [ ] Status da OS inalterado pelo serviço

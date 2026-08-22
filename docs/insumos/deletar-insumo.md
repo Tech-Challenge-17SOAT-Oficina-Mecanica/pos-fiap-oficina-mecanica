@@ -1,22 +1,22 @@
 ---
 documento: Refinamento de Requisitos — Deletar Insumo
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-19
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Deletar Insumo
 
-Este documento detalha a tarefa Deletar Insumo do contexto de Peças & Insumos.
+Este documento detalha a tarefa Deletar Insumo do contexto de Insumos.
 
-## 13 · Deletar Insumo
+## 4 · Deletar Insumo
 
-### 13.1 Refinamento de Produto
+### 4.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -36,35 +36,35 @@ rastreabilidade das Ordens de Serviço e do estoque.
 - O insumo deve estar ativo.
 - O usuário deve possuir autorização para realizar a operação.
 - O insumo não pode ser removido fisicamente caso possua histórico de utilização.
-- Deve ser considerada a existência de saldo em estoque, conforme a regra definida pela oficina.
+- O insumo não pode ter **saldo reservado**; saldo físico não impede a inativação.
 
 **Requisitos Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RF-EST-89 | Permitir ao usuário autorizado desativar um insumo. |
-| RF-EST-90 | Alterar a situação do insumo de ativo para inativo. |
-| RF-EST-91 | Impedir que um insumo inativo seja utilizado em novos orçamentos. |
-| RF-EST-92 | Impedir que um insumo inativo seja adicionado a novas Ordens de Serviço. |
-| RF-EST-93 | Manter o insumo disponível para consulta histórica. |
-| RF-EST-94 | Preservar as informações de consumo do insumo em Ordens de Serviço anteriores. |
-| RF-EST-95 | Registrar a data da desativação. |
-| RF-EST-96 | Registrar o usuário responsável pela desativação. |
-| RF-EST-97 | Permitir identificar que o insumo não está mais disponível para novos atendimentos. |
-| RF-EST-98 | Não remover fisicamente o insumo do histórico do sistema. |
-| RF-EST-99 | Preservar a unidade de medida e as informações históricas relacionadas ao insumo. |
+| RF-INS-29 | Permitir ao usuário autorizado desativar um insumo. |
+| RF-INS-30 | Alterar a situação do insumo de ativo para inativo. |
+| RF-INS-31 | Impedir que um insumo inativo seja utilizado em novos orçamentos. |
+| RF-INS-32 | Impedir que um insumo inativo seja adicionado a novas Ordens de Serviço. |
+| RF-INS-33 | Manter o insumo disponível para consulta histórica. |
+| RF-INS-34 | Preservar as informações de consumo do insumo em Ordens de Serviço anteriores. |
+| RF-INS-35 | Registrar a data da desativação. |
+| RF-INS-36 | Registrar o usuário responsável pela desativação. |
+| RF-INS-37 | Permitir identificar que o insumo não está mais disponível para novos atendimentos. |
+| RF-INS-38 | Não remover fisicamente o insumo do histórico do sistema. |
+| RF-INS-39 | Preservar a unidade de medida e as informações históricas relacionadas ao insumo. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-67 | A desativação deve ser persistida de forma consistente. |
-| RNF-EST-68 | Somente usuários autorizados devem poder desativar insumos. |
-| RNF-EST-69 | O histórico de utilização do insumo não pode ser alterado pela desativação. |
-| RNF-EST-70 | A operação deve manter a rastreabilidade do insumo. |
-| RNF-EST-71 | A desativação não deve modificar Ordens de Serviço já registradas. |
-| RNF-EST-72 | A operação deve considerar corretamente quantidades de estoque, inclusive valores decimais. |
-| RNF-EST-73 | A operação deve ter comportamento consistente em caso de erro ou concorrência. |
+| RNF-INS-19 | A desativação deve ser persistida de forma consistente. |
+| RNF-INS-20 | Somente usuários autorizados devem poder desativar insumos. |
+| RNF-INS-21 | O histórico de utilização do insumo não pode ser alterado pela desativação. |
+| RNF-INS-22 | A operação deve manter a rastreabilidade do insumo. |
+| RNF-INS-23 | A desativação não deve modificar Ordens de Serviço já registradas. |
+| RNF-INS-24 | A operação deve considerar corretamente quantidades de estoque, inclusive valores decimais. |
+| RNF-INS-25 | A operação deve ter comportamento consistente em caso de erro ou concorrência. |
 
 **Fluxo Principal**
 
@@ -89,8 +89,9 @@ rastreabilidade das Ordens de Serviço e do estoque.
 | A2 | Insumo já inativo | Informa que o insumo já está desativado. |
 | A3 | Usuário sem autorização | Impede a operação. |
 | A4 | Insumo utilizado em OS anteriores | Mantém o registro e realiza apenas a desativação lógica. |
-| A5 | Insumo com saldo em estoque | Segue a regra de negócio definida para insumos com estoque disponível. |
-| A6 | Insumo vinculado a orçamento pendente | Comportamento a definir: permitir a desativação ou bloquear a operação. |
+| A5 | Insumo com saldo físico e sem reserva | Permite a inativação: o saldo continua registrado e volta a valer se o insumo for reativado. |
+| A6 | Insumo vinculado a orçamento aguardando aprovação | Bloqueia a operação: o cliente ainda pode aprovar aquele orçamento. |
+| A7 | Insumo com saldo reservado | Bloqueia a operação e informa as OS que seguram a reserva. |
 | A7 | Quantidade decimal em estoque | Considera corretamente o saldo fracionado na validação. |
 | A8 | Erro na persistência | Não considera o insumo desativado até que a alteração seja persistida com sucesso. |
 
@@ -108,7 +109,7 @@ rastreabilidade das Ordens de Serviço e do estoque.
 
 ---
 
-### 13.2 Refinamento Técnico
+### 4.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -116,13 +117,13 @@ rastreabilidade das Ordens de Serviço e do estoque.
 DELETE /estoque/insumos/{insumoId}
 ```
 
-> **Decisão de projeto.** Vale a mesma decisão de [`deletar-peca.md`](deletar-peca.md): exclusão
+> **Decisão de projeto.** Vale a mesma decisão de [`deletar-peca.md`](../pecas/deletar-peca.md): exclusão
 > lógica, com `200` e o recurso atualizado no corpo em vez de `204` sem corpo.
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -146,7 +147,9 @@ Não há corpo na requisição.
 - O insumo deve estar ativo.
 - O insumo não pode ser removido fisicamente caso possua histórico.
 - A validação de estoque deve considerar saldo fracionado (por exemplo, 5,5 L).
-- Comportamento a definir quando houver saldo em estoque ou orçamento pendente.
+- Bloquear quando houver **saldo reservado**, com `409` e a lista das OS que seguram a reserva.
+- Permitir quando houver apenas saldo físico: o saldo é preservado e volta a valer na reativação.
+- Bloquear quando o item estiver em orçamento com status `CRIADO`, aguardando decisão do cliente.
 
 **Regra de domínio**
 
@@ -223,7 +226,7 @@ O insumo permanece armazenado para preservar seu histórico.
 
 ---
 
-### 13.3 Checklist de Implementação
+### 4.3 Checklist de Implementação
 
 **Domínio**
 
@@ -237,7 +240,9 @@ O insumo permanece armazenado para preservar seu histórico.
 - [ ] Implementar `DesativarInsumo`
 - [ ] Validar que o insumo existe e está ativo
 - [ ] Validar a quantidade disponível em estoque, considerando saldo decimal
-- [ ] Definir o comportamento quando houver saldo em estoque
+- [ ] Bloquear a inativação quando houver saldo reservado
+- [ ] Permitir a inativação quando houver apenas saldo físico
+- [ ] Bloquear a inativação quando o item estiver em orçamento com status `CRIADO`
 - [ ] Verificar se o insumo já foi utilizado em alguma Ordem de Serviço
 
 **Repositório**
@@ -258,7 +263,9 @@ O insumo permanece armazenado para preservar seu histórico.
 - [ ] Desativação válida
 - [ ] Insumo inexistente
 - [ ] Insumo já inativo
-- [ ] Insumo com saldo em estoque, inclusive decimal
+- [ ] Insumo com saldo físico e sem reserva: inativação permitida, inclusive decimal
+- [ ] Insumo com saldo reservado: inativação bloqueada
+- [ ] Insumo em orçamento aguardando aprovação: inativação bloqueada
 - [ ] Insumo utilizado em histórico
 
 **Testes de integração**

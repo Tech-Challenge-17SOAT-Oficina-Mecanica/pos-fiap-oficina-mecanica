@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Consultar Insumos
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -10,13 +10,13 @@ status: rascunho
 
 Este documento detalha a tarefa Consultar Insumos, do contexto de Peças e Insumos.
 
-## 14 · Consultar Insumos
+## 2 · Consultar Insumos
 
-### 14.1 Refinamento de Produto
+### 2.1 Refinamento de Produto
 
 **Persona**
 
-Mecânico e Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -40,32 +40,32 @@ comparar a necessidade informada com o estoque atual e apresentar claramente o r
 
 | ID | Requisito |
 |---|---|
-| RF-EST-120 | Permitir consultar insumo por código exato. |
-| RF-EST-121 | Permitir consultar insumos por descrição parcial e categoria. |
-| RF-EST-122 | Permitir consultar um insumo específico por identificador. |
-| RF-EST-123 | Permitir informar a quantidade desejada. |
-| RF-EST-124 | Apresentar a unidade de medida do insumo. |
-| RF-EST-125 | Apresentar saldo físico, reservado e disponível. |
-| RF-EST-126 | Comparar a quantidade desejada com o saldo disponível. |
-| RF-EST-127 | Indicar explicitamente se a quantidade desejada está disponível. |
-| RF-EST-128 | Indicar quando o saldo disponível está abaixo do estoque mínimo. |
-| RF-EST-129 | Indicar se existe pedido de compra em aberto. |
-| RF-EST-130 | Permitir filtrar somente insumos disponíveis para a quantidade desejada. |
-| RF-EST-131 | Ocultar insumos inativos por padrão e permitir sua inclusão explícita. |
-| RF-EST-132 | Paginar a listagem de insumos. |
-| RF-EST-133 | Informar quando nenhum insumo corresponder aos filtros. |
+| RF-INS-10 | Permitir consultar insumo por código exato. |
+| RF-INS-11 | Permitir consultar insumos por descrição parcial e por categoria, pelo `categoriaId`. |
+| RF-INS-12 | Permitir consultar um insumo específico por identificador. |
+| RF-INS-13 | Permitir informar a quantidade desejada. |
+| RF-INS-14 | Apresentar a unidade de medida do insumo. |
+| RF-INS-15 | Apresentar saldo físico, reservado e disponível. |
+| RF-INS-16 | Comparar a quantidade desejada com o saldo disponível. |
+| RF-INS-17 | Indicar explicitamente se a quantidade desejada está disponível. |
+| RF-INS-18 | Indicar quando o saldo disponível está abaixo do estoque mínimo. |
+| RF-INS-19 | Indicar se existe pedido de compra em aberto. |
+| RF-INS-20 | Permitir filtrar somente insumos disponíveis para a quantidade desejada. |
+| RF-INS-21 | Ocultar insumos inativos por padrão e permitir sua inclusão explícita. |
+| RF-INS-22 | Paginar a listagem de insumos. |
+| RF-INS-23 | Informar quando nenhum insumo corresponder aos filtros. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-88 | Disponibilizar a consulta por API REST e restringi-la a usuário autorizado. |
-| RNF-EST-89 | Não alterar cadastro ou saldo de estoque. |
-| RNF-EST-90 | Não reservar insumo nem gerar pedido de compra. |
-| RNF-EST-91 | Retornar listagem paginada no envelope padronizado do projeto. |
-| RNF-EST-92 | Refletir o estado atual do estoque no momento da consulta. |
-| RNF-EST-93 | Calcular disponibilidade usando saldo disponível e quantidade desejada. |
-| RNF-EST-94 | Apresentar a unidade de medida de forma explícita. |
+| RNF-INS-07 | Disponibilizar a consulta por API REST e restringi-la a usuário autorizado. |
+| RNF-INS-08 | Não alterar cadastro ou saldo de estoque. |
+| RNF-INS-09 | Não reservar insumo nem gerar pedido de compra. |
+| RNF-INS-10 | Retornar listagem paginada no envelope padronizado do projeto. |
+| RNF-INS-11 | Refletir o estado atual do estoque no momento da consulta. |
+| RNF-INS-12 | Calcular disponibilidade usando saldo disponível e quantidade desejada. |
+| RNF-INS-13 | Apresentar a unidade de medida de forma explícita. |
 
 **Fluxo Principal**
 
@@ -109,7 +109,7 @@ comparar a necessidade informada com o estoque atual e apresentar claramente o r
 
 ---
 
-### 14.2 Refinamento Técnico
+### 2.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -128,7 +128,7 @@ A primeira rota pesquisa e lista insumos; a segunda consulta um item específico
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO` e `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:ler`.
 
 **Entrada**
@@ -138,7 +138,7 @@ A primeira rota pesquisa e lista insumos; a segunda consulta um item específico
 | Path | `insumoId` | UUID | Identificador do insumo na consulta individual. |
 | Query | `codigo` | string | Código exato do insumo. |
 | Query | `descricao` | string | Trecho da descrição, com pelo menos 2 caracteres. |
-| Query | `categoria` | string | Categoria do insumo. |
+| Query | `categoriaId` | UUID | Filtro por categoria. |
 | Query | `quantidadeDesejada` | decimal | Quantidade positiva cuja disponibilidade será verificada. |
 | Query | `somenteDisponiveis` | boolean | Quando `true`, exige `quantidadeDesejada` e filtra saldo suficiente. Padrão `false`. |
 | Query | `incluirInativos` | boolean | Inclui insumos inativos. Padrão `false`. |
@@ -148,9 +148,9 @@ A primeira rota pesquisa e lista insumos; a segunda consulta um item específico
 Exemplos:
 
 ```http
-GET /estoque/insumos?codigo=INS-0012&quantidadeDesejada=2
+GET /estoque/insumos?codigo=INS-000012&quantidadeDesejada=2
 GET /estoque/insumos?descricao=oleo&quantidadeDesejada=5
-GET /estoque/insumos?categoria=Lubrificantes&quantidadeDesejada=3&somenteDisponiveis=true
+GET /estoque/insumos?categoriaId=e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724&quantidadeDesejada=3&somenteDisponiveis=true
 GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
 ```
 
@@ -158,7 +158,7 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
 
 *Técnicas*
 
-- Na listagem, deve existir pelo menos um critério entre `codigo`, `descricao` e `categoria`.
+- Na listagem, deve existir pelo menos um critério entre `codigo`, `descricao` e `categoriaId`.
 - `descricao` deve possuir no mínimo 2 caracteres.
 - `quantidadeDesejada` deve ser maior que zero, quando informada.
 - `somenteDisponiveis: true` exige `quantidadeDesejada`.
@@ -202,8 +202,10 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
   "data": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "codigo": "INS-0012",
-      "descricao": "Óleo lubrificante",
+      "codigo": "INS-000012",
+      "nome": "Óleo lubrificante",
+      "descricao": "Óleo lubrificante 15W40 mineral",
+      "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
       "categoria": "Lubrificantes",
       "unidadeMedida": "L",
       "quantidadeDesejada": 3.0,
@@ -214,7 +216,8 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
       "disponivel": true,
       "abaixoDoMinimo": false,
       "possuiPedidoEmAberto": false,
-      "ativo": true
+      "ativo": true,
+      "version": 2
     }
   ],
   "pagina": 0,
@@ -226,6 +229,10 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
 
 Quando o insumo existe, mas a quantidade é insuficiente, a API retorna `200` com
 `disponivel: false`. Quando a listagem não encontra resultados, retorna `200` com `data: []`.
+
+> **Decisão de projeto.** A resposta traz **`nome` e `descricao`**: `nome` é o termo curto que o
+> mecânico procura, `descricao` é o detalhamento que sai no orçamento. Antes o `nome` era gravado
+> no cadastro e não aparecia aqui.
 
 **Códigos HTTP / Erros**
 
@@ -258,7 +265,8 @@ Quando o insumo existe, mas a quantidade é insuficiente, a API retorna `200` co
 
 *Integração*
 
-- Busca por código, descrição, categoria e identificador retorna `200` quando encontra insumo.
+- Busca por código, descrição, `categoriaId` e identificador retorna `200` quando encontra insumo.
+- A listagem e o detalhe devolvem `version`, para o `If-Match` da atualização.
 - Quantidade suficiente ou insuficiente é indicada corretamente.
 - `somenteDisponiveis: true` exclui itens insuficientes.
 - Item inativo não aparece por padrão e aparece quando solicitado.
@@ -269,7 +277,7 @@ Quando o insumo existe, mas a quantidade é insuficiente, a API retorna `200` co
 
 ---
 
-### 14.3 Checklist de Implementação
+### 2.3 Checklist de Implementação
 
 **Domínio**
 
@@ -286,7 +294,8 @@ Quando o insumo existe, mas a quantidade é insuficiente, a API retorna `200` co
 
 **Repositório**
 
-- [ ] Consultar por identificador, código, descrição e categoria
+- [ ] Consultar por identificador, código, descrição e `categoriaId`
+- [ ] Devolver `version` na listagem e no detalhe
 - [ ] Filtrar itens ativos e consultar dados de estoque
 - [ ] Consultar pedidos de compra em aberto
 
@@ -311,7 +320,7 @@ Quando o insumo existe, mas a quantidade é insuficiente, a API retorna `200` co
 
 **Testes de integração**
 
-- [ ] Consultas por código, descrição, categoria e identificador
+- [ ] Consultas por código, descrição, `categoriaId` e identificador
 - [ ] Insumo inexistente, inativo e sem saldo suficiente
 - [ ] Paginação e filtros de disponibilidade
 - [ ] Respostas `200`, `400`, `401`, `403`, `404` e `500`

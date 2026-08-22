@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Processar Peças para Reserva e Compra
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-22
 status: em revisao
 ---
 
 # Refinamento de Requisitos — Processar Peças para Reserva e Compra
 
-Este documento detalha a tarefa Processar Peças para Reserva e Compra do contexto de Peças & Insumos.
+Este documento detalha a tarefa Processar Peças para Reserva e Compra do contexto de Peças.
 
-## 12 · Processar Peças para Reserva e Compra
+## 6 · Processar Peças para Reserva e Compra
 
-### 12.1 Refinamento de Produto
+### 6.1 Refinamento de Produto
 
 **Persona**
 
@@ -37,24 +37,24 @@ Uma OS pode ter apenas parte das peças disponível. A oficina precisa garantir 
 
 | ID | Requisito |
 |---|---|
-| RF-EST-136 | Receber uma OS e as peças que devem ser processadas após a aprovação do orçamento. |
-| RF-EST-137 | Identificar, para cada peça, a quantidade disponível para reserva e a quantidade pendente de compra. |
-| RF-EST-138 | Reservar somente a quantidade disponível em estoque e vinculá-la à OS. |
-| RF-EST-139 | Criar solicitação de compra para a quantidade pendente, vinculada à OS e ao fornecedor. |
-| RF-EST-140 | Atualizar a OS com peças reservadas, peças pendentes e o status `AGUARDANDO_RECURSOS` quando houver pendência. |
-| RF-EST-141 | Registrar as movimentações e solicitações no histórico. |
-| RF-EST-142 | Publicar os eventos de reserva parcial e de compra solicitada quando aplicáveis. |
-| RF-EST-143 | Retornar o estado vigente quando a mesma solicitação já tiver sido processada. |
+| RF-PEC-49 | Receber uma OS e as peças que devem ser processadas após a aprovação do orçamento. |
+| RF-PEC-50 | Identificar, para cada peça, a quantidade disponível para reserva e a quantidade pendente de compra. |
+| RF-PEC-51 | Reservar somente a quantidade disponível em estoque e vinculá-la à OS. |
+| RF-PEC-52 | Criar solicitação de compra para a quantidade pendente, vinculada à OS e ao fornecedor. |
+| RF-PEC-53 | Atualizar a OS com peças reservadas, peças pendentes e o status `AGUARDANDO_RECURSOS` quando houver pendência. |
+| RF-PEC-54 | Registrar as movimentações e solicitações no histórico. |
+| RF-PEC-55 | Registrar o resultado da reserva parcial e da compra solicitada na resposta da operação. |
+| RF-PEC-56 | Retornar o estado vigente quando a mesma solicitação já tiver sido processada. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-98 | A operação deve ser RESTful, autenticada e autorizada. |
-| RNF-EST-99 | A reserva de saldo existente deve ser protegida contra concorrência. |
-| RNF-EST-100 | As reservas, a solicitação de compra e a atualização da OS devem ser consistentes e transacionais. |
-| RNF-EST-101 | A operação deve ser idempotente por `Idempotency-Key`. |
-| RNF-EST-102 | O saldo físico não deve ser alterado durante o processamento. |
+| RNF-PEC-31 | A operação deve ser RESTful, autenticada e autorizada. |
+| RNF-PEC-32 | A reserva de saldo existente deve ser protegida contra concorrência. |
+| RNF-PEC-33 | As reservas, a solicitação de compra e a atualização da OS devem ser consistentes e transacionais. |
+| RNF-PEC-34 | A operação deve ser idempotente por `Idempotency-Key`. |
+| RNF-PEC-35 | O saldo físico não deve ser alterado durante o processamento. |
 
 **Fluxo Principal**
 
@@ -64,7 +64,7 @@ Uma OS pode ter apenas parte das peças disponível. A oficina precisa garantir 
 4. O sistema reserva as quantidades disponíveis e registra as respectivas movimentações.
 5. O sistema cria a solicitação de compra para as quantidades pendentes.
 6. O sistema atualiza a OS; havendo pendência, define o status como `AGUARDANDO_RECURSOS`.
-7. O sistema confirma a operação e publica os eventos aplicáveis.
+7. O sistema confirma a operação e devolve o resultado da reserva e da compra.
 
 **Fluxos Alternativos / Exceções**
 
@@ -91,7 +91,7 @@ Uma OS pode ter apenas parte das peças disponível. A oficina precisa garantir 
 
 ---
 
-### 12.2 Refinamento Técnico
+### 6.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -104,7 +104,7 @@ POST /estoque/solicitacoes-compra-reserva
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório para chamadas de usuário ou serviço.
-- Perfis permitidos: `SERVICO`, `MECANICO`, `GESTOR`.
+- Perfis permitidos: `SERVICO` e `MECANICO`.
 - Escopo: `estoque:movimentar`.
 
 **Entrada**
@@ -151,7 +151,7 @@ POST /estoque/solicitacoes-compra-reserva
 5. Para quantidades reserváveis, aumentar `saldo_reservado`, criar reservas `ATIVA` e movimentações `RESERVA` vinculadas à OS.
 6. Para quantidades pendentes, criar a solicitação de compra, seus itens e o vínculo com a OS; registrar valor parcial quando houver preço disponível.
 7. Atualizar a OS com as duas listas e definir `AGUARDANDO_RECURSOS` se houver pendência de compra.
-8. Confirmar a transação, registrar a resposta da chave de idempotência e publicar `PecaReservadaParcialmente` e/ou `CompraDePecaSolicitada`.
+8. Confirmar a transação e registrar a resposta da chave de idempotência.
 
 **Persistência**
 
@@ -199,12 +199,12 @@ POST /estoque/solicitacoes-compra-reserva
 | `403` | Perfil sem o escopo `estoque:movimentar`. |
 | `404` | OS, fornecedor ou peça não encontrada. |
 | `409` | Reserva ou solicitação equivalente já existente. |
-| `422` | OS sem orçamento aprovado, fornecedor inativo, peça inativa, insumo ou peça fora da OS/orçamento. |
+| `409` | OS sem orçamento aprovado, fornecedor inativo, peça inativa, insumo ou peça fora da OS/orçamento. |
 
 **Dependências**
 
 - `FornecedorRepository`, `ItemEstoqueRepository`, `ReservaEstoqueRepository`, `SolicitacaoCompraRepository`, `MovimentacaoEstoqueRepository` e `ChaveIdempotenciaRepository`.
-- Módulos de Ordem de Serviço e Orçamento, serviço de idempotência e publicador de eventos.
+- Módulos de Ordem de Serviço e Orçamento, serviço de idempotência e trilha de auditoria.
 
 **Testes**
 
@@ -222,7 +222,7 @@ POST /estoque/solicitacoes-compra-reserva
 
 ---
 
-### 12.3 Checklist de Implementação
+### 6.3 Checklist de Implementação
 
 **Domínio**
 
@@ -242,7 +242,7 @@ POST /estoque/solicitacoes-compra-reserva
 **Integrações**
 
 - [ ] Consultar OS, orçamento aprovado, fornecedor e itens vinculados.
-- [ ] Atualizar a OS e publicar `PecaReservadaParcialmente` e `CompraDePecaSolicitada`.
+- [ ] Atualizar a OS diretamente, na mesma transação, e devolver o resultado na resposta.
 
 **Handler HTTP**
 
@@ -258,9 +258,9 @@ POST /estoque/solicitacoes-compra-reserva
 - [ ] Executar reserva, solicitação, atualização da OS e movimentações na mesma transação.
 - [ ] Retornar a resposta original para repetição da mesma `Idempotency-Key`.
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar os eventos de reserva parcial e de compra solicitada conforme o resultado.
+- [ ] Registrar o resultado da reserva parcial e da compra solicitada na resposta e na auditoria.
 
 **Testes unitários**
 

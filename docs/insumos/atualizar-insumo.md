@@ -1,14 +1,14 @@
 ---
 documento: Refinamento de Requisitos — Atualizar Insumo
 dono: José Lázaro
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.4
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Atualizar Insumo
 
-Este documento detalha a tarefa Atualizar Insumo do contexto de Peças & Insumos.
+Este documento detalha a tarefa Atualizar Insumo do contexto de Insumos.
 
 ## 3 · Atualizar Insumo
 
@@ -35,21 +35,21 @@ oficina perde margem sem perceber.
 
 | ID | Requisito |
 |---|---|
-| RF-EST-12 | Permitir alterar descrição, unidade de medida, custo unitário, estoque mínimo e categoria. |
-| RF-EST-13 | Permitir inativar e reativar o insumo. |
-| RF-EST-14 | Validar os dados informados antes de gravar. |
-| RF-EST-15 | Impedir alteração de unidade de medida quando houver saldo físico maior que zero. |
-| RF-EST-16 | Registrar o histórico de alteração de custo, com data e responsável. |
+| RF-INS-24 | Permitir alterar descrição, unidade de medida, custo unitário, estoque mínimo e categoria, pelo `categoriaId`. |
+| RF-INS-25 | Permitir inativar e reativar o insumo. |
+| RF-INS-26 | Validar os dados informados antes de gravar. |
+| RF-INS-27 | Impedir alteração de unidade de medida quando houver saldo físico maior que zero. |
+| RF-INS-28 | Registrar o histórico de alteração de custo, com data e responsável. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-11 | A operação deve ser feita por API RESTful. |
-| RNF-EST-12 | A operação deve ser acessível somente por usuário autorizado com perfil de estoque. |
-| RNF-EST-13 | A alteração deve ser auditável. |
-| RNF-EST-14 | A operação não deve alterar saldo de estoque. |
-| RNF-EST-15 | A alteração de custo não pode ter efeito retroativo sobre serviços já finalizados. |
+| RNF-INS-14 | A operação deve ser feita por API RESTful. |
+| RNF-INS-15 | A operação deve ser acessível somente por usuário autorizado com perfil de estoque. |
+| RNF-INS-16 | A alteração deve ser auditável. |
+| RNF-INS-17 | A operação não deve alterar saldo de estoque. |
+| RNF-INS-18 | A alteração de custo não pode ter efeito retroativo sobre serviços já finalizados. |
 
 **Fluxo Principal**
 
@@ -95,7 +95,7 @@ PUT /estoque/insumos/{insumoId}
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório
-- Perfis: `MECANICO`, `GESTOR`
+- Perfil: `MECANICO`
 - Escopo: `estoque:escrever`
 
 **Entrada**
@@ -103,54 +103,70 @@ PUT /estoque/insumos/{insumoId}
 | Local | Param | Tipo | Descrição |
 |---|---|---|---|
 | Path | `insumoId` | uuid   | Identificador do insumo |
-| Header | `If-Match` | string | `version` atual do registro, para controle de concorrência |
+| Header | `If-Match` | string | **Obrigatório.** `version` atual do registro, para controle de concorrência |
+| Body | `nome` | string | Obrigatório; nome curto do insumo |
 | Body | `descricao` | string | Obrigatório, 3 a 120 caracteres |
-| Body | `categoria` | string | Categoria do insumo |
+| Body | `categoriaId` | uuid | Categoria ativa do catálogo |
 | Body | `unidadeMedida` | enum | `UN` \| `L` \| `ML` \| `KG` \| `G` \| `M` |
 | Body | `custoUnitario` | decimal | Obrigatório, maior que zero |
 | Body | `estoqueMinimo` | decimal | Maior ou igual a zero, aceita casas decimais |
-| Body | `ativo` | boolean | Situação do insumo |
+| Body | `ativo` | — | **Não aceito.** A inativação é feita pelo `DELETE` |
 
 ```json
 {
+  "nome": "Óleo 15W40",
   "descricao": "Óleo lubrificante 15W40",
-  "categoria": "Lubrificantes",
+  "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
   "unidadeMedida": "L",
   "custoUnitario": 32.50,
-  "estoqueMinimo": 20,
-  "ativo": true
+  "estoqueMinimo": 20
 }
 ```
+
+> **Decisão de projeto.** `ativo` **não é aceito** neste endpoint. A situação muda apenas pelo
+> `DELETE`, onde ficam as validações de saldo reservado e de orçamento pendente — a peça já
+> funcionava assim, e o insumo não tratava o caso, o que deixava reserva órfã.
+
+> **Decisão de projeto.** `nome` passa a ser atualizável e retornado, junto com `descricao`.
+
+> **Decisão de projeto.** O `custoUnitario` informado aqui é o **custo cadastral de referência**. O
+> custo efetivo é atualizado pela **entrada de estoque**, com o último custo recebido, e cada
+> alteração grava `historico_preco_item`. Média ponderada fica para depois (D-14).
 
 **Validações**
 
 *Técnicas*
 
 - `insumoId` existe e é do tipo `INSUMO`.
+- `nome` obrigatório.
 - `descricao` obrigatória, de 3 a 120 caracteres.
 - `custoUnitario` maior que zero.
 - `unidadeMedida` pertence ao conjunto permitido (`UN`, `L`, `ML`, `KG`, `G`, `M`).
 - `estoqueMinimo` maior ou igual a zero, aceita decimal.
-- `If-Match` deve bater com a `version` atual do registro.
+- `If-Match` é obrigatório e deve bater com a `version` atual do registro.
 
 *Negócio*
 
-- `descricao` única dentro da mesma categoria.
+- `descricao` normalizada única dentro da mesma categoria e unidade de medida, entre insumos **ativos**.
 - O `codigo` é o identificador de negócio do insumo e não é alterado por esta operação.
 - Alteração de `unidadeMedida` bloqueada quando `saldoFisico > 0` — converter unidade com saldo distorce todo o histórico.
 - Alteração de custo não retroage sobre serviços finalizados.
+- A operação não altera `ativo`: qualquer valor enviado para esse campo retorna `400`.
+- O último custo gravado pela entrada de estoque prevalece sobre o custo cadastral.
 
 **Processamento**
 
 1. Carregar o insumo por id.
-2. Validar `If-Match`.
-3. Se `unidadeMedida` mudou, verificar `saldoFisico == 0`.
-4. Validar unicidade de descrição na categoria.
-5. Detectar mudança de `custoUnitario`.
-6. Aplicar as alterações na entidade.
-7. Gravar registro em `historico_preco_item` quando o custo mudar.
-8. Persistir e incrementar `version`.
-9. Publicar o evento `InsumoAtualizado`.
+2. Validar `If-Match`: ausente retorna `428`, divergente retorna `412`.
+3. Rejeitar `ativo` no corpo, se vier.
+4. Se `unidadeMedida` mudou, verificar `saldoFisico == 0`.
+5. Carregar a categoria pelo `categoriaId`, validar que existe e está ativa, normalizar a
+   descrição e validar unicidade na categoria e unidade, entre insumos ativos.
+6. Detectar mudança de `custoUnitario`.
+7. Aplicar as alterações na entidade.
+8. Gravar registro em `historico_preco_item` quando o custo mudar.
+9. Persistir e incrementar `version`.
+10. Registrar a atualização na trilha de auditoria.
 
 **Persistência**
 
@@ -163,9 +179,11 @@ PUT /estoque/insumos/{insumoId}
 ```json
 {
   "id": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
-  "codigo": "IN-0031",
+  "codigo": "INS-000031",
   "tipo": "INSUMO",
+  "nome": "Óleo 15W40",
   "descricao": "Óleo lubrificante 15W40",
+  "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
   "categoria": "Lubrificantes",
   "unidadeMedida": "L",
   "custoUnitario": 32.50,
@@ -186,15 +204,16 @@ PUT /estoque/insumos/{insumoId}
 | `401` | Token ausente ou expirado |
 | `403` | Perfil sem permissão |
 | `404` | Insumo não encontrado |
-| `409` | Descrição duplicada na categoria |
+| `409` | Descrição duplicada na mesma categoria e unidade, entre insumos ativos |
 | `412` | `If-Match` divergente — registro alterado por outro usuário |
-| `422` | Troca de unidade de medida com saldo em estoque |
+| `428` | `If-Match` ausente |
+| `409` | Troca de unidade de medida com saldo em estoque |
 
 **Dependências**
 
 - `ItemEstoqueRepository`
 - `HistoricoPrecoRepository`
-- Publicador de eventos de domínio
+- Trilha de auditoria
 
 **Testes**
 
@@ -208,8 +227,8 @@ PUT /estoque/insumos/{insumoId}
 *Integração*
 
 - `PUT` válido retorna `200`.
-- Troca de unidade com saldo retorna `422`.
-- `If-Match` divergente retorna `412`.
+- Troca de unidade com saldo retorna `409`.
+- `If-Match` divergente retorna `412`, e ausente retorna `428`.
 - Insumo inexistente retorna `404`.
 
 ---
@@ -237,18 +256,20 @@ PUT /estoque/insumos/{insumoId}
 
 **Validações**
 
+- [ ] Validar `nome` obrigatório
 - [ ] Validar `descricao` entre 3 e 120 caracteres
+- [ ] Rejeitar `ativo` no payload: a situação muda apenas pelo `DELETE`
 - [ ] Validar `custoUnitario` maior que zero
 - [ ] Validar `unidadeMedida` dentro do enum permitido
-- [ ] Validar descrição única dentro da mesma categoria
+- [ ] Validar descrição normalizada única na mesma categoria e unidade, entre insumos ativos
 
 **Concorrência**
 
 - [ ] Implementar controle otimista via `If-Match`
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `InsumoAtualizado`
+- [ ] Registrar a atualização na trilha de auditoria
 
 **Testes unitários**
 
@@ -260,8 +281,8 @@ PUT /estoque/insumos/{insumoId}
 **Testes de integração**
 
 - [ ] `PUT` válido retornando `200`
-- [ ] Troca de unidade com saldo retornando `422`
-- [ ] `If-Match` divergente retornando `412`
+- [ ] Troca de unidade com saldo retornando `409`
+- [ ] `If-Match` divergente retornando `412` e ausente retornando `428`
 - [ ] Insumo inexistente retornando `404`
 
 **Documentação**

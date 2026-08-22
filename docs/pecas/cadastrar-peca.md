@@ -1,22 +1,22 @@
 ---
 documento: Refinamento de Requisitos — Cadastrar Peça
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.3
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Cadastrar Peça
 
-Este documento detalha a tarefa Cadastrar Peça do contexto de Peças & Insumos.
+Este documento detalha a tarefa Cadastrar Peça do contexto de Peças.
 
-## 10 · Cadastrar Peça
+## 1 · Cadastrar Peça
 
-### 10.1 Refinamento de Produto
+### 1.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -36,39 +36,40 @@ comprometer seu histórico.
 - O usuário deve estar autenticado.
 - O usuário deve possuir permissão para cadastrar peças.
 - Os dados obrigatórios da peça devem ser informados.
-- Não deve existir outra peça com os mesmos dados que caracterizem duplicidade, conforme a regra
+- Não deve existir outra peça ativa com a mesma descrição normalizada dentro da mesma categoria, conforme a regra
   definida pela oficina.
 
 **Requisitos Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RF-EST-57 | Permitir cadastrar uma nova peça. |
-| RF-EST-58 | Permitir informar o nome da peça. |
-| RF-EST-59 | Permitir informar a descrição da peça. |
-| RF-EST-60 | Permitir informar o fabricante, quando aplicável. |
-| RF-EST-61 | Permitir informar o valor atual da peça. |
-| RF-EST-62 | Gerar automaticamente um código único para a peça. |
-| RF-EST-63 | Gerar uma identificação técnica única para a peça. |
-| RF-EST-64 | Registrar a peça inicialmente como ativa. |
-| RF-EST-65 | Disponibilizar a peça para consultas após o cadastro. |
-| RF-EST-66 | Permitir que a peça seja utilizada em Ordens de Serviço e orçamentos enquanto estiver ativa. |
-| RF-EST-67 | Manter o código da peça estável após sua criação. |
-| RF-EST-68 | Não registrar estoque inicial durante o cadastro da peça. |
-| RF-EST-69 | Permitir que o estoque da peça seja controlado depois, pelos fluxos de movimentação de estoque. |
+| RF-PEC-01 | Permitir cadastrar uma nova peça. |
+| RF-PEC-123 | Permitir informar a categoria, pelo identificador, e o estoque mínimo da peça. |
+| RF-PEC-02 | Permitir informar o nome da peça. |
+| RF-PEC-03 | Permitir informar a descrição da peça. |
+| RF-PEC-04 | Permitir informar o fabricante, quando aplicável. |
+| RF-PEC-05 | Permitir informar o valor atual da peça. |
+| RF-PEC-06 | Gerar automaticamente um código único para a peça. |
+| RF-PEC-07 | Gerar uma identificação técnica única para a peça. |
+| RF-PEC-08 | Registrar a peça inicialmente como ativa. |
+| RF-PEC-09 | Disponibilizar a peça para consultas após o cadastro. |
+| RF-PEC-10 | Permitir que a peça seja utilizada em Ordens de Serviço e orçamentos enquanto estiver ativa. |
+| RF-PEC-11 | Manter o código da peça estável após sua criação. |
+| RF-PEC-12 | Não registrar estoque inicial durante o cadastro da peça. |
+| RF-PEC-13 | Permitir que o estoque da peça seja controlado depois, pelos fluxos de movimentação de estoque. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-47 | O cadastro deve ser persistido de forma consistente. |
-| RNF-EST-48 | O código da peça deve ser único no catálogo. |
-| RNF-EST-49 | O identificador técnico da peça deve ser único e imutável. |
-| RNF-EST-50 | O valor monetário deve usar representação decimal adequada. |
-| RNF-EST-51 | Somente usuários autorizados devem poder cadastrar peças. |
-| RNF-EST-52 | O cadastro deve manter rastreabilidade da data de criação e do usuário responsável. |
-| RNF-EST-53 | O cadastro da peça não deve alterar o estoque automaticamente. |
-| RNF-EST-54 | O cadastro deve preservar a separação entre identificação técnica (`id`) e identificação funcional (`codigo`). |
+| RNF-PEC-01 | O cadastro deve ser persistido de forma consistente. |
+| RNF-PEC-02 | O código da peça deve ser único no catálogo. |
+| RNF-PEC-03 | O identificador técnico da peça deve ser único e imutável. |
+| RNF-PEC-04 | O valor monetário deve usar representação decimal adequada. |
+| RNF-PEC-05 | Somente usuários autorizados devem poder cadastrar peças. |
+| RNF-PEC-06 | O cadastro deve manter rastreabilidade da data de criação e do usuário responsável. |
+| RNF-PEC-07 | O cadastro da peça não deve alterar o estoque automaticamente. |
+| RNF-PEC-08 | O cadastro deve preservar a separação entre identificação técnica (`id`) e identificação funcional (`codigo`). |
 
 **Fluxo Principal**
 
@@ -117,7 +118,7 @@ comprometer seu histórico.
 
 ---
 
-### 10.2 Refinamento Técnico
+### 1.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -129,12 +130,12 @@ POST /estoque/pecas
 > eles não são o mesmo atributo. O `id` é técnico: gerado pelo sistema, UUID, único, imutável, e
 > é o que aparece nas referências entre entidades. O `codigo` é funcional: gerado pelo sistema,
 > único no catálogo, e é o que o negócio usa para identificar e buscar a peça. A mesma separação
-> vale para insumo, e está descrita em [`consultar-estoque.md`](consultar-estoque.md).
+> vale para insumo, e está descrita em [consultar-pecas.md](consultar-pecas.md).
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -143,36 +144,64 @@ POST /estoque/pecas
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
 | Body | `nome` | string | Obrigatório; nome da peça. |
-| Body | `descricao` | string | Opcional; respeita o limite de tamanho definido. |
+| Body | `descricao` | string | Obrigatória; respeita o limite de tamanho definido. |
+| Body | `categoriaId` | uuid | Obrigatório; categoria ativa do catálogo. Usada na regra de duplicidade. |
 | Body | `fabricante` | string | Opcional; respeita o limite de tamanho definido. |
 | Body | `precoVenda` | decimal | Obrigatório; maior ou igual a zero. |
+| Body | `estoqueMinimo` | int | Opcional; inteiro maior ou igual a zero. Default `0`. |
 
 ```json
 {
   "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira",
+  "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
   "fabricante": "Fabricante X",
-  "precoVenda": 180.0
+  "precoVenda": 180.0,
+  "estoqueMinimo": 4
 }
 ```
 
 O cliente **não** informa `id`, `codigo`, `ativo`, `dataCriacao` nem saldo de estoque: esses
 dados são responsabilidade do sistema ou de outros fluxos.
 
+> **Decisão de projeto.** A peça mantém **`nome` e `descricao`**: `nome` é o termo curto que o
+> mecânico usa no balcão, `descricao` é o detalhamento que sai no orçamento. Os dois aparecem no
+> cadastro, na consulta e na atualização — não faz sentido gravar um campo que some depois.
+
+> **Decisão de projeto.** O `codigo` segue **um formato só**: `PEC-000001`, gerado pelo sistema em
+> sequência global, sem reset, com seis dígitos. Os formatos antigos `PC-0142` e variações saem da
+> documentação. Mesmo padrão do `SER-000001` de Serviços e do `INS-000001` de Insumos.
+
+> **Decisão de projeto.** A duplicidade é decidida por **descrição normalizada dentro da mesma
+> categoria**, entre peças **ativas**, por índice parcial. O `codigo` é gerado pelo sistema e
+> sempre único, então não serve de critério para barrar cadastro repetido. Foi preciso trazer
+> `categoria` para o payload do cadastro, que antes só a tinha na atualização.
+
+> **Decisão de projeto — D-09.** A categoria deixou de ser texto livre e virou **tabela**,
+> referenciada por `categoriaId`. A escrita informa o identificador; a leitura devolve o
+> identificador e o nome. Sem isso, "Freios", "freios" e "Sistema de freios" seriam três
+> categorias e a regra de duplicidade não pegaria nada.
+
+> **Decisão de projeto.** O cadastro **não aceita estoque inicial**, e o de insumo também não. Todo
+> saldo entra por movimentação de entrada, que é o único lugar que gera histórico auditável.
+
 **Validações**
 
 *Técnicas*
 
 - `nome` obrigatório.
+- `descricao` obrigatória, dentro do limite de tamanho definido.
+- `categoriaId` obrigatório, no formato uuid.
 - `precoVenda` maior ou igual a zero.
-- `descricao` dentro do limite de tamanho definido.
+- `estoqueMinimo`, quando informado, inteiro maior ou igual a zero.
 - `fabricante`, quando informado, dentro do limite de tamanho definido.
 
 *Negócio*
 
-- Não pode existir peça duplicada, conforme a regra de duplicidade adotada.
+- Não pode existir outra peça **ativa** com a mesma descrição normalizada — sem acento, sem espaço
+  duplo, em minúsculas — dentro da mesma categoria.
 - O `codigo` gerado deve ser único no catálogo.
-- O cadastro não movimenta estoque.
+- O cadastro não movimenta estoque e não aceita saldo inicial.
 
 **Regra de domínio**
 
@@ -190,7 +219,8 @@ cadastrar peça → peça ativa → registrar entrada de estoque → quantidade 
 
 1. Receber o payload e identificar o usuário autenticado.
 2. Validar os dados de entrada e a autorização.
-3. Verificar possíveis duplicidades.
+3. Carregar a categoria pelo `categoriaId` e validar que existe e está ativa.
+4. Normalizar a descrição e verificar duplicidade entre peças ativas da mesma categoria.
 4. Gerar o `id` técnico.
 5. Gerar o `codigo` funcional.
 6. Criar a entidade `Peca` com `tipo = PECA`.
@@ -202,12 +232,14 @@ cadastrar peça → peça ativa → registrar entrada de estoque → quantidade 
 **Persistência**
 
 - Consulta: `item_estoque` (verificação de duplicidade e de unicidade do código).
-- Altera: `item_estoque` (insert de `id`, `codigo`, `nome`, `descricao`, `fabricante`,
-  `preco_venda`, `ativo`, `data_criacao`, `usuario_criacao`).
+- Altera: `item_estoque` (insert de `id`, `codigo`, `nome`, `descricao`, `descricao_normalizada`,
+  `categoria_id`, `fabricante`, `preco_venda`, `estoque_minimo`, `ativo`, `data_criacao`,
+  `usuario_criacao`).
 - Não altera: nenhum saldo de estoque.
 
 Restrições recomendadas: `id` como PRIMARY KEY; `codigo` como `UNIQUE NOT NULL`; `nome`,
-`preco_venda` e `ativo` como `NOT NULL`.
+`descricao`, `categoria_id`, `preco_venda` e `ativo` como `NOT NULL`; chave estrangeira para
+`categoria`; índice parcial `UNIQUE (categoria_id, descricao_normalizada) WHERE ativo = true`.
 
 **Saída da API**
 
@@ -218,8 +250,11 @@ Restrições recomendadas: `id` como PRIMARY KEY; `codigo` como `UNIQUE NOT NULL
   "tipo": "PECA",
   "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira",
+  "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+  "categoria": "Freios",
   "fabricante": "Fabricante X",
   "precoVenda": 180.0,
+  "estoqueMinimo": 4,
   "ativo": true,
   "dataCriacao": "2026-08-19T19:50:00-03:00"
 }
@@ -233,11 +268,10 @@ A resposta traz informações que não vieram na requisição — `id`, `codigo`
 | Código | Situação |
 |---|---|
 | `201` | Peça cadastrada com sucesso. |
-| `400` | Dados de entrada inválidos. |
+| `400` | Dados de entrada inválidos, ou categoria inexistente ou inativa. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `estoque:escrever`. |
-| `409` | Peça duplicada, ou conflito na geração do código. |
-| `422` | Regra de negócio impede o cadastro. |
+| `409` | Já existe peça ativa com a mesma descrição na categoria, ou conflito na geração do código. |
 
 **Dependências**
 
@@ -259,14 +293,17 @@ O cadastro não depende do fluxo de estoque para ser concluído.
 - Persiste a data de criação.
 - Rejeita nome vazio.
 - Rejeita valor negativo.
-- Impede duplicidade conforme a regra definida.
+- Impede descrição repetida na mesma categoria entre peças ativas.
+- Aceita descrição igual à de uma peça inativa.
+- Normaliza a descrição antes de comparar.
 - Não exige estoque inicial.
 
 *Integração*
 
 - `POST` válido retorna `201` com a peça persistida, incluindo `id` e `codigo` gerados.
 - Payload inválido retorna `400`.
-- Peça duplicada retorna `409`.
+- Descrição repetida na categoria retorna `409`.
+- Descrição igual à de peça inativa retorna `201`.
 - Sem token retorna `401` e perfil sem escopo retorna `403`.
 
 *Regressão*
@@ -275,20 +312,23 @@ O cadastro não depende do fluxo de estoque para ser concluído.
 
 ---
 
-### 10.3 Checklist de Implementação
+### 1.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Criar ou ajustar a entidade `Peca` no agregado de item de estoque
 - [ ] Definir o `id` técnico como identificador da entidade, gerado pelo sistema em formato UUID
 - [ ] Definir o `codigo` como identificador funcional do catálogo, gerado pelo sistema
-- [ ] Definir o padrão de geração do código, por exemplo `PEC-000001`
+- [ ] Gerar o `codigo` no formato `PEC-000001`, em sequência global, sem reset
 - [ ] Garantir a unicidade do `id` e do `codigo`
 - [ ] Definir a situação inicial como ativa
 - [ ] Definir o valor monetário com precisão decimal
 - [ ] Definir os campos obrigatórios e opcionais
 - [ ] Criar o método de domínio de criação da peça
-- [ ] Definir a regra de duplicidade
+- [ ] Implementar a normalização da descrição (sem acento, sem espaço duplo, minúscula)
+- [ ] Validar duplicidade de descrição normalizada na categoria, entre peças ativas
+- [ ] Criar a tabela `categoria` e a chave estrangeira `categoria_id` na migration
+- [ ] Criar o índice parcial `UNIQUE (categoria_id, descricao_normalizada) WHERE ativo = true` na migration
 - [ ] Garantir que o cadastro não inclui estoque inicial nem movimenta estoque
 
 **Caso de uso**

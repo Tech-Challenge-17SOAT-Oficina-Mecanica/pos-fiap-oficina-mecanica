@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Reservar Insumo para Ordem de Serviço
 dono: A definir
-versao: 0.1
+versao: 0.4
 atualizado_em: 2026-08-22
 status: em revisao
 ---
 
 # Refinamento de Requisitos — Reservar Insumo para Ordem de Serviço
 
-Este documento detalha a tarefa Reservar Insumo para Ordem de Serviço do contexto de Peças & Insumos.
+Este documento detalha a tarefa Reservar Insumo para Ordem de Serviço do contexto de Insumos.
 
-## 11 · Reservar Insumo para Ordem de Serviço
+## 5 · Reservar Insumo para Ordem de Serviço
 
-### 11.1 Refinamento de Produto
+### 5.1 Refinamento de Produto
 
 **Persona**
 
@@ -36,24 +36,24 @@ Duas Ordens de Serviço aprovadas podem depender do mesmo insumo disponível. Se
 
 | ID | Requisito |
 |---|---|
-| RF-EST-128 | Permitir reservar um ou mais insumos para uma Ordem de Serviço. |
-| RF-EST-129 | Validar que cada insumo e quantidade solicitados pertencem à OS ou ao seu orçamento aprovado. |
-| RF-EST-130 | Validar o saldo disponível de todos os insumos antes de confirmar a reserva. |
-| RF-EST-131 | Aumentar o saldo reservado e reduzir o saldo disponível lógico sem alterar o saldo físico. |
-| RF-EST-132 | Vincular cada reserva à OS de origem e atualizar a OS com os insumos reservados. |
-| RF-EST-133 | Informar os insumos indisponíveis quando não houver saldo para concluir a reserva. |
-| RF-EST-134 | Registrar a movimentação de reserva no histórico de estoque. |
-| RF-EST-135 | Retornar a reserva vigente quando a mesma solicitação já tiver sido processada. |
+| RF-INS-40 | Permitir reservar um ou mais insumos para uma Ordem de Serviço. |
+| RF-INS-41 | Validar que cada insumo e quantidade solicitados pertencem à OS ou ao seu orçamento aprovado. |
+| RF-INS-42 | Validar o saldo disponível de todos os insumos antes de confirmar a reserva. |
+| RF-INS-43 | Aumentar o saldo reservado e reduzir o saldo disponível lógico sem alterar o saldo físico. |
+| RF-INS-44 | Vincular cada reserva à OS de origem e atualizar a OS com os insumos reservados. |
+| RF-INS-45 | Informar os insumos indisponíveis quando não houver saldo para concluir a reserva. |
+| RF-INS-46 | Registrar a movimentação de reserva no histórico de estoque. |
+| RF-INS-47 | Retornar a reserva vigente quando a mesma solicitação já tiver sido processada. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-93 | A operação deve ser RESTful, autenticada e autorizada. |
-| RNF-EST-94 | A reserva deve ser atômica: todos os insumos são reservados ou nenhum é. |
-| RNF-EST-95 | A operação deve impedir que duas OS reservem simultaneamente a mesma unidade. |
-| RNF-EST-96 | A operação deve ser idempotente por `Idempotency-Key`, devolvendo a resposta original em repetição válida. |
-| RNF-EST-97 | A reserva não deve alterar saldo físico nem outras movimentações já registradas. |
+| RNF-INS-26 | A operação deve ser RESTful, autenticada e autorizada. |
+| RNF-INS-27 | A reserva deve ser atômica: todos os insumos são reservados ou nenhum é. |
+| RNF-INS-28 | A operação deve impedir que duas OS reservem simultaneamente a mesma unidade. |
+| RNF-INS-29 | A operação deve ser idempotente por `Idempotency-Key`, devolvendo a resposta original em repetição válida. |
+| RNF-INS-30 | A reserva não deve alterar saldo físico nem outras movimentações já registradas. |
 
 **Fluxo Principal**
 
@@ -88,31 +88,46 @@ Duas Ordens de Serviço aprovadas podem depender do mesmo insumo disponível. Se
 
 ---
 
-### 11.2 Refinamento Técnico
+### 5.2 Refinamento Técnico
 
-**Endpoint**
+**Gatilho**
 
-```http
-POST /estoque/reservas-insumos
+Não há endpoint: é uma chamada em processo, dentro de `ProcessarInsumos`.
+
+```
+ProcessarInsumos
+├── separa, por item, o disponível do faltante
+├── ReservarInsumos(os, itens disponíveis)   ← esta tarefa
+├── SolicitarCompra(os, itens faltantes)
+└── confirma a transação
 ```
 
-> **Decisão de projeto.** Insumos recebem uma rota específica para explicitar a validação do tipo `INSUMO`; a alternativa de reutilizar `POST /estoque/reservas` com um campo `tipo` reduziria rotas, mas deixaria o contrato mais permissivo e exigiria validação adicional. A coexistência das duas rotas deve ser confirmada pelo time.
+> **Decisão de projeto — rota aposentada.** `POST /estoque/reservas-insumos` **saiu da API**. Com a D-16 fechada, a
+> aprovação do orçamento passou a ser o único gatilho que compromete estoque, e ela chama o
+> processamento, não a reserva direta. A rota ficou sem chamador público, e manter uma porta
+> aberta para comprometer saldo por fora do fluxo de aprovação é justamente o que a D-16
+> resolveu. O refinamento abaixo continua valendo: ele descreve as **regras da reserva**,
+> agora executadas como serviço de domínio chamado por
+> [processar-insumos-para-reserva-e-compra.md](processar-insumos-para-reserva-e-compra.md).
+
+> As regras de concorrência, idempotência e histórico continuam necessárias — elas passam a
+> valer para a transação aberta pelo processamento, que é quem recebe a `Idempotency-Key`.
 
 **Autenticação / Autorização**
 
-- `Bearer <JWT>` obrigatório para chamadas de usuário.
-- Perfis permitidos: `SERVICO`, `MECANICO`, `GESTOR`.
-- Escopo: `estoque:movimentar`.
+Não se aplica: a autorização já foi verificada pelo caso de uso que expõe o endpoint — o
+processamento de reserva e compra, com escopo `estoque:movimentar`.
 
 **Entrada**
 
+Os parâmetros abaixo chegam do caso de uso chamador, não de um corpo HTTP.
+
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Header | `Idempotency-Key` | uuid | Obrigatório. Identifica uma solicitação de reserva para impedir reprocessamento. |
-| Body | `ordemServicoId` | uuid | Obrigatório. Identificador da OS com orçamento aprovado. |
-| Body | `itens` | array | Obrigatório, não vazio e sem `itemId` repetido. |
-| Body | `itens[].itemId` | uuid | Obrigatório. Deve identificar um insumo ativo vinculado à OS ou ao orçamento. |
-| Body | `itens[].quantidade` | integer | Obrigatório. Inteiro maior que zero. |
+| Interno | `ordemServicoId` | uuid | Obrigatório. Identificador da OS com orçamento aprovado. |
+| Interno | `itens` | array | Obrigatório, não vazio e sem `itemId` repetido. |
+| Interno | `itens[].itemId` | uuid | Obrigatório. Deve identificar um insumo ativo vinculado à OS ou ao orçamento. |
+| Interno | `itens[].quantidade` | integer | Obrigatório. Inteiro maior que zero. |
 
 ```json
 {
@@ -148,7 +163,7 @@ POST /estoque/reservas-insumos
 5. Calcular `saldoDisponivel = saldoFisico - saldoReservado` para cada insumo e validar todas as quantidades.
 6. Se qualquer insumo não tiver saldo, desfazer a transação, registrar a indisponibilidade e retornar os itens insuficientes.
 7. Aumentar `saldo_reservado`, criar as reservas `ATIVA`, vincular os insumos à OS e registrar movimentações `RESERVA`.
-8. Confirmar a transação, armazenar a resposta para a chave de idempotência e publicar `InsumoReservado`.
+8. Confirmar a transação e armazenar a resposta para a chave de idempotência.
 
 **Persistência**
 
@@ -191,13 +206,13 @@ POST /estoque/reservas-insumos
 | `403` | Perfil sem o escopo `estoque:movimentar`. |
 | `404` | OS ou insumo não encontrado. |
 | `409` | Saldo insuficiente; nenhum insumo foi reservado. |
-| `422` | OS sem orçamento aprovado, insumo inativo, peça ou insumo fora da OS/orçamento. |
+| `409` | OS sem orçamento aprovado, insumo inativo, peça ou insumo fora da OS/orçamento. |
 
 **Dependências**
 
 - `ItemEstoqueRepository`, `ReservaEstoqueRepository`, `MovimentacaoEstoqueRepository` e `ChaveIdempotenciaRepository`.
 - Módulos de Ordem de Serviço e Orçamento.
-- Serviço de idempotência e publicador de eventos de domínio.
+- Serviço de idempotência e trilha de auditoria.
 
 **Testes**
 
@@ -211,12 +226,12 @@ POST /estoque/reservas-insumos
 *Integração*
 
 - `POST /estoque/reservas-insumos` cria reservas, movimentações e vínculo com a OS quando autenticado e autorizado.
-- Ausência de autenticação, falta de escopo, OS/insumo inexistente e regra de negócio inválida retornam `401`, `403`, `404` e `422` adequadamente.
+- Ausência de autenticação, falta de escopo, OS/insumo inexistente e regra de negócio inválida retornam `401`, `403`, `404` e `409` adequadamente.
 - Duas OS concorrentes disputando o último insumo não deixam `saldo_reservado` maior que `saldo_fisico` e não geram deadlock.
 
 ---
 
-### 11.3 Checklist de Implementação
+### 5.3 Checklist de Implementação
 
 **Domínio**
 
@@ -237,7 +252,7 @@ POST /estoque/reservas-insumos
 **Integrações**
 
 - [ ] Consultar a OS, seu orçamento aprovado e os insumos necessários.
-- [ ] Atualizar a OS com os insumos reservados e publicar os eventos de domínio.
+- [ ] Atualizar a OS com os insumos reservados, por chamada direta na mesma transação.
 
 **Handler HTTP**
 
@@ -254,9 +269,9 @@ POST /estoque/reservas-insumos
 - [ ] Executar reserva, atualização de saldos, vínculo com OS e movimentações na mesma transação.
 - [ ] Retornar a resposta original para repetição da mesma `Idempotency-Key`.
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `InsumoReservado` após confirmação e `InsumoIndisponivel` após falha por saldo.
+- [ ] Registrar na auditoria a reserva confirmada e a falha por saldo insuficiente.
 
 **Testes unitários**
 

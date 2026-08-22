@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Processar Insumos para Reserva e Compra
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-22
 status: em revisao
 ---
 
 # Refinamento de Requisitos — Processar Insumos para Reserva e Compra
 
-Este documento detalha a tarefa Processar Insumos para Reserva e Compra do contexto de Peças & Insumos.
+Este documento detalha a tarefa Processar Insumos para Reserva e Compra do contexto de Insumos.
 
-## 13 · Processar Insumos para Reserva e Compra
+## 6 · Processar Insumos para Reserva e Compra
 
-### 13.1 Refinamento de Produto
+### 6.1 Refinamento de Produto
 
 **Persona**
 
@@ -37,24 +37,24 @@ Uma OS pode ter somente parte dos insumos disponíveis. A oficina precisa garant
 
 | ID | Requisito |
 |---|---|
-| RF-EST-144 | Receber uma OS e os insumos que devem ser processados após a aprovação do orçamento. |
-| RF-EST-145 | Identificar, para cada insumo, a quantidade disponível para reserva e a quantidade pendente de compra. |
-| RF-EST-146 | Reservar somente a quantidade disponível em estoque e vinculá-la à OS. |
-| RF-EST-147 | Criar solicitação de compra para a quantidade pendente, vinculada à OS e ao fornecedor. |
-| RF-EST-148 | Atualizar a OS com insumos reservados, insumos pendentes e o status `AGUARDANDO_RECURSOS` quando houver pendência. |
-| RF-EST-149 | Registrar as movimentações e solicitações no histórico. |
-| RF-EST-150 | Publicar os eventos de reserva parcial e de compra solicitada quando aplicáveis. |
-| RF-EST-151 | Retornar o estado vigente quando a mesma solicitação já tiver sido processada. |
+| RF-INS-48 | Receber uma OS e os insumos que devem ser processados após a aprovação do orçamento. |
+| RF-INS-49 | Identificar, para cada insumo, a quantidade disponível para reserva e a quantidade pendente de compra. |
+| RF-INS-50 | Reservar somente a quantidade disponível em estoque e vinculá-la à OS. |
+| RF-INS-51 | Criar solicitação de compra para a quantidade pendente, vinculada à OS e ao fornecedor. |
+| RF-INS-52 | Atualizar a OS com insumos reservados, insumos pendentes e o status `AGUARDANDO_RECURSOS` quando houver pendência. |
+| RF-INS-53 | Registrar as movimentações e solicitações no histórico. |
+| RF-INS-54 | Registrar o resultado da reserva parcial e da compra solicitada na resposta da operação. |
+| RF-INS-55 | Retornar o estado vigente quando a mesma solicitação já tiver sido processada. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-103 | A operação deve ser RESTful, autenticada e autorizada. |
-| RNF-EST-104 | A reserva de saldo existente deve ser protegida contra concorrência. |
-| RNF-EST-105 | As reservas, a solicitação de compra e a atualização da OS devem ser consistentes e transacionais. |
-| RNF-EST-106 | A operação deve ser idempotente por `Idempotency-Key`. |
-| RNF-EST-107 | O saldo físico não deve ser alterado durante o processamento. |
+| RNF-INS-31 | A operação deve ser RESTful, autenticada e autorizada. |
+| RNF-INS-32 | A reserva de saldo existente deve ser protegida contra concorrência. |
+| RNF-INS-33 | As reservas, a solicitação de compra e a atualização da OS devem ser consistentes e transacionais. |
+| RNF-INS-34 | A operação deve ser idempotente por `Idempotency-Key`. |
+| RNF-INS-35 | O saldo físico não deve ser alterado durante o processamento. |
 
 **Fluxo Principal**
 
@@ -64,7 +64,7 @@ Uma OS pode ter somente parte dos insumos disponíveis. A oficina precisa garant
 4. O sistema reserva as quantidades disponíveis e registra as respectivas movimentações.
 5. O sistema cria a solicitação de compra para as quantidades pendentes.
 6. O sistema atualiza a OS; havendo pendência, define o status como `AGUARDANDO_RECURSOS`.
-7. O sistema confirma a operação e publica os eventos aplicáveis.
+7. O sistema confirma a operação e devolve o resultado da reserva e da compra.
 
 **Fluxos Alternativos / Exceções**
 
@@ -91,7 +91,7 @@ Uma OS pode ter somente parte dos insumos disponíveis. A oficina precisa garant
 
 ---
 
-### 13.2 Refinamento Técnico
+### 6.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -104,7 +104,7 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório para chamadas de usuário ou serviço.
-- Perfis permitidos: `SERVICO`, `MECANICO`, `GESTOR`.
+- Perfis permitidos: `SERVICO` e `MECANICO`.
 - Escopo: `estoque:movimentar`.
 
 **Entrada**
@@ -152,7 +152,7 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 5. Para quantidades reserváveis, aumentar `saldo_reservado`, criar reservas `ATIVA` e movimentações `RESERVA` vinculadas à OS.
 6. Para quantidades pendentes, criar a solicitação de compra, seus itens e o vínculo com a OS; registrar valor parcial quando houver valor disponível.
 7. Atualizar a OS com as duas listas e definir `AGUARDANDO_RECURSOS` se houver pendência de compra.
-8. Confirmar a transação, registrar a resposta da chave de idempotência e publicar `InsumoReservadoParcialmente` e/ou `CompraDeInsumoSolicitada`.
+8. Confirmar a transação e registrar a resposta da chave de idempotência.
 
 **Persistência**
 
@@ -208,12 +208,12 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 | `403` | Perfil sem o escopo `estoque:movimentar`. |
 | `404` | OS, fornecedor ou insumo não encontrado. |
 | `409` | Reserva ou solicitação equivalente já existente. |
-| `422` | OS sem orçamento aprovado, fornecedor inativo, insumo inativo, peça ou insumo fora da OS/orçamento. |
+| `409` | OS sem orçamento aprovado, fornecedor inativo, insumo inativo, peça ou insumo fora da OS/orçamento. |
 
 **Dependências**
 
 - `FornecedorRepository`, `ItemEstoqueRepository`, `ReservaEstoqueRepository`, `SolicitacaoCompraRepository`, `MovimentacaoEstoqueRepository` e `ChaveIdempotenciaRepository`.
-- Módulos de Ordem de Serviço e Orçamento, serviço de idempotência e publicador de eventos.
+- Módulos de Ordem de Serviço e Orçamento, serviço de idempotência e trilha de auditoria.
 
 **Testes**
 
@@ -231,7 +231,7 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 
 ---
 
-### 13.3 Checklist de Implementação
+### 6.3 Checklist de Implementação
 
 **Domínio**
 
@@ -251,7 +251,7 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 **Integrações**
 
 - [ ] Consultar OS, orçamento aprovado, fornecedor e itens vinculados.
-- [ ] Atualizar a OS e publicar `InsumoReservadoParcialmente` e `CompraDeInsumoSolicitada`.
+- [ ] Atualizar a OS diretamente, na mesma transação, e devolver o resultado na resposta.
 
 **Handler HTTP**
 
@@ -267,9 +267,9 @@ POST /estoque/solicitacoes-compra-reserva-insumos
 - [ ] Executar reserva, solicitação, atualização da OS e movimentações na mesma transação.
 - [ ] Retornar a resposta original para repetição da mesma `Idempotency-Key`.
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar os eventos de reserva parcial e de compra solicitada conforme o resultado.
+- [ ] Registrar o resultado da reserva parcial e da compra solicitada na resposta e na auditoria.
 
 **Testes unitários**
 

@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Solicitar Compra de Insumos
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Solicitar Compra de Insumos
 
-Este documento detalha a tarefa Solicitar Compra de Insumos do contexto de Peças & Insumos.
+Este documento detalha a tarefa Solicitar Compra de Insumos do contexto de Insumos.
 
-## 9 · Solicitar Compra de Insumos
+## 7 · Solicitar Compra de Insumos
 
-### 9.1 Refinamento de Produto
+### 7.1 Refinamento de Produto
 
 **Persona**
 
@@ -40,32 +40,32 @@ serviço.
 
 | ID | Requisito |
 |---|---|
-| RF-EST-110 | Permitir criar pedido de compra informando insumos e quantidades. |
-| RF-EST-111 | Permitir informar o fornecedor de forma opcional. |
-| RF-EST-112 | Permitir gerar o pedido a partir da consulta de itens faltantes, com as quantidades necessárias já preenchidas. |
-| RF-EST-113 | Validar que a quantidade informada respeita a unidade de medida do insumo. |
-| RF-EST-114 | Validar que a quantidade comprada de cada insumo é igual à quantidade necessária apurada nas Ordens de Serviço. |
-| RF-EST-115 | Vincular o pedido às OS que dependem dos insumos solicitados. |
-| RF-EST-116 | Reservar integralmente os insumos comprados para as OS vinculadas. |
-| RF-EST-117 | Atualizar cada OS vinculada com os insumos necessários e suas quantidades reservadas. |
-| RF-EST-118 | Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`. |
-| RF-EST-119 | Permitir cancelar pedido ainda não recebido e registrar a situação do pedido: aberto, parcialmente recebido, concluído ou cancelado. |
+| RF-INS-56 | Permitir criar pedido de compra informando insumos e quantidades. |
+| RF-INS-57 | Exigir o fornecedor no pedido de compra. |
+| RF-INS-58 | Permitir gerar o pedido a partir dos insumos pendentes de compra apurados no processamento, com as quantidades já preenchidas. |
+| RF-INS-59 | Validar que a quantidade informada respeita a unidade de medida do insumo. |
+| RF-INS-60 | Validar que a quantidade comprada de cada insumo é igual à quantidade necessária apurada nas Ordens de Serviço. |
+| RF-INS-61 | Vincular o pedido às OS que dependem dos insumos solicitados. |
+| RF-INS-62 | Reservar integralmente os insumos comprados para as OS vinculadas. |
+| RF-INS-63 | Atualizar cada OS vinculada com os insumos necessários e suas quantidades reservadas. |
+| RF-INS-64 | Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`. |
+| RF-INS-65 | Permitir cancelar pedido ainda não recebido e registrar a situação do pedido: aberto, parcialmente recebido, concluído ou cancelado. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-81 | A operação deve ser feita por API RESTful. |
-| RNF-EST-82 | A operação deve ser acessível somente por usuário autorizado com permissão de compras. |
-| RNF-EST-83 | O pedido de compra não altera o saldo físico de estoque — o saldo só muda no registro da entrada. |
-| RNF-EST-84 | A reserva criada pelo pedido não consome saldo físico: ela compromete a quantidade comprada para a OS de destino. |
-| RNF-EST-85 | O pedido deve ser auditável, com registro de quem solicitou e quando. |
-| RNF-EST-86 | O sistema deve alertar quando já existir pedido em aberto para o mesmo insumo. |
-| RNF-EST-87 | A criação do pedido, as reservas e a mudança de status das OS devem ocorrer na mesma operação. |
+| RNF-INS-36 | A operação deve ser feita por API RESTful. |
+| RNF-INS-37 | A operação deve ser acessível somente por usuário autorizado com permissão de compras. |
+| RNF-INS-38 | O pedido de compra não altera o saldo físico de estoque — o saldo só muda no registro da entrada. |
+| RNF-INS-39 | A reserva criada pelo pedido não consome saldo físico: ela compromete a quantidade comprada para a OS de destino. |
+| RNF-INS-40 | O pedido deve ser auditável, com registro de quem solicitou e quando. |
+| RNF-INS-41 | O sistema deve alertar quando já existir pedido em aberto para o mesmo insumo. |
+| RNF-INS-42 | A criação do pedido, as reservas e a mudança de status das OS devem ocorrer na mesma operação. |
 
 **Fluxo Principal**
 
-1. O mecânico consulta os insumos faltantes das Ordens de Serviço.
+1. O mecânico consulta os insumos pendentes de compra das Ordens de Serviço.
 2. O mecânico seleciona os insumos a serem comprados e confirma as quantidades.
 3. O mecânico informa o fornecedor, quando houver.
 4. O sistema valida os insumos, as quantidades e as unidades de medida.
@@ -87,13 +87,13 @@ serviço.
 | A3 | Quantidade comprada diferente da quantidade necessária apurada nas OS | Impede a criação do pedido. |
 | A4 | Insumo sem necessidade registrada em nenhuma OS | Impede a inclusão do item no pedido. |
 | A5 | Já existe pedido em aberto para o mesmo insumo | Alerta e exige confirmação. |
-| A6 | Fornecedor informado e não cadastrado | Impede a criação e permite seguir para o cadastro do fornecedor. |
+| A6 | Fornecedor não cadastrado | Impede a criação e permite seguir para o cadastro do fornecedor. |
 | A7 | Pedido cancelado após criação | Atualiza a situação, libera as reservas, desvincula as OS e as retorna ao status anterior, sinalizando que a falta permanece. |
 | A8 | Usuário sem autorização | Impede a operação. |
 
 **Saída**
 
-- Pedido de compra criado, com número, fornecedor quando informado, itens, quantidades, unidades
+- Pedido de compra criado, com número, fornecedor, itens, quantidades, unidades
   de medida, reservas geradas e OS vinculadas; **ou** indicação do motivo pelo qual o pedido foi
   recusado.
 
@@ -108,7 +108,7 @@ serviço.
 
 ---
 
-### 9.2 Refinamento Técnico
+### 7.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -121,25 +121,31 @@ DELETE /compras/pedidos/{pedidoId}
 > vida é idêntico (`ABERTO` → `PARCIAL` → `CONCLUIDO`), a reserva é a mesma e o recebimento é o
 > mesmo; o tipo do item diferencia apenas a validação de unidade de medida. A alternativa
 > `POST /compras/pedidos/insumos` foi descartada por duplicar a lógica de reserva e recebimento.
-> Nesta tarefa o **fornecedor é opcional**, porque a solicitação pode ser feita por canal externo,
-> e não há cálculo de sugestão por estoque mínimo ou consumo médio: a quantidade vem da
-> necessidade registrada nas OS.
+>
+> `pedido_compra` e `fornecedor` têm **dono único**: o contexto de **Peças** é o responsável pelo
+> agregado de Compras, e Insumos apenas o referencia. O cadastro de fornecedor entra no MVP,
+> documentado lá.
+>
+> O **fornecedor é obrigatório**, igual à compra de peças: sem ele o pedido não tem contra-parte e
+> o recebimento não tem de quem cobrar. Não há cálculo de sugestão por estoque mínimo ou consumo
+> médio — a quantidade parte da necessidade registrada nas OS e pode ser arredondada para cima,
+> para comprar embalagem fechada.
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `compras:escrever`.
 
 **Entrada**
 
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Body | `fornecedorId` | uuid | Opcional; quando informado, deve existir e estar ativo. |
+| Body | `fornecedorId` | uuid | Obrigatório; deve existir e estar ativo. |
 | Body | `confirmarDuplicidade` | boolean | Obrigatório quando já houver pedido em aberto para o mesmo insumo. |
 | Body | `itens[]` | array | Obrigatório, não vazio, sem `itemId` repetido. |
 | Body | `itens[].itemId` | uuid | Insumo a comprar; item do tipo `PECA` é rejeitado. |
-| Body | `itens[].quantidade` | decimal | Maior que zero, compatível com a `unidadeMedida` e igual à necessidade apurada nas OS. |
+| Body | `itens[].quantidade` | decimal | Maior que zero, compatível com a `unidadeMedida` e **maior ou igual** à necessidade apurada nas OS. |
 | Path (DELETE) | `pedidoId` | uuid | Pedido a cancelar. |
 
 ```json
@@ -152,14 +158,14 @@ DELETE /compras/pedidos/{pedidoId}
 }
 ```
 
-O `fornecedorId` pode ser omitido ou enviado como `null` quando a solicitação for feita por canal
+O `fornecedorId` é obrigatório. Antes ele podia ser omitido quando a solicitação era feita por canal
 externo.
 
 **Validações**
 
 *Técnicas*
 
-- `fornecedorId` opcional; quando informado, deve existir e estar ativo.
+- `fornecedorId` obrigatório; deve existir e estar ativo.
 - `itens` não vazio, sem repetição de `itemId`.
 - `quantidade` maior que zero, com casas decimais compatíveis com a `unidadeMedida` do insumo, por
   exemplo `UN` não aceita fração.
@@ -176,7 +182,7 @@ externo.
 **Processamento**
 
 1. Validar o payload.
-2. Carregar o fornecedor, quando `fornecedorId` for informado.
+2. Carregar o fornecedor.
 3. Carregar e validar os itens, conferindo tipo, situação e unidade de medida.
 4. Apurar, no módulo de OS, a quantidade necessária de cada insumo e as OS demandantes.
 5. Validar que a quantidade comprada é igual à quantidade necessária apurada.
@@ -187,11 +193,11 @@ externo.
 9. Criar as reservas dos insumos comprados para as OS demandantes.
 10. Vincular o pedido às OS e atualizar cada OS com os insumos necessários e as quantidades reservadas.
 11. Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`.
-12. Publicar `PedidoCompraCriado`.
+12. Registrar o pedido na trilha de auditoria.
 
 **Persistência**
 
-- Consulta: `item_estoque`, `fornecedor` (quando informado), `pedido_compra`, módulo de OS.
+- Consulta: `item_estoque`, `fornecedor`, `pedido_compra`, módulo de OS.
 - Altera: `pedido_compra` (insert), `pedido_compra_item` (insert), `reserva_estoque` (insert),
   OS vinculadas (insumos necessários e status).
 - Não altera: nenhum saldo físico de estoque — o saldo só muda no registro da entrada.
@@ -212,7 +218,7 @@ externo.
   "itens": [
     {
       "itemId": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
-      "codigo": "IN-0031",
+      "codigo": "INS-000031",
       "descricao": "Óleo lubrificante 15W40",
       "unidadeMedida": "L",
       "quantidadeNecessaria": 60.0,
@@ -237,7 +243,7 @@ externo.
 }
 ```
 
-Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
+O campo `fornecedor` é sempre preenchido na resposta.
 
 **Códigos HTTP / Erros**
 
@@ -245,22 +251,21 @@ Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
 |---|---|
 | `201` | Pedido criado, insumos reservados e OS atualizadas para `AGUARDANDO_RECURSOS`. |
 | `204` | Pedido cancelado (`DELETE`). |
-| `400` | Body inválido, item repetido, quantidade menor ou igual a zero, ou decimal incompatível com a unidade de medida. |
+| `400` | Body inválido, item repetido, quantidade menor ou igual a zero, decimal incompatível com a unidade de medida, ou item do tipo `PECA` enviado ao endpoint de insumos. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `compras:escrever`. |
-| `404` | Fornecedor informado, insumo ou pedido não encontrado. |
-| `409` | Pedido em aberto para o mesmo insumo sem `confirmarDuplicidade`; tentativa de cancelar pedido com recebimento parcial. |
-| `422` | Item inativo ou do tipo `PECA`; quantidade comprada diferente da necessária apurada; item sem necessidade registrada em nenhuma OS. |
+| `404` | Fornecedor, insumo ou pedido não encontrado. |
+| `409` | Pedido em aberto para o mesmo insumo sem `confirmarDuplicidade`; tentativa de cancelar pedido com recebimento parcial; insumo inativo; quantidade comprada menor que a necessária apurada; item sem necessidade registrada em nenhuma OS. |
 
 **Dependências**
 
 - `PedidoCompraRepository`.
 - `ItemEstoqueRepository`.
-- `FornecedorRepository`, de uso condicional, apenas quando houver fornecedor.
+- `FornecedorRepository`.
 - `ReservaEstoqueRepository`, a mesma reserva usada na compra de peças.
 - Módulo Ordem de Serviço — apuração da necessidade, vinculação, atualização dos insumos
   necessários e mudança de status.
-- Publicador de eventos de domínio.
+- Trilha de auditoria.
 - Casos de uso Consultar Peças Faltantes (origem) e Registrar Entrada de Estoque (destino).
 
 **Testes**
@@ -277,27 +282,28 @@ Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
 *Integração*
 
 - Pedido válido retorna `201` com status `ABERTO`.
-- Pedido sem `fornecedorId` retorna `201` com fornecedor nulo.
-- Fornecedor informado e inexistente retorna `404`.
+- Pedido sem `fornecedorId` retorna `400`.
+- Fornecedor inexistente retorna `404`.
 - Pedido válido reserva integralmente os insumos comprados.
 - Pedido válido atualiza as OS vinculadas com os insumos necessários.
 - Pedido válido altera as OS vinculadas para `AGUARDANDO_RECURSOS`.
 - Duplicidade sem confirmação retorna `409`; com `confirmarDuplicidade: true`, retorna `201`.
-- Item do tipo `PECA` retorna `422`; quantidade divergente da necessidade retorna `422`.
+- Item do tipo `PECA` retorna `400`; quantidade menor que a necessidade retorna `409`.
+- Quantidade acima da necessidade retorna `201`, reserva só o necessário e deixa o excedente livre.
 - Criar pedido não altera nenhum saldo físico de estoque.
 - `DELETE` em pedido `ABERTO` retorna `204` e libera as reservas.
 - `DELETE` em pedido `PARCIAL` retorna `409`.
 
 ---
 
-### 9.3 Checklist de Implementação
+### 7.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Reaproveitar a entidade `PedidoCompra` da compra de peças, sem duplicar o ciclo de vida
 - [ ] Reaproveitar `PedidoCompraItem` com `quantidadeNecessaria`, `quantidadePedida`, `quantidadeReservada` e `quantidadeRecebida`
 - [ ] Reaproveitar a reserva vinculando item, quantidade, pedido e Ordem de Serviço
-- [ ] Tornar o fornecedor opcional no pedido de compra
+- [ ] Exigir fornecedor no pedido de compra
 - [ ] Implementar a validação de casas decimais conforme a unidade de medida do insumo
 - [ ] Implementar a regra de quantidade comprada igual à quantidade necessária apurada nas OS
 - [ ] Implementar a regra de reserva integral dos insumos comprados
@@ -322,13 +328,13 @@ Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
 - [ ] Reaproveitar `PedidoCompraRepository` e o repositório de reservas
 - [ ] Reaproveitar a consulta de pedidos em aberto para os mesmos itens
 - [ ] Integrar com `ItemEstoqueRepository`
-- [ ] Integrar com `FornecedorRepository` apenas quando houver fornecedor informado
+- [ ] Integrar com `FornecedorRepository`
 
 **Handler HTTP**
 
 - [ ] Reaproveitar `POST /compras/pedidos` com validação por tipo de item
 - [ ] Reaproveitar `DELETE /compras/pedidos/{pedidoId}`
-- [ ] Criar DTO/request de entrada com `fornecedorId` opcional
+- [ ] Criar DTO/request de entrada com `fornecedorId` obrigatório
 - [ ] Criar DTO/response de saída com fornecedor anulável
 - [ ] Validar o parâmetro `pedidoId`
 - [ ] Aplicar autenticação e autorização por escopo nas rotas
@@ -344,10 +350,10 @@ Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
 - [ ] Rejeitar quantidade divergente da quantidade necessária apurada
 - [ ] Exigir `confirmarDuplicidade` quando já houver pedido em aberto para o mesmo insumo
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `PedidoCompraCriado`
-- [ ] Reaproveitar a política de atualização das OS vinculadas para `AGUARDANDO_RECURSOS`
+- [ ] Registrar o pedido de compra na trilha de auditoria
+- [ ] Atualizar diretamente as OS vinculadas para `AGUARDANDO_RECURSOS`
 
 **Testes unitários**
 
@@ -368,8 +374,8 @@ Quando o pedido for criado sem fornecedor, o campo `fornecedor` retorna `null`.
 - [ ] OS vinculadas atualizadas com os insumos necessários e quantidades reservadas
 - [ ] OS vinculadas com status `AGUARDANDO_RECURSOS`
 - [ ] Duplicidade sem confirmação retornando `409` e com confirmação retornando `201`
-- [ ] Item do tipo `PECA` retornando `422`
-- [ ] Quantidade divergente da necessidade retornando `422`
+- [ ] Item do tipo `PECA` retornando `400`
+- [ ] Quantidade divergente da necessidade retornando `409`
 - [ ] Nenhum saldo físico de estoque alterado após a criação do pedido
 - [ ] `DELETE` em pedido `ABERTO` retornando `204` e liberando as reservas
 - [ ] `DELETE` em pedido `PARCIAL` retornando `409`

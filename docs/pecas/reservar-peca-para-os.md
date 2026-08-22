@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Reservar Peça para Ordem de Serviço
 dono: A definir
-versao: 0.1
+versao: 0.4
 atualizado_em: 2026-08-22
 status: em revisao
 ---
 
 # Refinamento de Requisitos — Reservar Peça para Ordem de Serviço
 
-Este documento detalha a tarefa Reservar Peça para Ordem de Serviço do contexto de Peças & Insumos.
+Este documento detalha a tarefa Reservar Peça para Ordem de Serviço do contexto de Peças.
 
-## 10 · Reservar Peça para Ordem de Serviço
+## 5 · Reservar Peça para Ordem de Serviço
 
-### 10.1 Refinamento de Produto
+### 5.1 Refinamento de Produto
 
 **Persona**
 
@@ -37,24 +37,24 @@ Duas Ordens de Serviço aprovadas podem depender da última unidade de uma mesma
 
 | ID | Requisito |
 |---|---|
-| RF-EST-120 | Permitir reservar uma ou mais peças para uma Ordem de Serviço. |
-| RF-EST-121 | Validar que cada peça e quantidade solicitada pertence à OS ou ao seu orçamento aprovado. |
-| RF-EST-122 | Validar o saldo disponível de todas as peças antes de confirmar a reserva. |
-| RF-EST-123 | Aumentar o saldo reservado e reduzir o saldo disponível lógico sem alterar o saldo físico. |
-| RF-EST-124 | Vincular cada reserva à OS de origem e atualizar a OS com as peças reservadas. |
-| RF-EST-125 | Informar as peças indisponíveis quando não houver saldo para concluir a reserva. |
-| RF-EST-126 | Registrar a movimentação de reserva no histórico de estoque. |
-| RF-EST-127 | Retornar a reserva vigente quando a mesma solicitação já tiver sido processada. |
+| RF-PEC-41 | Permitir reservar uma ou mais peças para uma Ordem de Serviço. |
+| RF-PEC-42 | Validar que cada peça e quantidade solicitada pertence à OS ou ao seu orçamento aprovado. |
+| RF-PEC-43 | Validar o saldo disponível de todas as peças antes de confirmar a reserva. |
+| RF-PEC-44 | Aumentar o saldo reservado e reduzir o saldo disponível lógico sem alterar o saldo físico. |
+| RF-PEC-45 | Vincular cada reserva à OS de origem e atualizar a OS com as peças reservadas. |
+| RF-PEC-46 | Informar as peças indisponíveis quando não houver saldo para concluir a reserva. |
+| RF-PEC-47 | Registrar a movimentação de reserva no histórico de estoque. |
+| RF-PEC-48 | Retornar a reserva vigente quando a mesma solicitação já tiver sido processada. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-88 | A operação deve ser RESTful, autenticada e autorizada. |
-| RNF-EST-89 | A reserva deve ser atômica: todas as peças são reservadas ou nenhuma é. |
-| RNF-EST-90 | A operação deve impedir que duas OS reservem simultaneamente a mesma unidade. |
-| RNF-EST-91 | A operação deve ser idempotente por `Idempotency-Key`, devolvendo a resposta original em repetição válida. |
-| RNF-EST-92 | A reserva não deve alterar saldo físico nem outras movimentações já registradas. |
+| RNF-PEC-26 | A operação deve ser RESTful, autenticada e autorizada. |
+| RNF-PEC-27 | A reserva deve ser atômica: todas as peças são reservadas ou nenhuma é. |
+| RNF-PEC-28 | A operação deve impedir que duas OS reservem simultaneamente a mesma unidade. |
+| RNF-PEC-29 | A operação deve ser idempotente por `Idempotency-Key`, devolvendo a resposta original em repetição válida. |
+| RNF-PEC-30 | A reserva não deve alterar saldo físico nem outras movimentações já registradas. |
 
 **Fluxo Principal**
 
@@ -89,31 +89,46 @@ Duas Ordens de Serviço aprovadas podem depender da última unidade de uma mesma
 
 ---
 
-### 10.2 Refinamento Técnico
+### 5.2 Refinamento Técnico
 
-**Endpoint**
+**Gatilho**
 
-```http
-POST /estoque/reservas
+Não há endpoint: é uma chamada em processo, dentro de `ProcessarPecas`.
+
+```
+ProcessarPecas
+├── separa, por item, o disponível do faltante
+├── ReservarPecas(os, itens disponíveis)   ← esta tarefa
+├── SolicitarCompra(os, itens faltantes)
+└── confirma a transação
 ```
 
-> **Decisão de projeto.** A reserva usa o recurso próprio `estoque/reservas`, porque ela compromete saldo existente e exige concorrência, idempotência e histórico próprios. A alternativa de criar reservas somente no pedido de compra não cobre peças já disponíveis em estoque e conflita com esse fluxo; a relação entre as duas modalidades deve ser definida pelo time.
+> **Decisão de projeto — rota aposentada.** `POST /estoque/reservas` **saiu da API**. Com a D-16 fechada, a
+> aprovação do orçamento passou a ser o único gatilho que compromete estoque, e ela chama o
+> processamento, não a reserva direta. A rota ficou sem chamador público, e manter uma porta
+> aberta para comprometer saldo por fora do fluxo de aprovação é justamente o que a D-16
+> resolveu. O refinamento abaixo continua valendo: ele descreve as **regras da reserva**,
+> agora executadas como serviço de domínio chamado por
+> [processar-pecas-para-reserva-e-compra.md](processar-pecas-para-reserva-e-compra.md).
+
+> As regras de concorrência, idempotência e histórico continuam necessárias — elas passam a
+> valer para a transação aberta pelo processamento, que é quem recebe a `Idempotency-Key`.
 
 **Autenticação / Autorização**
 
-- `Bearer <JWT>` obrigatório para chamadas de usuário.
-- Perfis permitidos: `SERVICO`, `MECANICO`, `GESTOR`.
-- Escopo: `estoque:movimentar`.
+Não se aplica: a autorização já foi verificada pelo caso de uso que expõe o endpoint — o
+processamento de reserva e compra, com escopo `estoque:movimentar`.
 
 **Entrada**
 
+Os parâmetros abaixo chegam do caso de uso chamador, não de um corpo HTTP.
+
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Header | `Idempotency-Key` | uuid | Obrigatório. Identifica uma solicitação de reserva para impedir reprocessamento. |
-| Body | `ordemServicoId` | uuid | Obrigatório. Identificador da OS com orçamento aprovado. |
-| Body | `itens` | array | Obrigatório, não vazio e sem `itemId` repetido. |
-| Body | `itens[].itemId` | uuid | Obrigatório. Deve identificar uma peça ativa vinculada à OS ou ao orçamento. |
-| Body | `itens[].quantidade` | integer | Obrigatório. Inteiro maior que zero. |
+| Interno | `ordemServicoId` | uuid | Obrigatório. Identificador da OS com orçamento aprovado. |
+| Interno | `itens` | array | Obrigatório, não vazio e sem `itemId` repetido. |
+| Interno | `itens[].itemId` | uuid | Obrigatório. Deve identificar uma peça ativa vinculada à OS ou ao orçamento. |
+| Interno | `itens[].quantidade` | integer | Obrigatório. Inteiro maior que zero. |
 
 ```json
 {
@@ -149,7 +164,7 @@ POST /estoque/reservas
 5. Calcular `saldoDisponivel = saldoFisico - saldoReservado` para cada peça e validar todas as quantidades.
 6. Se qualquer peça não tiver saldo, desfazer a transação, registrar a indisponibilidade e retornar os itens insuficientes.
 7. Aumentar `saldo_reservado`, criar as reservas `ATIVA`, vincular as peças à OS e registrar movimentações `RESERVA`.
-8. Confirmar a transação, armazenar a resposta para a chave de idempotência e publicar `PecaReservada`.
+8. Confirmar a transação e armazenar a resposta para a chave de idempotência.
 
 **Persistência**
 
@@ -192,13 +207,13 @@ POST /estoque/reservas
 | `403` | Perfil sem o escopo `estoque:movimentar`. |
 | `404` | OS ou peça não encontrada. |
 | `409` | Saldo insuficiente; nenhuma peça foi reservada. |
-| `422` | OS sem orçamento aprovado, peça inativa, insumo ou peça fora da OS/orçamento. |
+| `409` | OS sem orçamento aprovado, peça inativa, insumo ou peça fora da OS/orçamento. |
 
 **Dependências**
 
 - `ItemEstoqueRepository`, `ReservaEstoqueRepository`, `MovimentacaoEstoqueRepository` e `ChaveIdempotenciaRepository`.
 - Módulos de Ordem de Serviço e Orçamento.
-- Serviço de idempotência e publicador de eventos de domínio.
+- Serviço de idempotência e trilha de auditoria.
 
 **Testes**
 
@@ -212,12 +227,12 @@ POST /estoque/reservas
 *Integração*
 
 - `POST /estoque/reservas` cria reservas, movimentações e vínculo com a OS quando autenticado e autorizado.
-- Ausência de autenticação, falta de escopo, OS/peça inexistente e regra de negócio inválida retornam `401`, `403`, `404` e `422` adequadamente.
+- Ausência de autenticação, falta de escopo, OS/peça inexistente e regra de negócio inválida retornam `401`, `403`, `404` e `409` adequadamente.
 - Duas OS concorrentes disputando a última peça não deixam `saldo_reservado` maior que `saldo_fisico` e não geram deadlock.
 
 ---
 
-### 10.3 Checklist de Implementação
+### 5.3 Checklist de Implementação
 
 **Domínio**
 
@@ -238,7 +253,7 @@ POST /estoque/reservas
 **Integrações**
 
 - [ ] Consultar a OS, seu orçamento aprovado e os itens necessários.
-- [ ] Atualizar a OS com as peças reservadas e publicar os eventos de domínio.
+- [ ] Atualizar a OS com as peças reservadas, por chamada direta na mesma transação.
 
 **Handler HTTP**
 
@@ -255,9 +270,9 @@ POST /estoque/reservas
 - [ ] Executar reserva, atualização de saldos, vínculo com OS e movimentações na mesma transação.
 - [ ] Retornar a resposta original para repetição da mesma `Idempotency-Key`.
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `PecaReservada` após confirmação e `PecaIndisponivel` após falha por saldo.
+- [ ] Registrar na auditoria a reserva confirmada e a falha por saldo insuficiente.
 
 **Testes unitários**
 
