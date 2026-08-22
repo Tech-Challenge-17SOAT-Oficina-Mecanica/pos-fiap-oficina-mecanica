@@ -96,6 +96,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/estoque/reservas` | Reserva peças disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `POST` | `/estoque/reservas-insumos` | Reserva insumos disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-insumo-para-os.md](pecas-e-insumos/reservar-insumo-para-os.md) |
 | `POST` | `/estoque/solicitacoes-compra-reserva` | Reserva peças disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-pecas-para-reserva-e-compra.md](pecas-e-insumos/processar-pecas-para-reserva-e-compra.md) |
+| `POST` | `/estoque/solicitacoes-compra-reserva-insumos` | Reserva insumos disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-insumos-para-reserva-e-compra.md](pecas-e-insumos/processar-insumos-para-reserva-e-compra.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido e libera as reservas | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 
@@ -110,8 +111,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 11 |
-| **Total** | **42** |
+| Peças & Insumos | 12 |
+| **Total** | **43** |
 
 ---
 
