@@ -1,8 +1,8 @@
 ---
 documento: Pontos em Aberto — Contexto de Peças & Insumos
 dono: José Lázaro
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -41,4 +41,5 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Peç
 | 27 | O fornecedor é obrigatório na compra de peças e opcional na de insumos, na mesma rota. Confirmar a assimetria. | [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) | — |
 | 28 | A sugestão de compra por estoque mínimo e consumo médio saiu do refinamento de insumos. Definir se o cálculo vira tarefa própria ou se a reposição passa a depender só da necessidade das OS — o que deixa a consulta de itens faltantes sem destino para a origem `MINIMO`. | [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) e `consultar-pecas-faltantes.md` | — |
 | 29 | Os IDs de requisito das duas tarefas de compra foram recriados na sequência do contexto (`RF-EST-100` em diante); as faixas antigas (`RF-EST-45` a `RF-EST-56`) ficaram livres. Renumerar quando os documentos que faltam voltarem. | [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) | — |
-| 30 | O documento de Reservar Peça para OS foi removido: a regra dele conflitava com a reserva criada pelo pedido de compra. A tarefa será reescrita, e com ela voltam as rotas `POST /estoque/reservas` e `DELETE /estoque/reservas/ordens-servico/{osId}`, se continuarem existindo. | [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`registrar-consumo-e-saida.md`](registrar-consumo-e-saida.md) | — |
+| 30 | A tarefa de reservar peça para OS foi reescrita e restabelece `POST /estoque/reservas`. Definir como a reserva de saldo já disponível se relaciona com a reserva criada por pedido de compra, evitando duplicidade para a mesma OS e peça. | [`reservar-peca-para-os.md`](reservar-peca-para-os.md), [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) | — |
+| 31 | A nova reserva exige o escopo `estoque:movimentar`, que ainda não aparece nas demais tarefas de Peças & Insumos. Confirmar se esse escopo será adotado no contexto ou se a operação deve usar `estoque:escrever`. | [`reservar-peca-para-os.md`](reservar-peca-para-os.md) | — |

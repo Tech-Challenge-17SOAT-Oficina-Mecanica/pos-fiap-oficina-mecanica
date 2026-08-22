@@ -93,6 +93,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/estoque/insumos` | Cadastra um novo insumo no catálogo | `estoque:escrever` | [cadastrar-insumo.md](pecas-e-insumos/cadastrar-insumo.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
+| `POST` | `/estoque/reservas` | Reserva peças disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido e libera as reservas | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 
@@ -107,8 +108,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 8 |
-| **Total** | **39** |
+| Peças & Insumos | 9 |
+| **Total** | **40** |
 
 ---
 
@@ -127,7 +128,6 @@ existir, é uma decisão que precisa ser registrada.
 | `GET /estoque/itens/faltantes` | Consultar peças faltantes | Peças & Insumos |
 | `POST /estoque/entradas` | Registrar entrada de estoque | Peças & Insumos |
 | `POST /estoque/saidas` | Registrar consumo e saída | Peças & Insumos |
-| `POST /estoque/reservas` | Reservar peça para OS | Peças & Insumos |
 | `DELETE /estoque/reservas/ordens-servico/{osId}` | Reservar peça para OS (liberação) | Peças & Insumos |
 | *(sem endpoint)* | Incluir OS na fila de atendimento | Ordem de Serviço |
 
