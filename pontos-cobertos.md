@@ -1,7 +1,7 @@
 ---
 documento: Pontos Cobertos — Checklist de Refinamento
 dono: José Lázaro
-versao: 0.7
+versao: 0.8
 atualizado_em: 2026-08-22
 status: em andamento
 ---
@@ -14,15 +14,15 @@ implementada em código.
 
 ## Resumo
 
-| Contexto         | Documentadas | Total  |
-| ---------------- | ------------ | ------ |
-| Cliente          | 5            | 5      |
-| Veículo          | 4            | 4      |
-| Ordem de Serviço | 11           | 15     |
-| Orçamento        | 4            | 8      |
-| Serviços         | 4            | 4      |
-| Peças & Insumos  | 10           | 14     |
-| **Total**        | **38**       | **50** |
+| Contexto | Documentadas | Total |
+|---|---|---|
+| Cliente | 5 | 5 |
+| Veículo | 5 | 5 |
+| Ordem de Serviço | 13 | 15 |
+| Orçamento | 4 | 8 |
+| Serviços | 4 | 4 |
+| Peças & Insumos | 16 | 18 |
+| **Total** | **47** | **55** |
 
 ---
 
@@ -40,10 +40,11 @@ implementada em código.
 - [x] Cadastrar veículo — [cadastrar-veiculo.md](docs/veiculo/cadastrar-veiculo.md)
 - [x] Deletar veículo — [deletar-veiculo.md](docs/veiculo/deletar-veiculo.md)
 - [x] Atualizar veículo — [atualizar-veiculo.md](docs/veiculo/atualizar-veiculo.md)
+- [x] Cadastrar veículo e vincular ao cliente — [cadastrar-veiculo-e-vincular-ao-cliente.md](docs/veiculo/cadastrar-veiculo-e-vincular-ao-cliente.md)
 
 ## Ordem de Serviço
 
-- [ ] Criar ordem de serviço — documento removido, será reescrito
+- [x] Criar ordem de serviço — [criar-ordem-de-servico.md](docs/ordem-de-servico/criar-ordem-de-servico.md)
 - [x] Registrar problema relatado — [registrar-problema-relatado.md](docs/ordem-de-servico/registrar-problema-relatado.md)
 - [x] Registrar problema encontrado — [registrar-problema-encontrado.md](docs/ordem-de-servico/registrar-problema-encontrado.md)
 - [x] Registrar serviços necessários — [registrar-servicos-necessarios.md](docs/ordem-de-servico/registrar-servicos-necessarios.md)
@@ -55,7 +56,7 @@ implementada em código.
 - [x] Consultar ordem de serviço — [consultar-ordem-de-servico.md](docs/ordem-de-servico/consultar-ordem-de-servico.md)
 - [x] Listar ordens de serviço — [listar-ordens-de-servico.md](docs/ordem-de-servico/listar-ordens-de-servico.md)
 - [x] Monitorar tempo médio de execução — [monitorar-tempo-medio-de-execucao.md](docs/ordem-de-servico/monitorar-tempo-medio-de-execucao.md)
-- [ ] Incluir OS na fila de atendimento — documento removido, será reescrito
+- [x] Incluir OS na fila de atendimento — [incluir-os-na-fila-de-atendimento.md](docs/ordem-de-servico/incluir-os-na-fila-de-atendimento.md)
 - [ ] Selecionar próxima OS para execução
 - [ ] Registrar problema adicional
 
@@ -82,35 +83,38 @@ implementada em código.
 - [x] Cadastrar peça — [cadastrar-peca.md](docs/pecas-e-insumos/cadastrar-peca.md)
 - [x] Atualizar peça — [atualizar-peca.md](docs/pecas-e-insumos/atualizar-peca.md)
 - [x] Deletar peça — [deletar-peca.md](docs/pecas-e-insumos/deletar-peca.md)
+- [x] Consultar peças — [consultar-estoque.md](docs/pecas-e-insumos/consultar-estoque.md)
 - [x] Cadastrar insumo — [cadastrar-insumo.md](docs/pecas-e-insumos/cadastrar-insumo.md)
 - [x] Atualizar insumo — [atualizar-insumo.md](docs/pecas-e-insumos/atualizar-insumo.md)
 - [x] Deletar insumo — [deletar-insumo.md](docs/pecas-e-insumos/deletar-insumo.md)
+- [x] Consultar insumos — [consultar-insumos.md](docs/pecas-e-insumos/consultar-insumos.md)
+- [x] Reservar peças para OS — [reservar-peca-para-os.md](docs/pecas-e-insumos/reservar-peca-para-os.md)
+- [x] Reservar insumos para OS — [reservar-insumo-para-os.md](docs/pecas-e-insumos/reservar-insumo-para-os.md)
+- [x] Processar peças para reserva e compra — [processar-pecas-para-reserva-e-compra.md](docs/pecas-e-insumos/processar-pecas-para-reserva-e-compra.md)
+- [x] Processar insumos para reserva e compra — [processar-insumos-para-reserva-e-compra.md](docs/pecas-e-insumos/processar-insumos-para-reserva-e-compra.md)
 - [x] Registrar entrada de estoque — [registrar-entrada-de-estoque.md](docs/pecas-e-insumos/registrar-entrada-de-estoque.md)
 - [x] Solicitar compra de peças — [solicitar-compra-de-pecas.md](docs/pecas-e-insumos/solicitar-compra-de-pecas.md)
 - [x] Solicitar compra de insumos — [solicitar-compra-de-insumos.md](docs/pecas-e-insumos/solicitar-compra-de-insumos.md)
 - [x] Retornar peça e insumo ao estoque — [retornar-peca-e-insumo-ao-estoque.md](docs/pecas-e-insumos/retornar-peca-e-insumo-ao-estoque.md)
-- [ ] Consultar estoque — documento removido, será reescrito
 - [ ] Consultar peças faltantes — documento removido, será reescrito
 - [ ] Registrar consumo e saída — documento removido, será reescrito
-- [ ] Reservar peças para OS — documento removido, será reescrito
 
 ---
 
 ## Observações
 
-- A lista original tinha 52 tarefas. Quatro linhas dela — registrar peças necessárias, registrar
-  insumos necessários, registrar peças adicionais e registrar insumos adicionais — viraram uma
-  tarefa só, **Registrar peças e insumos necessários**, porque o refinamento trata os quatro casos
-  no mesmo fluxo, distinguindo adição principal de complementar. Entrou também **Retornar peça e
-  insumo ao estoque**, que não estava na lista. O total ficou em 50.
-- **Registrar peças e insumos necessários** está marcada, mas veio só com o refinamento de produto:
-  o refinamento técnico e o checklist estão pendentes, e a lista do que falta está no próprio
-  documento.
-- **Documentos removidos e a reescrever:** criar ordem de serviço, incluir OS na fila, enviar
-  orçamento, gerar orçamento complementar, consultar estoque, consultar peças faltantes, registrar
-  consumo e saída, e reservar peças para OS. As rotas correspondentes estão listadas em
-  [03-endpoints.md](docs/03-endpoints.md), na seção _Rotas sem documento no momento_.
-- **Iniciar diagnóstico deixou de existir como tarefa.** Registrar problema relatado a substitui:
-  o mesmo endpoint grava o relato do cliente, marca a data de início e muda a OS para
-  `EM_DIAGNOSTICO`.
-- Marcado quer dizer documentado, não implementado.
+- A lista original tinha 52 tarefas. Ela mudou conforme os refinamentos chegaram: quatro linhas
+  viraram a tarefa **Registrar peças e insumos necessários**, e entraram tarefas que não estavam
+  previstas — retornar peça e insumo ao estoque, reservar insumo, os dois processamentos de reserva
+  e compra, consultar insumos e cadastrar veículo já vinculado ao cliente. O total hoje é **55**.
+- **Marcado quer dizer documentado, não implementado.** Duas tarefas marcadas ainda estão
+  incompletas: registrar peças e insumos necessários veio só com o refinamento de produto, e
+  consultar peças não tem seção de autenticação.
+- **Faltam reescrever:** consultar peças faltantes e registrar consumo e saída, em Peças & Insumos;
+  enviar orçamento e gerar orçamento complementar, em Orçamento. Sem *registrar consumo e saída*
+  não existe baixa de estoque na execução do serviço.
+- **Nunca foram refinadas:** selecionar próxima OS para execução e registrar problema adicional, em
+  Ordem de Serviço; aprovar e recusar orçamento complementar, em Orçamento.
+- O retrato de cada contexto está no `00-resumo.md` do respectivo diretório, e as inconsistências
+  no `pontos-em-aberto.md`. As divergências que atravessam contextos estão em
+  [02-decisoes-arquiteturais.md](docs/02-decisoes-arquiteturais.md), decisões D-16 a D-25.
