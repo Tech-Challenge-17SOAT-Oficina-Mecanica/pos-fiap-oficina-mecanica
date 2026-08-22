@@ -93,10 +93,10 @@ documentação e pela manutenção das regras.
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
 | Veículo | `Veículo` | [`veiculo/`](veiculo/) | 3 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 10 de 18 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 11 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 5 de 8 tarefas refinadas |
 | Serviços | `Serviço` | [`servicos/`](servicos/) | 1 de 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 8 de 13 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
