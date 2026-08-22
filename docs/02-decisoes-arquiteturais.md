@@ -1,8 +1,8 @@
 ---
 documento: Decisões Arquiteturais — Pauta de Discussão
 dono: José Lázaro
-versao: 0.1
-atualizado_em: 2026-08-18
+versao: 0.2
+atualizado_em: 2026-08-22
 status: em discussao
 ---
 
@@ -45,6 +45,16 @@ sai da lista de **Pontos em aberto**.
 | D-13 | Inativação de item com saldo | Média | Bloquear só com saldo reservado; físico pode inativar |
 | D-14 | Custo do insumo atualizado pela entrada | Média | Último custo no MVP; média ponderada depois |
 | D-15 | `saldoReservado` exibido para insumo | Média | Manter o campo, sempre zero |
+| D-16 | Reserva: três caminhos concorrentes | Bloqueante | Um único fluxo, disparado pela aprovação do orçamento |
+| D-17 | Orçamento complementar: orçamentos separados x adições | Bloqueante | Orçamentos separados, com `tipo` e `orcamentoOriginalId` |
+| D-18 | Máquina de estados da OS | Bloqueante | Fechar a lista com `AGUARDANDO_RECURSOS` e `AGUARDANDO_EXECUCAO` |
+| D-19 | Situação de cadastro: `status` x `ativo` | Alta | Booleano `ativo` mais data e usuário da desativação |
+| D-20 | Verbo da exclusão lógica: `DELETE` x `PATCH /desativar` | Alta | `DELETE`, como em Cliente, Veículo e Estoque |
+| D-21 | Envelope de listagem paginada | Alta | `data`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas` |
+| D-22 | Separação de peça e insumo nas rotas | Alta | Rotas por tipo em toda a API, ou em nenhuma |
+| D-23 | Escopos de decisão do cliente | Média | Um escopo só para aprovar e recusar |
+| D-24 | Controle otimista com `If-Match` | Média | Obrigatório em toda atualização de cadastro |
+| D-25 | Pagamento no MVP | Média | Fora do MVP; a entrega não bloqueia por pagamento |
 
 ---
 
@@ -394,6 +404,208 @@ vão consumir.
 
 ---
 
+## D-16 · Reserva: três caminhos concorrentes
+
+**Prioridade:** Bloqueante · **Afeta:** Peças & Insumos, Orçamento, Ordem de Serviço
+
+**Situação.** Existem hoje quatro formas de comprometer estoque para uma OS, cada uma em um
+documento diferente: reserva direta de peça (`POST /estoque/reservas`), reserva direta de insumo
+(`POST /estoque/reservas-insumos`), processamento que reserva o disponível e compra o faltante
+(`POST /estoque/solicitacoes-compra-reserva`) e o próprio pedido de compra, que também cria reserva.
+Nenhum documento diz qual dispara qual, nem se elas se excluem.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | Um único ponto de entrada: a aprovação do orçamento chama o processamento, que reserva o disponível e abre compra do faltante | Um fluxo só, alinhado ao que o negócio faz; as rotas de reserva direta viram detalhe interno |
+| B | Manter reserva direta e processamento como rotas separadas | Flexível; exige regra explícita de quem chama o quê e abre espaço para reserva duplicada |
+
+**Recomendação: A.** O negócio tem um momento só em que o estoque é comprometido — quando o
+cliente aprova. Ter três portas para a mesma coisa é a maior fonte de inconsistência do projeto hoje.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-17 · Orçamento complementar: orçamentos separados ou adições
+
+**Prioridade:** Bloqueante · **Afeta:** Orçamento, Ordem de Serviço
+
+**Situação.** Duas modelagens convivem. Em Ordem de Serviço, o complementar é uma **adição** dentro
+do mesmo orçamento (`orcamento_adicao`, com uma principal e várias complementares). Em Orçamento, o
+complementar é um **orçamento separado**, com `tipo` e `orcamentoOriginalId`. As duas aparecem em
+documentos aprovados, e o cálculo do valor total geral depende de qual vale.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | Orçamentos separados por tipo, vinculados pelo `orcamentoOriginalId` | Cada decisão do cliente recai sobre um documento inteiro; mais simples de aprovar e recusar |
+| B | Um orçamento com várias adições | Um único total; exige aprovação por adição, que não está desenhada |
+
+**Recomendação: A**, que é o que a maioria dos documentos já usa e o que o fluxo de aprovação
+espera. A ideia de adição pode voltar como agrupamento visual, sem virar entidade.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-18 · Máquina de estados da Ordem de Serviço
+
+**Prioridade:** Bloqueante · **Afeta:** todos os contextos
+
+**Situação.** O enunciado lista seis status: `Recebida`, `Em diagnóstico`, `Aguardando aprovação`,
+`Em execução`, `Finalizada` e `Entregue`. Os documentos usam nove, com `AGUARDANDO_RECURSOS`,
+`AGUARDANDO_EXECUCAO` e `CANCELADA`. Não existe lista oficial nem diagrama de transições, e cada
+tarefa valida o status que acha que precisa.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | Adotar os nove status e documentar as transições em um único lugar | Reflete o fluxo real, incluindo espera por peça; exige justificar a diferença na entrega do Tech Challenge |
+| B | Ficar nos seis do enunciado e tratar espera por recursos como atributo, não status | Alinhado ao enunciado; perde visibilidade de por que a OS está parada |
+
+**Recomendação: A**, com a máquina de estados desenhada no resumo do contexto de Ordem de Serviço
+e citada no documento de entrega, explicando por que os três status extras existem.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-19 · Situação de cadastro: `status` ou `ativo`
+
+**Prioridade:** Alta · **Afeta:** Serviços, Peças & Insumos, Cliente, Veículo
+
+**Situação.** Cliente, Veículo e Estoque usam o booleano `ativo` com `dataDesativacao` e
+`usuarioDesativacao`. Em Serviços, três documentos usam `status` com `ATIVO`/`INATIVO` e um usa
+`ativo`. O mesmo conceito, escrito de duas formas, dentro do mesmo contexto.
+
+**Recomendação:** booleano `ativo`, mais `dataDesativacao` e `usuarioDesativacao`. Se um dia
+existir um terceiro estado, aí sim vira enum — mas hoje não existe.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-20 · Verbo da exclusão lógica
+
+**Prioridade:** Alta · **Afeta:** Serviços, Peças & Insumos, Cliente, Veículo
+
+**Situação.** Cliente, Veículo e Estoque usam `DELETE /recurso/{id}` para a exclusão lógica.
+Serviços usa `PATCH /servicos/{id}/desativar`. Os dois desenhos são defensáveis; conviver é que não.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | `DELETE` em todos, com a exclusão lógica documentada | Contrato uniforme; o consumidor não precisa saber que é lógica |
+| B | `PATCH .../desativar` em todos | Explícito de que o registro permanece; exige mudar quatro contextos |
+
+**Recomendação: A**, que já é maioria e é o que o consumidor da API espera.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-21 · Envelope de listagem paginada
+
+**Prioridade:** Alta · **Afeta:** todos os contextos
+
+**Situação.** A maior parte das listagens usa `data`, `pagina`, `tamanho`, `totalElementos` e
+`totalPaginas`. As de Serviços e de Orçamento usam `content`, `page`, `size`, `totalElements` e
+`totalPages`. São dois contratos de paginação na mesma API.
+
+**Recomendação:** o envelope em português, que já é maioria e está no guia. Alinhar as duas
+listagens divergentes.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-22 · Separação de peça e insumo nas rotas
+
+**Prioridade:** Alta · **Afeta:** Peças & Insumos
+
+**Situação.** Peça e insumo são a mesma entidade, diferenciada por `tipo`. Mesmo assim, hoje há
+rotas separadas para consultar, reservar e processar, e rota compartilhada para comprar. A
+consulta unificada `GET /estoque/itens` deixou de existir.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | Separar por tipo em toda a API | Contratos específicos, validações mais simples; mais rotas e mais duplicação |
+| B | Unificar tudo sob `/estoque/itens`, com `tipo` como filtro | Menos rotas; validações precisam ramificar por tipo |
+
+**Recomendação: A**, porque as regras já são diferentes — insumo aceita fração e não tem preço de
+venda —, mas então a compra também deve separar, para não ficar meio a meio.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-23 · Escopos de decisão do cliente
+
+**Prioridade:** Média · **Afeta:** Orçamento
+
+**Situação.** Aprovar usa `orcamentos:aprovar`; recusar usa `orcamentos:recusar`. É a mesma pessoa,
+no mesmo momento, decidindo sobre o mesmo documento.
+
+**Recomendação:** um escopo só — `orcamentos:decidir` ou `orcamentos:aprovar` — porque quem pode
+aprovar necessariamente pode recusar.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-24 · Controle otimista com `If-Match`
+
+**Prioridade:** Média · **Afeta:** todos os contextos
+
+**Situação.** Peças & Insumos e Serviços usam `If-Match` com `version` na atualização de cadastro.
+Cliente e Veículo não usam nada. Duas pessoas editando o mesmo cliente sobrescrevem uma à outra
+sem aviso.
+
+**Recomendação:** exigir `If-Match` em toda atualização de cadastro, com `version` exposto na
+consulta de detalhe.
+
+**Decisão:**
+**Data:**
+
+---
+
+## D-25 · Pagamento no MVP
+
+**Prioridade:** Média · **Afeta:** Ordem de Serviço
+
+**Situação.** A entrega do veículo exige confirmação de pagamento e apresenta o valor final ao
+cliente, mas não existe contexto, rota, entidade nem refinamento de pagamento em lugar nenhum.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+|---|---|---|
+| A | Fora do MVP: a entrega registra o valor final, sem bloquear por pagamento | Entrega implementável já; a oficina controla o recebimento fora do sistema |
+| B | Pagamento entra como contexto novo | Fiel ao fluxo real; é escopo que o enunciado não pede |
+
+**Recomendação: A**, com o campo de valor final mantido na entrega e a regra de bloqueio removida
+até existir contexto de pagamento.
+
+**Decisão:**
+**Data:**
+
+---
+
 ## Decisões já tomadas
 
 Registradas aqui para não voltarem à pauta.
@@ -402,7 +614,7 @@ Registradas aqui para não voltarem à pauta.
 |---|---|---|
 | DT-01 | Não existe perfil `ESTOQUISTA`. As operações de estoque são feitas pelo `MECANICO` e pelo `GESTOR`, com o corte de permissão feito por **escopo** (`estoque:ler`, `estoque:escrever`, `estoque:movimentar`, `compras:escrever`), não por perfil. | Tarefas do contexto em `docs/pecas-e-insumos/` |
 | DT-02 | Compras **não** é contexto delimitado separado: `pedido_compra` pertence ao contexto de Peças & Insumos, e o recebimento atualiza o pedido na mesma transação. | Decisão de projeto em [`solicitar-compra-de-pecas.md`](pecas-e-insumos/solicitar-compra-de-pecas.md) |
-| DT-03 | Insumo não é reservado: a baixa acontece direto na execução do serviço. | [`registrar-consumo-e-saida.md`](pecas-e-insumos/registrar-consumo-e-saida.md) |
+| DT-03 | Insumo não é reservado: a baixa acontece direto na execução do serviço. | `registrar-consumo-e-saida.md`, documento retirado para reescrita |
 | DT-04 | Peça e insumo compartilham o recurso `pedido_compra`; o tipo do item diferencia as regras. | Decisão de projeto em [`solicitar-compra-de-insumos.md`](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 
 ---
