@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Consultar Orçamento
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -20,17 +20,19 @@ Cliente.
 
 **Objetivo**
 
-Consultar os serviços, peças, insumos e valores dos orçamentos vinculados às suas Ordens de Serviço.
+Consultar os serviços, peças, insumos, valores, status e estimativa de entrega dos orçamentos
+vinculados às suas OS.
 
 **Problema**
 
-O cliente precisa analisar o orçamento principal e seus complementares antes de aprová-los ou
-recusá-los.
+O cliente precisa analisar o orçamento principal e seus complementares, incluindo os valores, o
+status de cada orçamento e a estimativa de entrega, antes de aprová-los ou recusá-los.
 
 **Pré-condições**
 
 - Deve existir uma OS vinculada ao cliente.
-- Deve existir ao menos um orçamento associado à OS.
+- Deve existir um orçamento principal associado à OS.
+- Orçamentos complementares são opcionais e devem estar vinculados ao orçamento principal da mesma OS.
 - O cliente deve estar autenticado e autorizado.
 - Deve ser informado o identificador do orçamento ou o documento do cliente.
 
@@ -44,10 +46,13 @@ recusá-los.
 | RF-ORC-11 | Apresentar serviços, peças e insumos. |
 | RF-ORC-12 | Apresentar quantidades, valores unitários e totais. |
 | RF-ORC-13 | Apresentar o valor total de cada orçamento. |
-| RF-ORC-14 | Apresentar orçamento principal e orçamentos complementares. |
+| RF-ORC-14 | Apresentar orçamento principal e orçamentos complementares, quando existirem. |
 | RF-ORC-15 | Apresentar o valor total geral da OS. |
 | RF-ORC-16 | Apresentar o status atual da OS. |
 | RF-ORC-17 | Impedir acesso a orçamento de outro cliente. |
+| RF-ORC-33 | Apresentar o `tipoOrcamento` de cada orçamento: `PRINCIPAL` ou `COMPLEMENTAR`. |
+| RF-ORC-34 | Apresentar o `statusOrcamento` de cada orçamento: `CRIADO`, `APROVADO` ou `RECUSADO`. |
+| RF-ORC-35 | Apresentar a estimativa de entrega de cada orçamento em dias. |
 
 **Requisitos Não Funcionais**
 
@@ -57,6 +62,7 @@ recusá-los.
 | RNF-ORC-05 | A consulta não deve alterar os dados do orçamento. |
 | RNF-ORC-06 | O cliente deve visualizar somente informações vinculadas às suas OS. |
 | RNF-ORC-07 | O documento deve ser validado por se tratar de dado sensível. |
+| RNF-ORC-15 | A estimativa deve ser apresentada em dias, sem data exata de entrega. |
 
 **Fluxo Principal**
 
@@ -65,9 +71,9 @@ recusá-los.
 3. O sistema valida os critérios de consulta.
 4. O sistema localiza a OS e os orçamentos associados.
 5. O sistema valida se a OS pertence ao cliente.
-6. O sistema apresenta o orçamento principal e os complementares.
-7. O sistema apresenta itens, valores e o valor total geral.
-8. O sistema apresenta o status atual da OS.
+6. O sistema consulta o orçamento principal e os complementares, quando existirem.
+7. O sistema apresenta itens, valores, tipo, status e estimativa de cada orçamento.
+8. O sistema apresenta o valor total geral e o status atual da OS.
 9. O cliente consulta as informações.
 
 **Fluxos Alternativos / Exceções**
@@ -80,14 +86,16 @@ recusá-los.
 | A4 | Orçamento não encontrado | Informa que não existe orçamento. |
 | A5 | Cliente sem acesso | Impede a consulta. |
 | A6 | OS em outra etapa | Apresenta os dados sem permitir alteração. |
+| A7 | OS sem orçamento complementar | Apresenta somente o orçamento principal. |
 
 **Saída**
 
-- Orçamentos principal e complementares consultados pelo cliente.
+- Orçamentos principal e complementares, quando existirem, consultados pelo cliente.
 
 **Pós-condições**
 
-- O cliente visualiza os dados dos orçamentos.
+- Cliente visualiza os dados dos orçamentos.
+- Cliente visualiza tipo, status e estimativa de entrega de cada orçamento.
 - Nenhum dado do orçamento ou da OS é alterado.
 
 ---
@@ -100,118 +108,137 @@ recusá-los.
 GET /orcamentos
 ```
 
-Aceita consulta por identificador do orçamento ou pelo documento do cliente. Deve ser informado
-ao menos um dos dois.
-
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
 - Permitido apenas para o cliente vinculado à OS dos orçamentos.
 - Escopo: `orcamentos:ler`.
-- Operação somente leitura.
+- A operação é somente leitura.
 
-**Entrada** — query params:
+**Entrada**
 
-| Param | Tipo | Descrição |
-|---|---|---|
-| `orcamentoId` | uuid | Identificador do orçamento. |
-| `documento` | string | CPF ou CNPJ do cliente. |
-| `page` / `size` | int | Paginação, quando a busca for por documento. |
+| Local | Parâmetro | Tipo | Obrigatório | Descrição |
+|---|---|---|---|---|
+| Query | `orcamentoId` | uuid | Não* | Identificador do orçamento. |
+| Query | `documento` | string | Não* | CPF ou CNPJ do cliente. |
+| Query | `page` | inteiro | Não | Página da consulta por documento. Padrão: `0`. |
+| Query | `size` | inteiro | Não | Quantidade de registros por página. Padrão: `20`. |
 
-Exemplos: `GET /orcamentos?orcamentoId=9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913` e
-`GET /orcamentos?documento=00000000000&page=0&size=20`.
+*Deve ser informado ao menos um dos parâmetros `orcamentoId` ou `documento`.*
+
+```http
+GET /orcamentos?orcamentoId=uuid-do-orcamento
+```
+
+```http
+GET /orcamentos?documento=00000000000&page=0&size=20
+```
 
 **Validações**
 
 *Técnicas*
 
-- Deve ser informado `orcamentoId` ou `documento`.
-- Formato válido de CPF/CNPJ, quando o documento for informado.
-- Parâmetros de paginação válidos.
+- `orcamentoId`, quando informado, deve possuir formato UUID válido.
+- `page` e `size` devem possuir valores válidos.
+- O CPF/CNPJ deve possuir formato válido, quando informado.
 
 *Negócio*
 
+- Deve ser informado `orcamentoId` ou `documento`.
 - O orçamento deve existir, quando informado.
 - A OS vinculada deve pertencer ao cliente autenticado.
 - O documento informado deve pertencer ao cliente autenticado.
-- A consulta não altera dados.
+- `tipoOrcamento` deve ser `PRINCIPAL` ou `COMPLEMENTAR`.
+- `statusOrcamento` deve ser `CRIADO`, `APROVADO` ou `RECUSADO`.
+- Quando existir orçamento complementar, seu vínculo com o orçamento principal da mesma OS deve ser válido.
+- A consulta não deve alterar dados.
 
 **Processamento**
 
-1. Receber os critérios da consulta e identificar o cliente autenticado.
-2. Validar os critérios informados.
-3. Consultar os orçamentos pelo identificador ou pelo documento.
-4. Consultar a OS vinculada.
-5. Validar o vínculo entre cliente, OS e orçamento.
-6. Consultar o orçamento principal e os complementares vinculados à mesma OS.
-7. Consultar os itens de cada orçamento.
-8. Calcular o valor total geral dos orçamentos da OS.
-9. Montar e retornar a resposta, com o status atual da OS.
+1. Receber os critérios da consulta.
+2. Identificar o cliente autenticado.
+3. Validar os critérios informados.
+4. Consultar os orçamentos pelo identificador ou documento.
+5. Consultar a OS vinculada.
+6. Validar o vínculo entre cliente, OS e orçamento.
+7. Consultar o orçamento principal e os complementares vinculados à mesma OS.
+8. Consultar os itens de cada orçamento.
+9. Consultar `tipoOrcamento`, `statusOrcamento` e `estimativaEntregaDias` de cada orçamento.
+10. Calcular o valor total geral dos orçamentos da OS.
+11. Montar e retornar a resposta com o status atual da OS.
 
 **Persistência**
 
-- Consulta: `cliente`, `orcamento`, `orcamento_item`, `ordem_servico`.
-- Altera: nada.
+- Consultar Cliente.
+- Consultar os dados de Orçamento.
+- Consultar os itens de cada Orçamento.
+- Consultar a OS vinculada.
+- Consultar os orçamentos complementares associados ao orçamento principal.
+- Nenhum dado deve ser alterado.
 
 **Saída da API**
 
 ```json
 {
-  "data": [
+  "content": [
     {
       "cliente": {
-        "clienteId": "c7f3a9b2-1e4d-4c8a-9f21-0b6d5e2a7c14",
+        "clienteId": "uuid-do-cliente",
         "documento": "00000000000"
       },
-      "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
+      "ordemServicoId": "uuid-da-os",
       "statusOrdemServico": "AGUARDANDO_APROVACAO",
       "orcamentos": [
         {
-          "orcamentoId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
-          "tipo": "PRINCIPAL",
+          "orcamentoId": "uuid-orcamento-principal",
+          "tipoOrcamento": "PRINCIPAL",
+          "statusOrcamento": "CRIADO",
           "itens": [
             {
               "tipo": "SERVICO",
               "descricao": "Troca de óleo",
               "quantidade": 1,
-              "valorUnitario": 150.0,
-              "valorTotal": 150.0
+              "valorUnitario": 150.00,
+              "valorTotal": 150.00
             },
             {
               "tipo": "PECA",
               "descricao": "Filtro de óleo",
               "quantidade": 1,
-              "valorUnitario": 50.0,
-              "valorTotal": 50.0
+              "valorUnitario": 50.00,
+              "valorTotal": 50.00
             }
           ],
-          "valorTotal": 200.0,
-          "dataGeracao": "2026-08-18T10:30:00-03:00"
+          "valorTotal": 200.00,
+          "estimativaEntregaDias": 4,
+          "dataGeracao": "2026-08-22T10:30:00-03:00"
         },
         {
-          "orcamentoId": "b1d47c60-92fe-4a38-8c15-73e0a6b5d284",
-          "tipo": "COMPLEMENTAR",
-          "orcamentoOriginalId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
+          "orcamentoId": "uuid-orcamento-complementar",
+          "tipoOrcamento": "COMPLEMENTAR",
+          "orcamentoOriginalId": "uuid-orcamento-principal",
+          "statusOrcamento": "CRIADO",
           "itens": [
             {
               "tipo": "PECA",
               "descricao": "Correia dentada",
               "quantidade": 1,
-              "valorUnitario": 150.0,
-              "valorTotal": 150.0
+              "valorUnitario": 150.00,
+              "valorTotal": 150.00
             }
           ],
-          "valorTotal": 150.0,
-          "dataGeracao": "2026-08-19T10:30:00-03:00"
+          "valorTotal": 150.00,
+          "estimativaEntregaDias": 6,
+          "dataGeracao": "2026-08-22T11:30:00-03:00"
         }
       ],
-      "valorTotalGeral": 350.0
+      "valorTotalGeral": 350.00
     }
   ],
-  "pagina": 0,
-  "tamanho": 20,
-  "totalElementos": 1,
-  "totalPaginas": 1
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
 }
 ```
 
@@ -219,100 +246,99 @@ Exemplos: `GET /orcamentos?orcamentoId=9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913` e
 
 | Código | Situação |
 |---|---|
-| `200` | Orçamentos consultados com sucesso. |
-| `400` | Nenhum critério informado; documento inválido; paginação inválida. |
-| `401` | Token ausente ou expirado. |
-| `403` | Cliente sem acesso aos orçamentos. |
-| `404` | Orçamento ou cliente não encontrado. |
+| 200 OK | Orçamentos consultados com sucesso, inclusive quando a lista estiver vazia. |
+| 400 Bad Request | Nenhum critério informado, documento, identificador ou paginação inválidos. |
+| 401 Unauthorized | Cliente não autenticado. |
+| 403 Forbidden | Cliente sem acesso aos orçamentos. |
+| 404 Not Found | Orçamento ou cliente não encontrado. |
+| 500 Internal Server Error | Erro inesperado. |
 
 **Dependências**
 
+- Módulo de autenticação JWT.
+- Módulo de autorização.
 - `ClienteRepository`.
 - `OrcamentoRepository`.
 - `OrcamentoItemRepository`.
 - `OrdemDeServicoRepository`.
 - Validador de CPF/CNPJ.
-- Middleware de autenticação/autorização.
+- Contexto do cliente autenticado.
+- Banco de dados.
 
 **Testes**
 
 *Unitários*
 
-- Cálculo do valor total de cada orçamento e do valor total geral.
-- Rejeita consulta sem nenhum critério informado.
-- Rejeita documento inválido.
+- Deve consultar orçamento pelo `orcamentoId`.
+- Deve consultar orçamentos pelo documento do cliente.
+- Deve retornar orçamento principal e complementares, quando existirem.
+- Deve retornar `tipoOrcamento` como `PRINCIPAL` ou `COMPLEMENTAR`.
+- Deve retornar `statusOrcamento` como `CRIADO`, `APROVADO` ou `RECUSADO`.
+- Deve retornar a estimativa de entrega em dias.
+- Deve retornar o valor total de cada orçamento e o valor total geral da OS.
+- Deve retornar somente o orçamento principal quando não existirem complementares.
+- Deve garantir que a consulta não altera dados do orçamento ou da OS.
 
 *Integração*
 
-- Consulta pelo `orcamentoId` retorna o orçamento correspondente.
-- Consulta pelo documento retorna os orçamentos do cliente.
-- A resposta traz `clienteId`, `documento` e o status atual da OS.
-- A resposta traz orçamento principal e complementares.
-- Nenhum critério informado retorna `400`.
-- Documento inválido retorna `400`.
-- Orçamento ou cliente inexistente retorna `404`.
-- Sem token retorna `401` e orçamento de outro cliente retorna `403`.
-- A consulta não altera dados do orçamento nem da OS.
+- Deve retornar `clienteId` e documento na resposta.
+- Deve retornar `400` quando nenhum critério for informado, ou para documento inválido.
+- Deve retornar `401` sem autenticação.
+- Deve retornar `403` para orçamento de outro cliente.
+- Deve retornar `404` para orçamento ou cliente inexistente.
 
 ---
 
-### 2.3 Checklist de Implementação
-
-**Domínio**
-
-- [ ] Criar ou ajustar os campos `tipo` e `orcamentoOriginalId` no orçamento
-- [ ] Definir a regra de composição do valor total geral da OS
+### 2.3 Check-list de Implementação
 
 **Caso de uso**
 
-- [ ] Implementar `ConsultarOrcamento`
-- [ ] Implementar a busca de orçamento por identificador
-- [ ] Implementar a busca de orçamentos pelo documento do cliente
-- [ ] Implementar a busca do orçamento principal e dos complementares
-- [ ] Validar o vínculo entre orçamento, OS e cliente autenticado
-- [ ] Calcular e retornar o valor total geral
-- [ ] Garantir que a consulta não altera dados persistidos
+- [ ] Implementar o caso de uso `ConsultarOrcamento`.
+- [ ] Implementar busca de orçamento por identificador.
+- [ ] Implementar busca de orçamentos pelo documento do cliente.
+- [ ] Implementar busca de orçamento principal e complementares.
+- [ ] Validar o vínculo entre orçamento, OS e cliente autenticado.
+- [ ] Validar o CPF/CNPJ informado.
+- [ ] Calcular e retornar o valor total geral.
 
 **Repositório**
 
-- [ ] Criar ou ajustar `ClienteRepository`
-- [ ] Criar ou ajustar `OrcamentoRepository`
-- [ ] Criar ou ajustar `OrcamentoItemRepository`
+- [ ] Criar/ajustar `ClienteRepository`.
+- [ ] Criar/ajustar `OrcamentoRepository`.
+- [ ] Criar/ajustar `OrcamentoItemRepository`.
+- [ ] Criar/ajustar `OrdemDeServicoRepository`.
+
+**DTOs**
+
+- [ ] Criar DTO de resposta com cliente, OS, orçamentos e itens.
+- [ ] Incluir `clienteId` e documento na resposta.
+- [ ] Incluir orçamento principal e complementares na resposta.
+- [ ] Incluir tipo, status e estimativa de entrega de cada orçamento na resposta.
+- [ ] Incluir o status atual da OS na resposta.
 
 **Handler HTTP**
 
-- [ ] Implementar `GET /orcamentos`
-- [ ] Criar DTO de resposta com cliente, OS, orçamentos e itens
-- [ ] Implementar o envelope de resposta paginado
-- [ ] Aplicar autenticação JWT e autorização para o cliente vinculado à OS
-
-**Validações**
-
-- [ ] Validar os query params `orcamentoId`, `documento`, `page` e `size`
-- [ ] Validar o CPF/CNPJ informado
-- [ ] Retornar `400`, `401`, `403` e `404` conforme documentado
+- [ ] Criar handler para `GET /orcamentos`.
+- [ ] Validar query params `orcamentoId`, `documento`, `page` e `size`.
+- [ ] Aplicar autenticação JWT na rota.
+- [ ] Aplicar autorização para o cliente vinculado à OS.
+- [ ] Retornar erros `400`, `401`, `403` e `404`.
 
 **Testes unitários**
 
-- [ ] Cálculo do valor total geral
-- [ ] Consulta sem critério informado
-- [ ] Documento inválido
+- [ ] Criar testes para orçamento principal, complementar e ausência de complementar.
+- [ ] Criar testes para status, tipo e estimativa no retorno.
 
 **Testes de integração**
 
-- [ ] Orçamento principal e complementar na resposta
-- [ ] Consulta por identificador e por documento
-- [ ] Cliente sem acesso
-- [ ] Consulta não altera dados persistidos
+- [ ] Criar testes para documento inválido, cliente sem acesso e contrato do endpoint.
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI
+- [ ] Documentar o endpoint no Swagger/OpenAPI.
 
 **Review**
 
-- [ ] Revisar nomes conforme a Linguagem Ubíqua do projeto
-- [ ] Executar testes automatizados
-- [ ] Code Review aprovado
-
----
+- [ ] Executar testes automatizados.
+- [ ] Realizar code review.
+- [ ] Validar critérios de aceite da task.

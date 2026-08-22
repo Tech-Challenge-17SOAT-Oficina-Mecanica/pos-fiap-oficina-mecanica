@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Iniciar Execução
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -38,6 +38,7 @@ atendimento.
 - As peças e insumos necessários devem estar disponíveis ou reservados, quando aplicável.
 - A OS deve estar apta para execução e disponível na fila de atendimento.
 - A OS não pode estar finalizada nem entregue.
+- A OS pode já possuir mecânico responsável vinculado.
 
 **Requisitos Funcionais**
 
@@ -53,6 +54,8 @@ atendimento.
 | RF-OS-35 | Alterar o status da OS para `EM_EXECUCAO`. |
 | RF-OS-36 | Retirar ou marcar a OS como atendida na fila de atendimento. |
 | RF-OS-37 | Disponibilizar ao mecânico os serviços autorizados que deverão ser executados. |
+| RF-OS-38 | Associar o mecânico autenticado somente quando a OS não possuir mecânico responsável. |
+| RF-OS-39 | Manter o mecânico já vinculado à OS, sem sobrescrever ou criar novo vínculo. |
 
 **Requisitos Não Funcionais**
 
@@ -62,6 +65,7 @@ atendimento.
 | RNF-OS-20 | Somente usuários autorizados devem poder iniciar a execução. |
 | RNF-OS-21 | A mudança de status e o registro do início da execução devem ocorrer de forma consistente. |
 | RNF-OS-22 | Deve ser mantida a rastreabilidade do início da execução da OS. |
+| RNF-OS-23 | O vínculo do mecânico responsável não pode ser substituído indevidamente. |
 
 **Fluxo Principal**
 
@@ -72,11 +76,14 @@ atendimento.
 5. O sistema valida se os serviços estão autorizados.
 6. O sistema verifica se as peças e insumos necessários estão disponíveis ou reservados, quando aplicável.
 7. O mecânico solicita o início da execução.
-8. O sistema registra a data e hora de início.
-9. O sistema altera o status da OS para `EM_EXECUCAO`.
-10. O sistema atualiza a situação da OS na fila de atendimento.
-11. O sistema confirma o início da execução.
-12. O sistema disponibiliza os serviços autorizados para execução pelo mecânico.
+8. O sistema verifica se a OS já possui mecânico responsável.
+9. Quando não houver mecânico vinculado, o sistema associa o mecânico autenticado à OS.
+10. Quando já houver mecânico vinculado, o sistema mantém o vínculo existente.
+11. O sistema registra a data e hora de início.
+12. O sistema altera o status da OS para `EM_EXECUCAO`.
+13. O sistema atualiza a situação da OS na fila de atendimento.
+14. O sistema confirma o início da execução.
+15. O sistema disponibiliza os serviços autorizados para execução pelo mecânico.
 
 **Fluxos Alternativos / Exceções**
 
@@ -91,6 +98,7 @@ atendimento.
 | A7 | Execução já iniciada | Impede um novo início da mesma execução. |
 | A8 | OS finalizada ou entregue | Impede o início da execução. |
 | A9 | Usuário sem autorização | Impede a operação. |
+| A10 | OS já possui mecânico responsável | Mantém o vínculo existente, sem associar outro mecânico. |
 
 **Saída**
 
@@ -101,6 +109,7 @@ atendimento.
 - A OS fica com status `EM_EXECUCAO` e a data e hora de início ficam registradas.
 - A OS deixa de estar aguardando atendimento na fila.
 - Os serviços autorizados ficam disponíveis para execução e o mecânico pode registrar o andamento.
+- O mecânico responsável existente é preservado; quando não existir, o mecânico autenticado fica vinculado à OS.
 - Caso seja encontrado um novo problema durante o reparo, o fluxo pode seguir para Registrar
   Problema Adicional.
 
@@ -149,6 +158,7 @@ Não há corpo na requisição.
 - As peças e insumos necessários devem estar liberados para utilização, quando aplicável.
 - A OS ainda não pode estar `EM_EXECUCAO`.
 - A OS não pode estar `FINALIZADA` nem `ENTREGUE`.
+- Quando já existir `mecanicoResponsavelId`, o vínculo não pode ser sobrescrito ou duplicado.
 
 **Regra de domínio**
 
@@ -167,17 +177,20 @@ mecânico seleciona a OS, iniciar execução.
 4. Validar se existe orçamento aprovado.
 5. Validar se a OS está apta para execução.
 6. Validar disponibilidade ou reserva dos itens necessários, quando aplicável.
-7. Registrar o início da execução, com data e hora.
-8. Associar o mecânico responsável.
-9. Alterar o status da OS para `EM_EXECUCAO`.
-10. Retirar ou marcar a OS como atendida na fila de atendimento.
-11. Persistir as alterações.
-12. Retornar a Ordem de Serviço atualizada.
+7. Verificar se a OS possui `mecanicoResponsavelId`.
+8. Quando o campo estiver vazio, associar o mecânico autenticado.
+9. Quando o campo já estiver preenchido, manter o mecânico responsável existente.
+10. Registrar o início da execução, com data e hora.
+11. Alterar o status da OS para `EM_EXECUCAO`.
+12. Retirar ou marcar a OS como atendida na fila de atendimento.
+13. Persistir as alterações.
+14. Retornar a Ordem de Serviço atualizada.
 
 **Persistência**
 
 - Consulta: `orcamento` (autorização dos serviços), estoque (disponibilidade ou reserva dos itens).
-- Altera: `ordem_servico` (`status = EM_EXECUCAO`, `data_inicio_execucao`, `mecanico_id`, situação na fila).
+- Altera: `ordem_servico` (`status = EM_EXECUCAO`, `data_inicio_execucao`, situação na fila).
+- `mecanicoResponsavelId`: manter o valor existente; preencher com o mecânico autenticado somente quando estiver vazio.
 
 **Saída da API**
 
@@ -219,6 +232,8 @@ o cliente sobre a conclusão. Cada uma dessas operações tem o seu próprio cas
 *Unitários*
 
 - Início válido altera o status para `EM_EXECUCAO` e grava a data de início.
+- Associa o mecânico autenticado quando a OS não possuir mecânico responsável.
+- Mantém o mecânico já vinculado e não sobrescreve o vínculo ao iniciar a execução.
 - Rejeita OS sem orçamento aprovado.
 - Rejeita execução já iniciada.
 - Rejeita OS `FINALIZADA` ou `ENTREGUE`.
@@ -228,6 +243,7 @@ o cliente sobre a conclusão. Cada uma dessas operações tem o seu próprio cas
 *Integração*
 
 - `POST` válido retorna `200` e persiste status, data de início e mecânico responsável.
+- A OS com mecânico responsável já vinculado mantém o mesmo identificador no retorno e na persistência.
 - OS inexistente retorna `404`.
 - Orçamento não aprovado retorna `409`.
 - Execução já iniciada retorna `409`.
@@ -248,7 +264,9 @@ o cliente sobre a conclusão. Cada uma dessas operações tem o seu próprio cas
 - [ ] Validar disponibilidade ou reserva das peças e dos insumos necessários
 - [ ] Definir a regra para OS que não utiliza peças nem insumos
 - [ ] Alterar o status da OS para `EM_EXECUCAO` e registrar a data e hora de início
-- [ ] Associar o mecânico responsável à execução
+- [ ] Verificar se existe `mecanicoResponsavelId` na OS
+- [ ] Associar o mecânico autenticado somente quando `mecanicoResponsavelId` estiver vazio
+- [ ] Manter o mecânico responsável existente sem sobrescrever o vínculo
 
 **Caso de uso**
 
@@ -291,11 +309,14 @@ o cliente sobre a conclusão. Cada uma dessas operações tem o seu próprio cas
 - [ ] Insumos necessários indisponíveis
 - [ ] OS que não necessita de peças nem insumos
 - [ ] Usuário sem autorização
+- [ ] OS com mecânico responsável já vinculado
+- [ ] OS sem mecânico responsável
 
 **Testes de integração**
 
 - [ ] Persistência do status `EM_EXECUCAO`
 - [ ] Persistência da data de início
+- [ ] Persistência do mecânico responsável sem sobrescrita
 - [ ] Atualização da fila de atendimento
 
 **Documentação**

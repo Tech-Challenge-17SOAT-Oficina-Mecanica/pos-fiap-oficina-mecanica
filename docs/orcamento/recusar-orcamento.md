@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Recusar Orçamento
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -20,31 +20,38 @@ Cliente.
 
 **Objetivo**
 
-Recusar o orçamento e não autorizar a execução dos serviços propostos.
+Recusar os serviços apresentados em um orçamento principal ou complementar.
 
 **Problema**
 
-O cliente pode optar por não realizar os serviços apresentados, sendo necessário registrar
-formalmente sua decisão e encerrar o atendimento.
+A oficina precisa registrar a decisão do cliente quando ele não autoriza um orçamento. A recusa
+do orçamento principal encerra o atendimento; a recusa de um orçamento complementar não deve
+cancelar os serviços já aprovados no orçamento principal.
 
 **Pré-condições**
 
 - Deve existir uma OS associada ao cliente.
 - Deve existir um orçamento associado à OS.
+- O orçamento deve possuir `tipoOrcamento` igual a `PRINCIPAL` ou `COMPLEMENTAR`.
+- O orçamento deve estar com status `CRIADO`.
+- Quando o orçamento for `COMPLEMENTAR`, ele deve estar vinculado ao orçamento principal da mesma OS.
 - A OS deve estar com status `AGUARDANDO_APROVACAO`.
 - O cliente deve estar autenticado e autorizado.
-- O orçamento não deve possuir aprovação ou recusa registrada.
 
 **Requisitos Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RF-ORC-23 | Permitir ao cliente recusar o orçamento. |
-| RF-ORC-24 | Registrar o cliente responsável pela recusa. |
-| RF-ORC-25 | Registrar a data e hora da recusa. |
-| RF-ORC-26 | Registrar o motivo da recusa, quando informado. |
-| RF-ORC-27 | Atualizar a OS para `CANCELADA`. |
-| RF-ORC-28 | Impedir nova decisão para orçamento que já possua aprovação ou recusa registrada. |
+| RF-ORC-23 | Permitir ao cliente recusar orçamento principal. |
+| RF-ORC-24 | Permitir ao cliente recusar orçamento complementar. |
+| RF-ORC-25 | Identificar o tipo do orçamento a ser recusado. |
+| RF-ORC-26 | Registrar o cliente responsável pela recusa. |
+| RF-ORC-27 | Registrar a data e hora da recusa. |
+| RF-ORC-28 | Registrar o motivo da recusa, quando informado. |
+| RF-ORC-29 | Atualizar o `statusOrcamento` para `RECUSADO`. |
+| RF-ORC-30 | Atualizar a OS para `CANCELADA` quando o orçamento principal for recusado. |
+| RF-ORC-31 | Não cancelar a OS quando o orçamento complementar for recusado. |
+| RF-ORC-32 | Impedir nova decisão para orçamento já aprovado ou recusado. |
 
 **Requisitos Não Funcionais**
 
@@ -53,36 +60,45 @@ formalmente sua decisão e encerrar o atendimento.
 | RNF-ORC-11 | A recusa deve exigir autenticação e autorização do cliente. |
 | RNF-ORC-12 | A recusa deve ser registrada de forma persistente. |
 | RNF-ORC-13 | A operação deve ser rastreável. |
-| RNF-ORC-14 | A recusa e o cancelamento da OS devem ocorrer de forma transacional. |
+| RNF-ORC-14 | A recusa e as atualizações necessárias devem ocorrer de forma transacional. |
 
 **Fluxo Principal**
 
 1. O cliente consulta o orçamento.
-2. O sistema apresenta os serviços, peças, insumos e valores.
+2. O sistema apresenta os serviços, peças, insumos, valores e tipo do orçamento.
 3. O cliente seleciona a recusa.
 4. O cliente confirma a recusa.
 5. O sistema valida o orçamento, a OS e a autorização do cliente.
-6. O sistema registra a recusa.
-7. O sistema atualiza a OS para `CANCELADA`.
+6. O sistema identifica se o orçamento é `PRINCIPAL` ou `COMPLEMENTAR`.
+7. O sistema atualiza o `statusOrcamento` para `RECUSADO`.
+8. O sistema registra o cliente, a data/hora e o motivo da recusa.
+9. Quando o orçamento for `PRINCIPAL`, o sistema atualiza a OS para `CANCELADA`.
+10. Quando o orçamento for `COMPLEMENTAR`, o sistema mantém a OS ativa no fluxo dos serviços do orçamento principal.
 
 **Fluxos Alternativos / Exceções**
 
 | ID | Situação | Comportamento do sistema |
 |---|---|---|
 | A1 | Cliente cancela a recusa | Nenhuma alteração é realizada. |
-| A2 | Orçamento já possui aprovação ou recusa registrada | Impede nova decisão. |
-| A3 | Orçamento não encontrado | Informa que o orçamento não existe. |
-| A4 | Cliente não possui autorização | Impede a recusa. |
+| A2 | Orçamento já aprovado | Impede a recusa. |
+| A3 | Orçamento já recusado | Impede nova recusa. |
+| A4 | Orçamento complementar sem principal vinculado | Impede a recusa. |
+| A5 | Orçamento não encontrado | Informa que o orçamento não existe. |
+| A6 | Cliente não possui autorização | Impede a recusa. |
 
 **Saída**
 
-- Recusa do orçamento registrada e OS cancelada.
+- Orçamento recusado.
+- Quando for orçamento principal, OS cancelada.
+- Quando for orçamento complementar, OS permanece ativa.
 
 **Pós-condições**
 
-- Cliente, data e hora e motivo da recusa registrados.
-- A OS fica com status `CANCELADA` e não pode seguir para execução.
-- O orçamento não recebe status próprio.
+- `statusOrcamento` atualizado para `RECUSADO`.
+- Cliente, data/hora e motivo da recusa registrados.
+- A recusa do orçamento principal impede a execução da OS.
+- A recusa do orçamento complementar impede somente os serviços complementares.
+- A OS não é cancelada pela recusa de um orçamento complementar.
 
 ---
 
@@ -98,7 +114,7 @@ POST /orcamentos/{orcamentoId}/recusar
 
 - `Bearer <JWT>` obrigatório.
 - Permitido apenas para o cliente vinculado à OS do orçamento.
-- Escopo: `orcamentos:aprovar`.
+- Escopo: `orcamentos:recusar`.
 - O cliente que recusa é identificado pelo usuário autenticado.
 
 **Entrada**
@@ -106,7 +122,9 @@ POST /orcamentos/{orcamentoId}/recusar
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
 | Path | `orcamentoId` | uuid | Identificador do orçamento. |
-| Body | `motivo` | string | Opcional; motivo da recusa. |
+| Body | `motivo` | string | Motivo da recusa, opcional. |
+
+Exemplo:
 
 ```json
 {
@@ -118,23 +136,18 @@ POST /orcamentos/{orcamentoId}/recusar
 
 *Técnicas*
 
-- `orcamentoId` em formato UUID válido.
-- `motivo` válido, quando informado.
+- `orcamentoId` deve possuir formato UUID válido.
+- O motivo da recusa, quando informado, deve obedecer ao tamanho máximo definido pelo sistema.
 
 *Negócio*
 
 - O orçamento deve existir.
 - A OS vinculada deve pertencer ao cliente autenticado.
 - A OS deve estar em `AGUARDANDO_APROVACAO`.
-- Não pode existir aprovação nem recusa registrada para o orçamento.
-
-**Regra de domínio**
-
-```
-OS em AGUARDANDO_APROVACAO → recusar orçamento → OS em CANCELADA
-```
-
-O orçamento não possui campo de status: a etapa do fluxo é controlada pelo status da OS.
+- `tipoOrcamento` deve ser `PRINCIPAL` ou `COMPLEMENTAR`.
+- `statusOrcamento` deve estar em `CRIADO`.
+- Quando o tipo for `COMPLEMENTAR`, deve existir orçamento principal vinculado à mesma OS.
+- Quando o tipo for `COMPLEMENTAR`, `orcamentoOriginalId` deve referenciar o orçamento principal da mesma OS.
 
 **Processamento**
 
@@ -142,28 +155,66 @@ O orçamento não possui campo de status: a etapa do fluxo é controlada pelo st
 2. Identificar o cliente autenticado.
 3. Consultar o orçamento e a OS vinculada.
 4. Validar a autorização do cliente.
-5. Validar se o orçamento ainda não possui decisão registrada.
-6. Registrar o cliente, a data e hora e o motivo da recusa.
-7. Atualizar a OS para `CANCELADA`.
-8. Persistir as alterações em uma única transação.
-9. Registrar a operação em log.
+5. Validar se a OS está em `AGUARDANDO_APROVACAO`.
+6. Validar se o orçamento está em `CRIADO`.
+7. Identificar o tipo do orçamento.
+8. Caso seja complementar, validar o vínculo com o orçamento principal.
+9. Atualizar `statusOrcamento` para `RECUSADO`.
+10. Registrar o cliente, a data/hora e o motivo da recusa.
+11. Quando o orçamento for `PRINCIPAL`, atualizar a OS para `CANCELADA`.
+12. Quando o orçamento for `COMPLEMENTAR`, consultar o orçamento principal:
+    - se o principal estiver `APROVADO`, atualizar a OS para `AGUARDANDO_EXECUCAO`;
+    - caso contrário, manter a OS em `AGUARDANDO_APROVACAO`.
+13. Persistir as alterações em uma única transação.
+14. Registrar a operação em log, sem expor dados sensíveis.
 
 **Persistência**
 
-- Consulta: `orcamento`, `ordem_servico`, `cliente`.
-- Altera: `orcamento` (`cliente_recusador_id`, `data_recusa`, `motivo_recusa`),
-  `ordem_servico.status`.
+*Orçamento*
+
+- Atualizar `statusOrcamento` para `RECUSADO`.
+- Registrar `clienteRecusadorId`.
+- Registrar `dataRecusa`.
+- Registrar `motivoRecusa`, quando informado.
+
+*Ordem de Serviço*
+
+- Quando o orçamento for principal: atualizar `status` para `CANCELADA`.
+- Quando o orçamento for complementar e o principal estiver aprovado: atualizar `status` para `AGUARDANDO_EXECUCAO`.
+- Quando o orçamento for complementar e o principal não estiver aprovado: manter `status` em `AGUARDANDO_APROVACAO`.
+
+As alterações no Orçamento e na Ordem de Serviço devem ocorrer na mesma transação.
 
 **Saída da API**
 
+Exemplo para orçamento principal:
+
 ```json
 {
-  "orcamentoId": "9c2a71f8-4e35-4d19-b8a6-27f0e5c4a913",
-  "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
+  "orcamentoId": "uuid-do-orcamento-principal",
+  "ordemServicoId": "uuid-da-os",
+  "tipoOrcamento": "PRINCIPAL",
+  "statusOrcamento": "RECUSADO",
   "statusOrdemServico": "CANCELADA",
-  "clienteId": "c7f3a9b2-1e4d-4c8a-9f21-0b6d5e2a7c14",
-  "dataRecusa": "2026-08-18T10:30:00-03:00",
+  "clienteId": "uuid-do-cliente",
+  "dataRecusa": "2026-08-22T10:30:00-03:00",
   "motivo": "Valor acima do esperado."
+}
+```
+
+Exemplo para orçamento complementar:
+
+```json
+{
+  "orcamentoId": "uuid-do-orcamento-complementar",
+  "ordemServicoId": "uuid-da-os",
+  "tipoOrcamento": "COMPLEMENTAR",
+  "orcamentoOriginalId": "uuid-do-orcamento-principal",
+  "statusOrcamento": "RECUSADO",
+  "statusOrdemServico": "AGUARDANDO_EXECUCAO",
+  "clienteId": "uuid-do-cliente",
+  "dataRecusa": "2026-08-22T10:30:00-03:00",
+  "motivo": "Não autorizo a substituição da correia."
 }
 ```
 
@@ -171,95 +222,103 @@ O orçamento não possui campo de status: a etapa do fluxo é controlada pelo st
 
 | Código | Situação |
 |---|---|
-| `200` | Recusa registrada com sucesso. |
-| `400` | Motivo da recusa inválido. |
-| `401` | Token ausente ou expirado. |
-| `403` | Cliente sem permissão para recusar o orçamento. |
-| `404` | Orçamento não encontrado. |
-| `409` | Orçamento já possui aprovação ou recusa registrada; OS fora de `AGUARDANDO_APROVACAO`. |
+| 200 OK | Recusa registrada com sucesso. |
+| 400 Bad Request | Motivo da recusa inválido ou identificador inválido. |
+| 401 Unauthorized | Cliente não autenticado. |
+| 403 Forbidden | Cliente sem permissão para recusar o orçamento. |
+| 404 Not Found | Orçamento não encontrado. |
+| 409 Conflict | Orçamento já aprovado, recusado ou OS fora de `AGUARDANDO_APROVACAO`. |
+| 422 Unprocessable Entity | Orçamento complementar sem vínculo válido com orçamento principal. |
+| 500 Internal Server Error | Erro inesperado. |
 
 **Dependências**
 
+- Módulo de autenticação JWT.
+- Módulo de autorização.
 - `OrcamentoRepository`.
 - `OrdemDeServicoRepository`.
 - Contexto do cliente autenticado.
-- Middleware de autenticação/autorização.
+- Banco de dados.
 
 **Testes**
 
 *Unitários*
 
-- Registra recusa para orçamento válido vinculado ao cliente autenticado.
-- Registra cliente, data e hora e motivo da recusa.
-- Não cria nem atualiza status próprio do orçamento.
-- Rejeita orçamento com aprovação ou recusa já registrada.
+- Deve recusar orçamento principal válido vinculado ao cliente autenticado.
+- Deve recusar orçamento complementar válido vinculado ao principal da mesma OS.
+- Deve registrar cliente, data/hora e motivo da recusa.
+- Deve atualizar `statusOrcamento` para `RECUSADO`.
+- Deve atualizar a OS para `CANCELADA` quando o orçamento principal for recusado.
+- Não deve cancelar a OS quando o orçamento complementar for recusado.
+- Deve atualizar a OS para `AGUARDANDO_EXECUCAO` quando o complementar for recusado e o principal estiver aprovado.
+- Deve impedir recusa de orçamento já aprovado.
+- Deve impedir recusa de orçamento já recusado.
+- Deve impedir recusa de orçamento complementar sem principal vinculado.
 
 *Integração*
 
-- Recusa válida retorna `200` e atualiza a OS para `CANCELADA`.
-- Orçamento inexistente retorna `404`.
-- Orçamento de outro cliente retorna `403`.
-- Orçamento já decidido retorna `409`.
-- Sem autenticação retorna `401`.
-- Recusa e cancelamento da OS ocorrem na mesma transação.
+- Deve retornar `400` para motivo ou identificador inválido.
+- Deve retornar `401` sem autenticação.
+- Deve retornar `403` para orçamento de outro cliente.
+- Deve retornar `404` para orçamento inexistente.
+- Deve retornar `409` quando a OS não estiver em estado compatível.
+- Deve retornar `422` para orçamento complementar sem vínculo válido com principal.
+- Deve garantir que recusa e atualização da OS ocorram na mesma transação.
 
 ---
 
-### 4.3 Checklist de Implementação
+### 4.3 Check-list de Implementação
 
 **Domínio**
 
-- [ ] Criar ou ajustar os campos `clienteRecusadorId`, `dataRecusa` e `motivoRecusa` no orçamento
-- [ ] Não criar campo de status no orçamento
-- [ ] Garantir a transição da OS de `AGUARDANDO_APROVACAO` para `CANCELADA`
+- [ ] Criar/ajustar `TipoOrcamento` com `PRINCIPAL` e `COMPLEMENTAR`.
+- [ ] Criar/ajustar `StatusOrcamento` com `CRIADO`, `APROVADO` e `RECUSADO`.
+- [ ] Criar/ajustar os campos `clienteRecusadorId`, `dataRecusa` e `motivoRecusa` no Orçamento.
+- [ ] Garantir a transição `CRIADO` → `RECUSADO` no orçamento.
+- [ ] Garantir que orçamento complementar tenha orçamento principal vinculado.
+- [ ] Garantir que a recusa do complementar não cancele a OS.
+- [ ] Garantir a transição da OS `AGUARDANDO_APROVACAO` → `CANCELADA` para recusa do orçamento principal.
 
 **Caso de uso**
 
-- [ ] Implementar `RecusarOrcamento`
-- [ ] Validar o vínculo entre cliente, OS e orçamento
-- [ ] Validar que a OS está em `AGUARDANDO_APROVACAO`
-- [ ] Validar que o orçamento não possui aprovação nem recusa anterior
-- [ ] Registrar o cliente, a data e hora e o motivo da recusa
-- [ ] Atualizar a OS para `CANCELADA`
+- [ ] Implementar o caso de uso `RecusarOrcamento`.
+- [ ] Validar o vínculo entre cliente, OS e orçamento.
+- [ ] Validar o tipo e o status do orçamento.
+- [ ] Validar orçamento complementar e seu vínculo com o principal.
+- [ ] Atualizar `statusOrcamento` para `RECUSADO`.
+- [ ] Registrar o cliente, a data/hora e o motivo da recusa.
+- [ ] Atualizar a OS conforme o tipo do orçamento recusado.
 
 **Repositório**
 
-- [ ] Criar ou ajustar `OrcamentoRepository`
-- [ ] Criar ou ajustar `OrdemDeServicoRepository`
-
-**Transação**
-
-- [ ] Garantir persistência transacional da recusa e do cancelamento da OS
+- [ ] Criar/ajustar `OrcamentoRepository`.
+- [ ] Criar/ajustar `OrdemDeServicoRepository`.
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /orcamentos/{orcamentoId}/recusar`
-- [ ] Obter o cliente pelo JWT
-- [ ] Criar DTO/request de entrada e DTO/response de saída
-- [ ] Aplicar autenticação e autorização na rota
-- [ ] Retornar os erros `400`, `401`, `403`, `404` e `409`
+- [ ] Criar handler para `POST /orcamentos/{orcamentoId}/recusar`.
+- [ ] Obter o cliente pelo JWT.
+- [ ] Aplicar autenticação e autorização na rota.
+- [ ] Retornar erros `400`, `401`, `403`, `404`, `409` e `422`.
+
+**Transação**
+
+- [ ] Garantir persistência transacional entre orçamento e OS.
 
 **Testes unitários**
 
-- [ ] Recusa válida
-- [ ] Orçamento inexistente
-- [ ] Orçamento de outro cliente
-- [ ] Orçamento já aprovado ou recusado
+- [ ] Criar testes para recusa principal, complementar, status inválido e vínculo inválido.
 
 **Testes de integração**
 
-- [ ] `200` com a OS em `CANCELADA`
-- [ ] Persistência transacional
-- [ ] `400`, `401`, `403`, `404` e `409`
+- [ ] Criar testes de autenticação, autorização e contrato do endpoint.
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI
+- [ ] Documentar o endpoint no Swagger/OpenAPI.
 
 **Review**
 
-- [ ] Revisar nomes conforme a Linguagem Ubíqua do projeto
-- [ ] Executar testes automatizados
-- [ ] Code Review aprovado
-
----
+- [ ] Executar testes automatizados.
+- [ ] Realizar code review.
+- [ ] Validar critérios de aceite da task.

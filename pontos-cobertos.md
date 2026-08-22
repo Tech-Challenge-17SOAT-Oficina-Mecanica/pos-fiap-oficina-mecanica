@@ -63,7 +63,7 @@ implementada em código.
 
 ## Orçamento
 
-- [x] Gerar orçamento — [gerar-orcamento.md](docs/orcamento/gerar-orcamento.md)
+- [x] Calcular orçamento — [calcular-orcamento.md](docs/orcamento/calcular-orcamento.md)
 - [x] Consultar orçamento — [consultar-orcamento.md](docs/orcamento/consultar-orcamento.md)
 - [x] Aprovar orçamento — [aprovar-orcamento.md](docs/orcamento/aprovar-orcamento.md)
 - [x] Recusar orçamento — [recusar-orcamento.md](docs/orcamento/recusar-orcamento.md)

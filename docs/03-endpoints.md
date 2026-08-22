@@ -64,7 +64,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
-| — | *(sem endpoint)* | Gera o orçamento principal; disparado internamente ao fim do diagnóstico | — | [gerar-orcamento.md](orcamento/gerar-orcamento.md) |
+| `POST` | `/orcamentos/{orcamentoId}/calcular` | Calcula os itens, o valor total geral e a estimativa de entrega de um orçamento existente | `orcamentos:escrever` | [calcular-orcamento.md](orcamento/calcular-orcamento.md) |
 | `GET` | `/orcamentos` | Consulta orçamentos por identificador ou pelo documento do cliente | `orcamentos:ler` | [consultar-orcamento.md](orcamento/consultar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/aprovar` | Cliente aprova o orçamento e libera a OS para execução | `orcamentos:aprovar` | [aprovar-orcamento.md](orcamento/aprovar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/recusar` | Cliente recusa o orçamento e a OS é cancelada | `orcamentos:aprovar` | [recusar-orcamento.md](orcamento/recusar-orcamento.md) |
@@ -133,5 +133,4 @@ existe? quem é o dono dela? o caminho está no padrão?
 | 1 | `GET /fila-atendimento` está na raiz, fora de `/ordens-servico`. Definir se a fila é recurso próprio ou uma visão da OS. | [consultar-fila-de-atendimento.md](ordem-de-servico/consultar-fila-de-atendimento.md) |
 | 2 | `POST /compras/pedidos` atende peça e insumo na mesma rota, diferenciando pelo tipo do item. Confirmar se fica assim ou se haverá rotas separadas. | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | 3 | A desativação usa `DELETE` em Peças & Insumos, Cliente e Veículo, mas o refinamento de Serviços propunha `PATCH /servicos/{id}/desativar`. Padronizar quando o contexto de Serviços for escrito. | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) |
-| 4 | Gerar Orçamento não tem endpoint: é disparado internamente ao fim do diagnóstico. Confirmar se o MVP precisa de uma rota administrativa para reprocessar a geração. | [gerar-orcamento.md](orcamento/gerar-orcamento.md) |
 | 5 | Não existe rota de consulta ou listagem de OS, embora sejam tarefas previstas e o cliente precise acompanhar o progresso pela API. | [pontos-cobertos.md](../pontos-cobertos.md) |
