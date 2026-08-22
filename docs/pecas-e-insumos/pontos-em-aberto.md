@@ -1,7 +1,7 @@
 ---
 documento: Pontos em Aberto — Contexto de Peças & Insumos
 dono: José Lázaro
-versao: 0.3
+versao: 0.4
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -44,3 +44,5 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Peç
 | 30 | A tarefa de reservar peça para OS foi reescrita e restabelece `POST /estoque/reservas`. Definir como a reserva de saldo já disponível se relaciona com a reserva criada por pedido de compra, evitando duplicidade para a mesma OS e peça. | [`reservar-peca-para-os.md`](reservar-peca-para-os.md), [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) | — |
 | 31 | A nova reserva exige o escopo `estoque:movimentar`, que ainda não aparece nas demais tarefas de Peças & Insumos. Confirmar se esse escopo será adotado no contexto ou se a operação deve usar `estoque:escrever`. | [`reservar-peca-para-os.md`](reservar-peca-para-os.md) | — |
 | 32 | Peça usa `POST /estoque/reservas` e insumo usa `POST /estoque/reservas-insumos`. Confirmar se a separação por rota será mantida ou se o recurso deve ser único com validação pelo tipo de item. | [`reservar-peca-para-os.md`](reservar-peca-para-os.md) e [`reservar-insumo-para-os.md`](reservar-insumo-para-os.md) | — |
+| 33 | O processamento pós-aprovação combina reserva e compra, mas há tarefas separadas para reservar peça e solicitar compra. Definir se ele substitui esses fluxos quando acionado por `OrcamentoAprovado` ou se apenas os orquestra, evitando duplicidade. | [`processar-pecas-para-reserva-e-compra.md`](processar-pecas-para-reserva-e-compra.md), [`reservar-peca-para-os.md`](reservar-peca-para-os.md) e [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) | — |
+| 34 | O refinamento recebido envia a chave de idempotência no path (`/{idempotencyKey}`), enquanto o padrão do projeto exige o header `Idempotency-Key`. O documento adotou o header; confirmar a decisão. | [`processar-pecas-para-reserva-e-compra.md`](processar-pecas-para-reserva-e-compra.md) | — |
