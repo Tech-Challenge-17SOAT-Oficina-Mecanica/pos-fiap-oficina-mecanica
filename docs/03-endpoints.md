@@ -61,6 +61,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/ordens-servico/{osId}/entrega` | Registra o pagamento e a entrega do veículo, encerrando a OS | `os:escrever` | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
 | `GET` | `/ordens-servico/{osId}` | Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos | `os:ler` | [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
 | `GET` | `/ordens-servico` | Lista OS com filtro por status, documento do cliente e placa | `os:ler` | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) |
+| `?` | *(a definir)* | Registra peças e insumos necessários na OS e na adição do orçamento; endpoint ainda não refinado | `os:escrever` | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
 | `GET` | `/ordens-servico/{osId}/tempo-execucao` | Retorna o tempo de execução de uma OS | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 | `GET` | `/ordens-servico/tempos-execucao` | Lista os tempos de execução e o tempo médio do período | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 
@@ -93,6 +94,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/estoque/insumos` | Cadastra um novo insumo no catálogo | `estoque:escrever` | [cadastrar-insumo.md](pecas-e-insumos/cadastrar-insumo.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
+| `POST` | `/estoque/entradas` | Registra o recebimento, efetiva as reservas do pedido e libera as OS sem itens pendentes | `estoque:movimentar` | [registrar-entrada-de-estoque.md](pecas-e-insumos/registrar-entrada-de-estoque.md) |
+| — | *(sem endpoint)* | Devolve peças e insumos ao estoque na recusa do orçamento; chamada em processo dentro de `RecusarOrcamento` | — | [retornar-peca-e-insumo-ao-estoque.md](pecas-e-insumos/retornar-peca-e-insumo-ao-estoque.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido e libera as reservas | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 
@@ -107,8 +110,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 8 |
-| **Total** | **39** |
+| Peças & Insumos | 9 |
+| **Total** | **40** |
 
 ---
 
@@ -125,7 +128,6 @@ existir, é uma decisão que precisa ser registrada.
 | *(sem endpoint)* | Enviar orçamento | Orçamento |
 | `GET /estoque/itens` | Consultar estoque | Peças & Insumos |
 | `GET /estoque/itens/faltantes` | Consultar peças faltantes | Peças & Insumos |
-| `POST /estoque/entradas` | Registrar entrada de estoque | Peças & Insumos |
 | `POST /estoque/saidas` | Registrar consumo e saída | Peças & Insumos |
 | `POST /estoque/reservas` | Reservar peça para OS | Peças & Insumos |
 | `DELETE /estoque/reservas/ordens-servico/{osId}` | Reservar peça para OS (liberação) | Peças & Insumos |
@@ -156,4 +158,5 @@ existir, é uma decisão que precisa ser registrada.
 | 6 | O path param aparece como `{id}` nos documentos de Serviços e como `{servicoId}` na desativação. A tabela padronizou `{servicoId}` — alinhar os documentos. | [consultar-servicos.md](servicos/consultar-servicos.md) e [atualizar-servico.md](servicos/atualizar-servico.md) |
 | 7 | Escopos de decisão do cliente: aprovar usa `orcamentos:aprovar` e recusar usa `orcamentos:recusar`. Confirmar se são dois escopos mesmo ou um só. | [aprovar-orcamento.md](orcamento/aprovar-orcamento.md) e [recusar-orcamento.md](orcamento/recusar-orcamento.md) |
 | 8 | Não existe rota para **criar** a Ordem de Serviço enquanto o documento não voltar, embora todas as outras rotas de OS dependam de uma OS existente. | Ordem de Serviço |
-| 9 | Nenhuma rota consulta o estoque hoje, mas a fila de atendimento e a finalização da OS validam disponibilidade de peças e insumos. | Peças & Insumos |
+| 9 | O registro de peças e insumos necessários na OS ainda não tem endpoint definido: o documento sugere rotas separadas por tipo de item, mas o refinamento técnico não foi escrito. | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
+| 10 | Nenhuma rota consulta o estoque hoje, mas a fila de atendimento e a finalização da OS validam disponibilidade de peças e insumos. | Peças & Insumos |
