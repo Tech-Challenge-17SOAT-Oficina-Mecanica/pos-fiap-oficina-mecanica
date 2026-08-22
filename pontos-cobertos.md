@@ -1,8 +1,8 @@
 ---
 documento: Pontos Cobertos — Checklist de Refinamento
 dono: José Lázaro
-versao: 0.4
-atualizado_em: 2026-08-19
+versao: 0.5
+atualizado_em: 2026-08-22
 status: em andamento
 ---
 
@@ -18,11 +18,11 @@ implementada em código.
 |---|---|---|---|
 | Cliente | 5 | 0 | 5 |
 | Veículo | 3 | 0 | 3 |
-| Ordem de Serviço | 5 | 5 | 18 |
+| Ordem de Serviço | 10 | 2 | 18 |
 | Orçamento | 0 | 5 | 8 |
 | Serviços | 1 | 0 | 4 |
-| Peças & Insumos | 6 | 7 | 13 |
-| **Total** | **20** | **17** | **51** |
+| Peças & Insumos | 8 | 5 | 13 |
+| **Total** | **27** | **12** | **51** |
 
 ---
 
@@ -43,15 +43,15 @@ implementada em código.
 ## Ordem de Serviço
 
 - [ ] Criar ordem de serviço — `criar-ordem-de-servico.md` aguardando reenvio
-- [ ] Iniciar diagnóstico — `iniciar-diagnostico.md` aguardando reenvio
-- [ ] Registrar serviços necessários — `registrar-servicos-necessarios.md` aguardando reenvio
-- [ ] Consultar fila de atendimentos — `consultar-fila-de-atendimento.md` aguardando reenvio
+- [x] Registrar problema relatado — [registrar-problema-relatado.md](docs/ordem-de-servico/registrar-problema-relatado.md), substitui a tarefa Iniciar diagnóstico
+- [x] Registrar serviços necessários — [registrar-servicos-necessarios.md](docs/ordem-de-servico/registrar-servicos-necessarios.md)
+- [x] Consultar fila de atendimentos — [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md)
 - [ ] Iniciar execução — `iniciar-execucao.md` aguardando reenvio
 - [x] Monitorar tempo médio de execução — [monitorar-tempo-medio-de-execucao.md](docs/ordem-de-servico/monitorar-tempo-medio-de-execucao.md)
 - [ ] Registrar peças necessárias
 - [ ] Registrar insumos necessários
-- [ ] Registrar diagnóstico
-- [ ] Incluir OS na fila de atendimento
+- [x] Registrar problema encontrado — [registrar-problema-encontrado.md](docs/ordem-de-servico/registrar-problema-encontrado.md), antes chamada Registrar diagnóstico
+- [x] Incluir OS na fila de atendimento — [incluir-os-na-fila-de-atendimento.md](docs/ordem-de-servico/incluir-os-na-fila-de-atendimento.md)
 - [ ] Selecionar próxima OS para execução
 - [ ] Registrar problema adicional
 - [ ] Registrar peças adicionais
@@ -92,8 +92,8 @@ implementada em código.
 - [ ] Reservar peças para OS — `reservar-peca-para-os.md` aguardando reenvio
 - [ ] Registrar consumo e saída — `registrar-consumo-e-saida.md` aguardando reenvio
 - [ ] Consultar peças faltantes — `consultar-pecas-faltantes.md` aguardando reenvio
-- [ ] Solicitar compra de peças — `solicitar-compra-de-pecas.md` aguardando reenvio
-- [ ] Solicitar compra de insumos — `solicitar-compra-de-insumos.md` aguardando reenvio
+- [x] Solicitar compra de peças — [solicitar-compra-de-pecas.md](docs/pecas-e-insumos/solicitar-compra-de-pecas.md)
+- [x] Solicitar compra de insumos — [solicitar-compra-de-insumos.md](docs/pecas-e-insumos/solicitar-compra-de-insumos.md)
 
 ---
 
