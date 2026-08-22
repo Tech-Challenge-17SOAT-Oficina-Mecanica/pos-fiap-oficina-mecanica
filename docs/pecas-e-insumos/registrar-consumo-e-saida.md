@@ -201,7 +201,7 @@ POST /estoque/saidas
 - `MovimentacaoEstoqueRepository`
 - Módulo Ordem de Serviço — status e itens
 - Serviço de idempotência
-- Caso de uso Reservar Peça para OS (pré-requisito)
+- Caso de uso que cria a reserva da peça para a OS (pré-requisito); o documento está sendo reescrito
 
 **Testes**
 

@@ -112,7 +112,6 @@ consumo e o ciclo de compras. Nove requisitos documentados:
 2. Atualizar Peça
 3. Atualizar Insumo
 4. Registrar Entrada de Estoque
-5. Reservar Peça para OS
 6. Registrar Consumo e Saída
 7. Consultar Peças Faltantes
 8. Solicitar Compra de Peças

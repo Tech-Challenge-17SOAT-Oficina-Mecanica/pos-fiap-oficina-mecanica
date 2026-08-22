@@ -89,8 +89,6 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
 | `POST` | `/estoque/entradas` | Registra o recebimento de peças e insumos | `estoque:movimentar` | [registrar-entrada-de-estoque.md](pecas-e-insumos/registrar-entrada-de-estoque.md) |
-| `POST` | `/estoque/reservas` | Reserva as peças de uma OS aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
-| `DELETE` | `/estoque/reservas/ordens-servico/{osId}` | Libera as reservas ativas de uma OS | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `POST` | `/estoque/saidas` | Dá baixa nas peças e insumos usados no serviço | `estoque:movimentar` | [registrar-consumo-e-saida.md](pecas-e-insumos/registrar-consumo-e-saida.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
@@ -114,9 +112,9 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Veículo | 5 |
 | Ordem de Serviço | 12 |
 | Orçamento | 5 |
-| Peças & Insumos | 14 |
+| Peças & Insumos | 12 |
 | Serviços | 5 |
-| **Total** | **47** |
+| **Total** | **45** |
 
 ---
 
@@ -143,5 +141,6 @@ existe? quem é o dono dela? o caminho está no padrão?
 | 6 | A entrega do veículo depende da confirmação do pagamento, mas pagamento não é um contexto documentado nem tem rota. Definir se entra no MVP. | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
 | 7 | O path param da OS aparecia como `{id}`, `{ordemServicoId}` e `{osId}` nos refinamentos. Foi padronizado `{osId}` — alinhar os documentos que estão sendo reenviados. | Todas as rotas de `/ordens-servico` |
 | 8 | Decidido: `PATCH /ordens-servico/{osId}/diagnostico/iniciar` deixou de existir e o documento `iniciar-diagnostico.md` foi removido. O início do diagnóstico é consequência de `POST /ordens-servico/{osId}/problema-relatado`. | [registrar-problema-relatado.md](ordem-de-servico/registrar-problema-relatado.md) |
+| 9 | `POST /estoque/reservas` e `DELETE /estoque/reservas/ordens-servico/{osId}` saíram da tabela junto com o documento de Reservar Peça para OS, que será reescrito. Hoje quem cria reserva é o pedido de compra. Recolocar as rotas quando o documento novo chegar, se elas continuarem existindo. | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 | 9 | O documento de compra de peças propunha `POST /compras/pedidos/pecas`, enquanto o de insumos manteve a rota compartilhada `POST /compras/pedidos`. Ficou a rota compartilhada — confirmar. | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 | 10 | `GET /estoque/insumos/{insumoId}/sugestao-compra` saiu do catálogo: a nova versão da compra de insumos tira o cálculo por estoque mínimo e consumo médio, e usa a necessidade apurada nas OS. Confirmar se a sugestão volta como tarefa própria. | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |

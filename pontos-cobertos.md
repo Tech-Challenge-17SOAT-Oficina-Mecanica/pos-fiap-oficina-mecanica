@@ -21,8 +21,8 @@ implementada em código.
 | Ordem de Serviço | 11 | 18 |
 | Orçamento | 6 | 8 |
 | Serviços | 4 | 4 |
-| Peças & Insumos | 13 | 13 |
-| **Total** | **43** | **52** |
+| Peças & Insumos | 12 | 13 |
+| **Total** | **42** | **52** |
 
 ---
 
@@ -90,7 +90,7 @@ implementada em código.
 - [x] Atualizar insumo — [atualizar-insumo.md](docs/pecas-e-insumos/atualizar-insumo.md)
 - [x] Deletar insumo — [deletar-insumo.md](docs/pecas-e-insumos/deletar-insumo.md)
 - [x] Registrar entrada de estoque — [registrar-entrada-de-estoque.md](docs/pecas-e-insumos/registrar-entrada-de-estoque.md)
-- [x] Reservar peças para OS — [reservar-peca-para-os.md](docs/pecas-e-insumos/reservar-peca-para-os.md)
+- [ ] Reservar peças para OS — documento removido, será reescrito
 - [x] Registrar consumo e saída — [registrar-consumo-e-saida.md](docs/pecas-e-insumos/registrar-consumo-e-saida.md)
 - [x] Consultar peças faltantes — [consultar-pecas-faltantes.md](docs/pecas-e-insumos/consultar-pecas-faltantes.md)
 - [x] Solicitar compra de peças — [solicitar-compra-de-pecas.md](docs/pecas-e-insumos/solicitar-compra-de-pecas.md)
@@ -108,6 +108,9 @@ implementada em código.
 - **Iniciar diagnóstico deixou de existir como tarefa.** Registrar problema relatado a substitui:
   o mesmo endpoint grava o relato do cliente, marca a data de início e muda a OS para
   `EM_DIAGNOSTICO`. O documento antigo foi removido.
+- **Reservar peças para OS** também voltou a ficar pendente: a regra do documento antigo dizia que a
+  reserva nasce da aprovação do orçamento, enquanto os documentos novos de compra dizem que ela
+  nasce do pedido de compra. O arquivo foi removido e a tarefa será reescrita.
 - **Incluir OS na fila de atendimento** voltou a ficar pendente: existiam duas versões concorrentes
   do documento e o time vai reescrever a tarefa. A regra em vigor está em
   [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md), que
