@@ -2,7 +2,7 @@
 documento: Pontos em Aberto — Contexto de Veículo
 dono: A definir
 versao: 0.1
-atualizado_em: 2026-08-19
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -24,3 +24,6 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Veí
 | 10 | Confirmar se atualização de veículo deve usar controle otimista com header `If-Match`, como outras operações de escrita do projeto. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
 | 11 | Confirmar se alteração de placa é permitida para veículo com Ordens de Serviço existentes ou se deve haver restrição específica. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
 | 12 | Confirmar se o escopo definitivo para atualização de veículos será `veiculos:escrever` ou se haverá escopo específico. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
+| 13 | Definir o dono do documento Cadastrar Veículo e Vincular ao Cliente. | [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |
+| 14 | Confirmar se a operação combinada exige somente `veiculos:escrever` ou também `clientes:escrever`, considerando que cria um vínculo com o cliente. | [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |
+| 15 | Confirmar se `POST /veiculos` continuará permitindo veículo sem cliente ou se todo veículo deverá nascer vinculado pela nova rota. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) e [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |

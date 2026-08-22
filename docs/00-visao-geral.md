@@ -92,11 +92,11 @@ documentação e pela manutenção das regras.
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 4 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 11 de 18 tarefas refinadas |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 12 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
 | Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 14 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
