@@ -1,46 +1,46 @@
 ---
 documento: Pontos em Aberto — Contexto de Ordem de Serviço
-dono: Helena Miranda
-versao: 0.1
+dono: A definir
+versao: 0.3
 atualizado_em: 2026-08-22
-status: rascunho
+status: em construcao
 ---
 
 # Pontos em Aberto — Ordem de Serviço
 
-Este documento centraliza as decisões pendentes das tarefas do contexto de Ordem de Serviço.
+## O que é este documento
 
-> O arquivo anterior foi retirado do repositório junto com os documentos que estão sendo
-> reenviados. Os pontos abaixo vêm das tarefas atualmente presentes; quando os documentos
-> reenviados chegarem, os pontos deles voltam para esta tabela.
+Um ponto em aberto é uma **decisão que ainda não foi tomada** ou uma **inconsistência encontrada**
+entre os documentos deste contexto. Enquanto o ponto estiver aberto, quem for implementar não deve
+resolver sozinho: a escolha muda contrato de API, modelo de dados ou regra de negócio.
+
+Para fechar um ponto:
+
+1. aplique a decisão nos documentos afetados;
+2. registre o porquê — como *Decisão de projeto* no documento da tarefa, ou em
+   [`02-decisoes-arquiteturais.md`](../02-decisoes-arquiteturais.md) quando valer para todos os contextos;
+3. remova a linha desta tabela.
+
+Este é o contexto com mais dependências do projeto, então boa parte dos pontos aqui só fecha em
+conversa com outro contexto. O retrato do que já está decidido está em [`00-resumo.md`](00-resumo.md).
+
+## Inconsistências a corrigir
 
 | # | Ponto | Arquivo relacionado | Responsável |
 |---|---|---|---|
-| 1 | Máquina de estados completa da OS: `AGUARDANDO_EXECUCAO` e `CANCELADA` aparecem nos fluxos, mas não estão na lista de status do enunciado (`Recebida`, `Em diagnóstico`, `Aguardando aprovação`, `Em execução`, `Finalizada`, `Entregue`). Fechar a lista oficial e as transições permitidas. | [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md), [`finalizar-servico.md`](finalizar-servico.md) e [`registrar-entrega-de-veiculo.md`](registrar-entrega-de-veiculo.md) | — |
-| 2 | Pagamento não é um contexto documentado do projeto, mas a entrega do veículo depende da confirmação do pagamento e apresenta o valor final ao cliente. Definir se pagamento entra no MVP, e como, ou se a regra de bloqueio por pagamento sai do fluxo de entrega. | [`registrar-entrega-de-veiculo.md`](registrar-entrega-de-veiculo.md) | — |
-| 3 | Nome do path param da OS: os documentos usavam `{id}`, `{ordemServicoId}` e `{osId}`. Foi padronizado `{osId}`. Confirmar e alinhar os documentos reenviados. | Todas as tarefas do contexto | — |
-| 4 | Envelope de paginação: os refinamentos usavam `content`/`page`/`size`/`totalElements` e `pagina`/`tamanho`/`total`/`itens`. Foi padronizado `data`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`. Confirmar. | [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md) e [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
-| 5 | Valores de status na API: a listagem trazia rótulos com acento e espaço (`Em diagnóstico`), enquanto os demais documentos usam `EM_DIAGNOSTICO`. Foi padronizado o formato em maiúsculas com sublinhado. Confirmar se a apresentação amigável fica com o cliente da API. | [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md) | — |
-| 6 | `event_data` usa `snake_case` no meio de uma resposta em `camelCase`, e seus campos internos estão em inglês (`aggregateType`, `eventType`, `occurredAt`). Definir o padrão de nomenclatura da API para esse bloco. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
-| 7 | A consulta por CPF/CNPJ foi resolvida como filtro da listagem (`GET /ordens-servico?documento=`), porque as duas tarefas propunham a mesma rota. Confirmar essa divisão entre listar e consultar. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) e [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md) | — |
-| 8 | Autenticação do cliente: o cliente consulta a própria OS, mas o enunciado só prevê JWT para as APIs administrativas. Mesma pendência registrada no contexto de Orçamento. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
-| 9 | Problemas da OS são retornados sem o campo de tipo, por decisão explícita do refinamento. Confirmar o motivo e se o tipo é usado internamente. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
-| 10 | A finalização exige que as movimentações de estoque estejam concluídas, mas não define se isso bloqueia a finalização. Fechar a regra com o contexto de Peças & Insumos. | [`finalizar-servico.md`](finalizar-servico.md) | — |
-| 11 | Notificação ao cliente na finalização não tem canal definido, e o cliente não tem contato cadastrado. Mesma pendência do contexto de Cliente. | [`finalizar-servico.md`](finalizar-servico.md) | — |
-| 12 | Numeração das tarefas do contexto: a ordem atual segue a ordem em que foram refinadas, não a ordem do fluxo. Decidir se renumera quando os documentos reenviados chegarem. | Todas as tarefas do contexto | — |
-| 13 | Novo status `AGUARDANDO_RECURSOS`: a compra de peças e de insumos passa a colocar as OS vinculadas nesse status. Ele não está na lista do enunciado nem na máquina de estados discutida até aqui. Fechar a lista definitiva de status da OS. | [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md) e [`../pecas-e-insumos/solicitar-compra-de-pecas.md`](../pecas-e-insumos/solicitar-compra-de-pecas.md) | — |
-| 14 | O orçamento passou a ter status próprio (`CRIADO`, `APROVADO`, `RECUSADO`), usado pelo registro de problema e pelo registro de serviços. Isso contradiz a decisão registrada no contexto de Orçamento, de que o orçamento não teria status e a etapa seria controlada pelo status da OS. Fechar a divergência com o contexto de Orçamento. | [`registrar-problema-encontrado.md`](registrar-problema-encontrado.md), [`registrar-servicos-necessarios.md`](registrar-servicos-necessarios.md) e [`../orcamento/pontos-em-aberto.md`](../orcamento/pontos-em-aberto.md) | — |
-| 15 | O orçamento agora nasce no registro do problema encontrado, e não em um caso de uso próprio de geração. Confirmar o que sobra da tarefa Gerar Orçamento do contexto de Orçamento. | [`registrar-problema-encontrado.md`](registrar-problema-encontrado.md) | — |
-| 16 | Decidido: a tarefa Iniciar Diagnóstico foi substituída por Registrar Problema Relatado, e o documento antigo foi removido junto com a rota `PATCH /diagnostico/iniciar`. | [`registrar-problema-relatado.md`](registrar-problema-relatado.md) | — |
-| 17 | A fila mudou de regra: antes as OS com mecânico responsável eram excluídas da consulta; agora elas permanecem e aparecem primeiro. Confirmar a nova regra com quem escreveu a versão anterior. | [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md) | — |
-| 18 | A OS passou a guardar peças e insumos necessários com quantidade reservada, atualizados pelo pedido de compra. Definir se esses itens vivem na OS, no orçamento ou nos dois, já que os serviços ficam no orçamento. | [`registrar-servicos-necessarios.md`](registrar-servicos-necessarios.md) e [`../pecas-e-insumos/solicitar-compra-de-pecas.md`](../pecas-e-insumos/solicitar-compra-de-pecas.md) | — |
-| 19 | Os IDs de requisito das tarefas reenviadas foram criados na sequência do contexto, e não reaproveitaram os IDs das versões anteriores. Renumerar tudo quando os documentos que faltam voltarem. | Todas as tarefas do contexto | — |
-| 20 | Decidido: Incluir OS na Fila de Atendimento foi reescrita. A fila não possui persistência própria; pertence à fila a OS em `AGUARDANDO_EXECUCAO` com `dataEntradaFila` preenchida, preservando o mecânico responsável. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md) | Helena Miranda |
-| 21 | Definir se a inclusão na fila ocorre na mesma transação da aprovação do orçamento ou por evento com consistência eventual e mecanismo de retentativa. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../orcamento/aprovar-orcamento.md`](../orcamento/aprovar-orcamento.md) | — |
-| 22 | A inclusão valida disponibilidade ou reserva de peças e insumos. Confirmar a regra aplicável ao insumo, que não possui reserva no modelo atual de estoque. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../pecas-e-insumos/registrar-consumo-e-saida.md`](../pecas-e-insumos/registrar-consumo-e-saida.md) | — |
-| 23 | Aprovar Orçamento altera diretamente a OS para `AGUARDANDO_EXECUCAO`. Confirmar se essa responsabilidade passa integralmente para `IncluirOSNaFilaAtendimento` para evitar duas implementações da mesma transição. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../orcamento/aprovar-orcamento.md`](../orcamento/aprovar-orcamento.md) | — |
-| 24 | O documento de Incluir OS na Fila de Atendimento foi removido: existiam duas versões concorrentes e o time vai reescrever a tarefa. A regra em vigor está descrita em [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md), que define a fila como as OS em `AGUARDANDO_EXECUCAO` com `dataEntradaFila` preenchida. | — | — |
-| 25 | O registro de peças e insumos necessários veio só com o refinamento de produto: falta o refinamento técnico e o checklist. O documento está publicado com as duas seções marcadas como pendentes. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) | — |
-| 26 | Duas modelagens concorrentes para o orçamento complementar: o registro de peças e insumos fala em **adições** do orçamento (`orcamento_adicao`, com adição principal e complementares), enquanto o registro de problema encontrado fala em **orçamentos** separados por tipo (`PRINCIPAL` e `COMPLEMENTAR`, um registro por orçamento). Escolher uma das duas antes de implementar. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) e [`registrar-problema-encontrado.md`](registrar-problema-encontrado.md) | — |
-| 27 | O registro de peças e insumos exige que o item já tenha reserva ativa ou pedido de compra vinculado à OS, mas a reserva por disponibilidade em estoque não tem tarefa documentada. Sem ela, item que já existe na prateleira não consegue ser registrado na OS. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) | — |
-| 28 | A entrada de estoque muda o status das OS vinculadas ao pedido recebido. Confirmar se essa transição pertence ao contexto de Peças & Insumos ou se deve ser feita pelo contexto de Ordem de Serviço, por evento. | [`../pecas-e-insumos/registrar-entrada-de-estoque.md`](../pecas-e-insumos/registrar-entrada-de-estoque.md) | — |
+| 1 | Duplicidade de IDs: `RF-OS-38` e `RF-OS-39` aparecem em dois documentos, e `RF-OS-129` a `RF-OS-136` também. Renumerar o contexto inteiro de uma vez. | Todos os documentos do contexto | — |
+| 2 | Máquina de estados da OS: `AGUARDANDO_RECURSOS` e `AGUARDANDO_EXECUCAO` são usados nos fluxos, mas não constam no enunciado. Fechar a lista oficial de status e as transições permitidas, incluindo `CANCELADA`. | Todos os documentos do contexto | — |
+| 3 | Duas modelagens concorrentes para o complementar: registrar peças e insumos fala em **adições** do orçamento (`orcamento_adicao`), e registrar problema encontrado fala em **orçamentos separados** por tipo. Escolher uma antes de implementar. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) e [`registrar-problema-encontrado.md`](registrar-problema-encontrado.md) | — |
+| 4 | Registrar peças e insumos necessários veio só com o refinamento de produto: faltam o refinamento técnico, a rota e o checklist. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) | — |
+| 5 | Criar Ordem de Serviço declara o endpoint em texto (`- POST /ordens-servico`) em vez de bloco `http`, como manda o guia. Ajustar o formato. | [`criar-ordem-de-servico.md`](criar-ordem-de-servico.md) | — |
+| 6 | O registro de peças e insumos exige que o item já tenha reserva ou pedido de compra vinculado à OS, mas quem cria a reserva é o contexto de Peças & Insumos, depois da aprovação. A ordem dos passos entre os dois contextos precisa ser desenhada junto. | [`registrar-pecas-e-insumos-necessarios.md`](registrar-pecas-e-insumos-necessarios.md) | — |
+| 7 | A entrada de estoque muda o status das OS vinculadas ao pedido recebido. Confirmar se essa transição pertence a Peças & Insumos ou se deve ser feita aqui, por evento. | [`../pecas-e-insumos/registrar-entrada-de-estoque.md`](../pecas-e-insumos/registrar-entrada-de-estoque.md) | — |
+| 8 | Pagamento não é contexto documentado, mas a entrega depende da confirmação dele e apresenta o valor final ao cliente. Definir se entra no MVP. | [`registrar-entrega-de-veiculo.md`](registrar-entrega-de-veiculo.md) | — |
+| 9 | Autenticação do cliente: ele consulta a própria OS, mas o enunciado só prevê JWT para as APIs administrativas. Mesma pendência do contexto de Orçamento. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
+| 10 | `event_data` usa `snake_case` no meio de uma resposta em `camelCase`, e seus campos internos estão em inglês. Definir o padrão de nomenclatura desse bloco. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
+| 11 | A consulta por CPF/CNPJ é filtro da listagem, e o detalhamento é por identificador. Confirmar essa divisão entre listar e consultar. | [`listar-ordens-de-servico.md`](listar-ordens-de-servico.md) e [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
+| 12 | Problemas da OS são retornados sem o campo de tipo, por decisão explícita. Confirmar o motivo e se o tipo é usado internamente. | [`consultar-ordem-de-servico.md`](consultar-ordem-de-servico.md) | — |
+| 13 | A finalização exige que as movimentações de estoque estejam concluídas, mas não define se isso bloqueia a operação. Fechar a regra com Peças & Insumos. | [`finalizar-servico.md`](finalizar-servico.md) | — |
+| 14 | Notificação ao cliente na finalização não tem canal definido, e o cliente não tem contato cadastrado. | [`finalizar-servico.md`](finalizar-servico.md) | — |
+| 15 | A numeração das tarefas segue a ordem em que foram refinadas, não a do fluxo. Decidir se renumera. | Todos os documentos do contexto | — |
+| 16 | Tarefas ainda não refinadas do contexto: selecionar próxima OS para execução e registrar problema adicional. | — | — |
