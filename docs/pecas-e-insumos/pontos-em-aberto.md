@@ -1,7 +1,7 @@
 ---
 documento: Pontos em Aberto — Contexto de Peças & Insumos
 dono: José Lázaro
-versao: 0.5
+versao: 0.6
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -47,3 +47,12 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Peç
 | 33 | O processamento pós-aprovação combina reserva e compra, mas há tarefas separadas para reservar peça e solicitar compra. Definir se ele substitui esses fluxos quando acionado por `OrcamentoAprovado` ou se apenas os orquestra, evitando duplicidade. | [`processar-pecas-para-reserva-e-compra.md`](processar-pecas-para-reserva-e-compra.md), [`reservar-peca-para-os.md`](reservar-peca-para-os.md) e [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) | — |
 | 34 | O refinamento recebido envia a chave de idempotência no path (`/{idempotencyKey}`), enquanto o padrão do projeto exige o header `Idempotency-Key`. O documento adotou o header; confirmar a decisão. | [`processar-pecas-para-reserva-e-compra.md`](processar-pecas-para-reserva-e-compra.md) | — |
 | 35 | O processamento de insumos retorna um `pedidoId` e status de pedido mesmo quando todos os insumos estiverem disponíveis e nenhuma compra for criada. Definir um contrato de resposta que represente também o caso sem solicitação de compra. | [`processar-insumos-para-reserva-e-compra.md`](processar-insumos-para-reserva-e-compra.md) | — |
+| 36 | Consultar Insumos exibe `saldoReservado`, mas o modelo anterior dizia que insumo não é reservado e o fluxo de compra mais recente passou a reservá-lo. Definir se o campo é sempre zero ou representa reservas de compra. | [`consultar-insumos.md`](consultar-insumos.md), [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) e `registrar-consumo-e-saida.md` | — |
+| 37 | `quantidadeDesejada` é uma única query, mas uma busca por descrição ou categoria pode retornar insumos com unidades diferentes. Definir se a quantidade só pode ser usada com código/ID ou se a API deve exigir uma unidade na entrada. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 38 | Confirmar se a listagem de insumos exige pelo menos um filtro ou permite navegar por todos os insumos ativos. O contrato atual exige código, descrição ou categoria. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 39 | Definir a divisão entre a consulta específica `GET /estoque/insumos` e a futura consulta geral `GET /estoque/itens`, que ainda está sem documento. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 40 | Definir o dono do documento Consultar Insumos. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 41 | A entrada de estoque passou a **efetivar reservas** e a mudar o status das OS de `AGUARDANDO_RECURSOS` para `AGUARDANDO_EXECUCAO`, na mesma transação. Confirmar com o contexto de Ordem de Serviço quem é o dono dessa transição de status. | [`registrar-entrada-de-estoque.md`](registrar-entrada-de-estoque.md) | — |
+| 42 | A devolução na recusa usa os tipos de movimentação `LIBERACAO_RESERVA` e `ENTRADA_RETORNO`, e a reserva ganha o status `LIBERADA`. Consolidar a lista oficial de tipos de movimentação e de status de reserva do contexto, hoje espalhada entre as tarefas. | [`retornar-peca-e-insumo-ao-estoque.md`](retornar-peca-e-insumo-ao-estoque.md) | — |
+| 43 | A devolução assume que os itens da OS têm marcação de devolução e vínculo com pedido de compra. Definir onde esses campos vivem: nos itens da OS ou na reserva. | [`retornar-peca-e-insumo-ao-estoque.md`](retornar-peca-e-insumo-ao-estoque.md) | — |
+| 44 | Não existe tarefa equivalente à devolução para o **cancelamento da OS** — só para a recusa do orçamento. Confirmar se o cancelamento por outro motivo também devolve os itens. | [`retornar-peca-e-insumo-ao-estoque.md`](retornar-peca-e-insumo-ao-estoque.md) | — |

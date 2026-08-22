@@ -92,11 +92,11 @@ documentação e pela manutenção das regras.
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 4 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 11 de 18 tarefas refinadas |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 12 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
 | Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 17 tarefas refinadas |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 16 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
@@ -108,7 +108,7 @@ de copiar o board sem crítica.
 Cobre o catálogo de peças e insumos, os saldos, a reserva para ordens de serviço, a baixa no
 consumo e o ciclo de compras. Nove requisitos documentados:
 
-1. Consultar Estoque
+1. Consultar Peças
 2. Atualizar Peça
 3. Atualizar Insumo
 4. Registrar Entrada de Estoque

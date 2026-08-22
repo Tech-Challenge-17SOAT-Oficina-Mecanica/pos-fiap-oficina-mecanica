@@ -44,6 +44,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 |---|---|---|---|---|
 | `GET` | `/veiculos` | Consulta veículo pela placa | `veiculos:ler` | [consultar-veiculo.md](veiculo/consultar-veiculo.md) |
 | `POST` | `/veiculos` | Cadastra um novo veículo | `veiculos:escrever` | [cadastrar-veiculo.md](veiculo/cadastrar-veiculo.md) |
+| `POST` | `/clientes/{clienteId}/veiculos` | Cadastra um veículo e o vincula ao cliente na mesma operação | `veiculos:escrever` | [cadastrar-veiculo-e-vincular-ao-cliente.md](veiculo/cadastrar-veiculo-e-vincular-ao-cliente.md) |
 | `PUT` | `/veiculos/{veiculoId}` | Atualiza os dados cadastrais do veículo | `veiculos:escrever` | [atualizar-veiculo.md](veiculo/atualizar-veiculo.md) |
 | `DELETE` | `/veiculos/{veiculoId}` | Inativa o veículo (exclusão lógica) | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 | `POST` | `/veiculos/{veiculoId}/reativacao` | Reativa um veículo inativado | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
@@ -61,6 +62,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/ordens-servico/{osId}/entrega` | Registra o pagamento e a entrega do veículo, encerrando a OS | `os:escrever` | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
 | `GET` | `/ordens-servico/{osId}` | Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos | `os:ler` | [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
 | `GET` | `/ordens-servico` | Lista OS com filtro por status, documento do cliente e placa | `os:ler` | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) |
+| `?` | *(a definir)* | Registra peças e insumos necessários na OS e na adição do orçamento; endpoint ainda não refinado | `os:escrever` | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
 | `GET` | `/ordens-servico/{osId}/tempo-execucao` | Retorna o tempo de execução de uma OS | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 | `GET` | `/ordens-servico/tempos-execucao` | Lista os tempos de execução e o tempo médio do período | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 
@@ -87,16 +89,21 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
+| `GET` | `/estoque/pecas` | Consulta peças com saldo físico, reservado e disponível | `estoque:ler` | [consultar-estoque.md](pecas-e-insumos/consultar-estoque.md) |
 | `POST` | `/estoque/pecas` | Cadastra uma nova peça no catálogo | `estoque:escrever` | [cadastrar-peca.md](pecas-e-insumos/cadastrar-peca.md) |
 | `PUT` | `/estoque/pecas/{pecaId}` | Atualiza os dados cadastrais da peça | `estoque:escrever` | [atualizar-peca.md](pecas-e-insumos/atualizar-peca.md) |
 | `DELETE` | `/estoque/pecas/{pecaId}` | Desativa a peça (exclusão lógica) | `estoque:escrever` | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) |
 | `POST` | `/estoque/insumos` | Cadastra um novo insumo no catálogo | `estoque:escrever` | [cadastrar-insumo.md](pecas-e-insumos/cadastrar-insumo.md) |
+| `GET` | `/estoque/insumos` | Consulta insumos por filtros, quantidade desejada e disponibilidade | `estoque:ler` | [consultar-insumos.md](pecas-e-insumos/consultar-insumos.md) |
+| `GET` | `/estoque/insumos/{insumoId}` | Consulta um insumo específico e sua disponibilidade | `estoque:ler` | [consultar-insumos.md](pecas-e-insumos/consultar-insumos.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
 | `POST` | `/estoque/reservas` | Reserva peças disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `POST` | `/estoque/reservas-insumos` | Reserva insumos disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-insumo-para-os.md](pecas-e-insumos/reservar-insumo-para-os.md) |
 | `POST` | `/estoque/solicitacoes-compra-reserva` | Reserva peças disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-pecas-para-reserva-e-compra.md](pecas-e-insumos/processar-pecas-para-reserva-e-compra.md) |
 | `POST` | `/estoque/solicitacoes-compra-reserva-insumos` | Reserva insumos disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-insumos-para-reserva-e-compra.md](pecas-e-insumos/processar-insumos-para-reserva-e-compra.md) |
+| `POST` | `/estoque/entradas` | Registra o recebimento, efetiva as reservas do pedido e libera as OS sem itens pendentes | `estoque:movimentar` | [registrar-entrada-de-estoque.md](pecas-e-insumos/registrar-entrada-de-estoque.md) |
+| — | *(sem endpoint)* | Devolve peças e insumos ao estoque na recusa do orçamento; chamada em processo dentro de `RecusarOrcamento` | — | [retornar-peca-e-insumo-ao-estoque.md](pecas-e-insumos/retornar-peca-e-insumo-ao-estoque.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido e libera as reservas | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 
@@ -107,12 +114,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Contexto | Endpoints |
 |---|---|
 | Cliente | 6 |
-| Veículo | 5 |
+| Veículo | 6 |
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 12 |
-| **Total** | **43** |
+| Peças & Insumos | 15 |
+| **Total** | **47** |
 
 ---
 
@@ -129,10 +136,8 @@ existir, é uma decisão que precisa ser registrada.
 | *(sem endpoint)* | Enviar orçamento | Orçamento |
 | `GET /estoque/itens` | Consultar estoque | Peças & Insumos |
 | `GET /estoque/itens/faltantes` | Consultar peças faltantes | Peças & Insumos |
-| `POST /estoque/entradas` | Registrar entrada de estoque | Peças & Insumos |
 | `POST /estoque/saidas` | Registrar consumo e saída | Peças & Insumos |
 | `DELETE /estoque/reservas/ordens-servico/{osId}` | Reservar peça para OS (liberação) | Peças & Insumos |
-| *(sem endpoint)* | Incluir OS na fila de atendimento | Ordem de Serviço |
 
 ---
 
@@ -159,4 +164,5 @@ existir, é uma decisão que precisa ser registrada.
 | 6 | O path param aparece como `{id}` nos documentos de Serviços e como `{servicoId}` na desativação. A tabela padronizou `{servicoId}` — alinhar os documentos. | [consultar-servicos.md](servicos/consultar-servicos.md) e [atualizar-servico.md](servicos/atualizar-servico.md) |
 | 7 | Escopos de decisão do cliente: aprovar usa `orcamentos:aprovar` e recusar usa `orcamentos:recusar`. Confirmar se são dois escopos mesmo ou um só. | [aprovar-orcamento.md](orcamento/aprovar-orcamento.md) e [recusar-orcamento.md](orcamento/recusar-orcamento.md) |
 | 8 | Não existe rota para **criar** a Ordem de Serviço enquanto o documento não voltar, embora todas as outras rotas de OS dependam de uma OS existente. | Ordem de Serviço |
-| 9 | Nenhuma rota consulta o estoque hoje, mas a fila de atendimento e a finalização da OS validam disponibilidade de peças e insumos. | Peças & Insumos |
+| 9 | O registro de peças e insumos necessários na OS ainda não tem endpoint definido: o documento sugere rotas separadas por tipo de item, mas o refinamento técnico não foi escrito. | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
+| 10 | Nenhuma rota consulta o estoque hoje, mas a fila de atendimento e a finalização da OS validam disponibilidade de peças e insumos. | Peças & Insumos |
