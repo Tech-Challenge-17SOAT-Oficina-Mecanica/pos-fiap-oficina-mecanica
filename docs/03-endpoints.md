@@ -1,8 +1,8 @@
 ---
 documento: Catálogo de Endpoints
 dono: José Lázaro
-versao: 0.2
-atualizado_em: 2026-08-19
+versao: 0.3
+atualizado_em: 2026-08-22
 status: em construcao
 ---
 
@@ -52,9 +52,11 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
 | `POST` | `/ordens-servico` | Cria a Ordem de Serviço para um cliente e veículo | `os:escrever` | [criar-ordem-de-servico.md](ordem-de-servico/criar-ordem-de-servico.md) |
-| `PATCH` | `/ordens-servico/{osId}/diagnostico/iniciar` | Inicia o diagnóstico da OS | `os:escrever` | [iniciar-diagnostico.md](ordem-de-servico/iniciar-diagnostico.md) |
+| `POST` | `/ordens-servico/{osId}/problema-relatado` | Registra o relato do cliente e inicia o diagnóstico | `os:escrever` | [registrar-problema-relatado.md](ordem-de-servico/registrar-problema-relatado.md) |
+| `POST` | `/ordens-servico/{osId}/problemas` | Registra problema encontrado e vincula ao orçamento aplicável | `os:escrever` | [registrar-problema-encontrado.md](ordem-de-servico/registrar-problema-encontrado.md) |
 | `POST` | `/ordens-servico/{osId}/servicos` | Registra os serviços necessários na OS | `os:escrever` | [registrar-servicos-necessarios.md](ordem-de-servico/registrar-servicos-necessarios.md) |
-| `GET` | `/fila-atendimento` | Lista as OS aptas para execução, da mais antiga para a mais recente | `os:ler` | [consultar-fila-de-atendimento.md](ordem-de-servico/consultar-fila-de-atendimento.md) |
+| `GET` | `/fila-atendimento` | Lista as OS aptas para execução, com as do mecânico responsável primeiro | `os:ler` | [consultar-fila-de-atendimento.md](ordem-de-servico/consultar-fila-de-atendimento.md) |
+| — | *(sem endpoint)* | Coloca a OS na fila após a aprovação de um orçamento; processamento interno | — | [incluir-os-na-fila-de-atendimento.md](ordem-de-servico/incluir-os-na-fila-de-atendimento.md) |
 | `POST` | `/ordens-servico/{osId}/execucao/iniciar` | Inicia a execução dos serviços autorizados | `os:escrever` | [iniciar-execucao.md](ordem-de-servico/iniciar-execucao.md) |
 | `GET` | `/ordens-servico/{osId}/tempo-execucao` | Retorna o tempo de execução de uma OS | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 | `GET` | `/ordens-servico/tempos-execucao` | Lista os tempos de execução e o tempo médio do período | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
@@ -85,12 +87,11 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `POST` | `/estoque/insumos` | Cadastra um novo insumo no catálogo | `estoque:escrever` | [cadastrar-insumo.md](pecas-e-insumos/cadastrar-insumo.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
-| `GET` | `/estoque/insumos/{insumoId}/sugestao-compra` | Calcula a quantidade sugerida de compra do insumo | `estoque:ler` | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `POST` | `/estoque/entradas` | Registra o recebimento de peças e insumos | `estoque:movimentar` | [registrar-entrada-de-estoque.md](pecas-e-insumos/registrar-entrada-de-estoque.md) |
 | `POST` | `/estoque/reservas` | Reserva as peças de uma OS aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `DELETE` | `/estoque/reservas/ordens-servico/{osId}` | Libera as reservas ativas de uma OS | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
 | `POST` | `/estoque/saidas` | Dá baixa nas peças e insumos usados no serviço | `estoque:movimentar` | [registrar-consumo-e-saida.md](pecas-e-insumos/registrar-consumo-e-saida.md) |
-| `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou de insumos | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
+| `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
 | `DELETE` | `/compras/pedidos/{pedidoId}` | Cancela um pedido de compra ainda não recebido | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 
 ## Serviços
@@ -110,9 +111,9 @@ Cadastrar, consultar e atualizar serviço ainda não foram refinados — ver
 |---|---|
 | Cliente | 6 |
 | Veículo | 4 |
-| Ordem de Serviço | 11 |
+| Ordem de Serviço | 12 |
 | Orçamento | 4 |
-| Peças & Insumos | 15 |
+| Peças & Insumos | 14 |
 | Serviços | 1 |
 | **Total** | **41** |
 
@@ -178,3 +179,6 @@ rota nova (então entra na tabela) e se alguma rota deixou de existir (então sa
 | 5 | `GET /ordens-servico` serve a listagem e também a busca das OS de um cliente por CPF/CNPJ, enquanto `GET /ordens-servico/{osId}` faz o detalhamento. Confirmar essa divisão entre listar e consultar. | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) e [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
 | 6 | A entrega do veículo depende da confirmação do pagamento, mas pagamento não é um contexto documentado nem tem rota. Definir se entra no MVP. | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
 | 7 | O path param da OS aparecia como `{id}`, `{ordemServicoId}` e `{osId}` nos refinamentos. Foi padronizado `{osId}` — alinhar os documentos que estão sendo reenviados. | Todas as rotas de `/ordens-servico` |
+| 8 | `PATCH /ordens-servico/{osId}/diagnostico/iniciar` deixou de existir: o início do diagnóstico virou consequência de `POST /ordens-servico/{osId}/problema-relatado`. Confirmar a retirada da rota antiga. | [registrar-problema-relatado.md](ordem-de-servico/registrar-problema-relatado.md) |
+| 9 | O documento de compra de peças propunha `POST /compras/pedidos/pecas`, enquanto o de insumos manteve a rota compartilhada `POST /compras/pedidos`. Ficou a rota compartilhada — confirmar. | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
+| 10 | `GET /estoque/insumos/{insumoId}/sugestao-compra` saiu do catálogo: a nova versão da compra de insumos tira o cálculo por estoque mínimo e consumo médio, e usa a necessidade apurada nas OS. Confirmar se a sugestão volta como tarefa própria. | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
