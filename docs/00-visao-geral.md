@@ -108,7 +108,7 @@ de copiar o board sem crítica.
 Cobre o catálogo de peças e insumos, os saldos, a reserva para ordens de serviço, a baixa no
 consumo e o ciclo de compras. Nove requisitos documentados:
 
-1. Consultar Estoque
+1. Consultar Peças
 2. Atualizar Peça
 3. Atualizar Insumo
 4. Registrar Entrada de Estoque
