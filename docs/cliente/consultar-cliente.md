@@ -98,9 +98,9 @@ GET /clientes
 
 Consulta por CPF/CNPJ via query param.
 
-> **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `GET /clientes?documento=...`, alinhada ao padrão compartilhado do projeto. A
-> alternativa `GET /clientes` foi descartada por não usar o prefixo `/`.
+> **Decisão de projeto.** A rota segue o padrão compartilhado do projeto: recurso no plural,
+> em minúsculas e **sem prefixo de versão**. A alternativa com prefixo `/api/v1` foi descartada
+> para manter todas as rotas do sistema no mesmo formato.
 
 **Autenticação / Autorização**
 
@@ -128,14 +128,14 @@ Consulta por CPF/CNPJ via query param.
 2. Validar presença e formato do documento.
 3. Consultar o cadastro de clientes pelo CPF/CNPJ.
 4. Caso encontre o cliente, consultar os veículos vinculados.
-5. Montar a resposta com os dados cadastrais do cliente e seus veículos.
+5. Montar a resposta com os dados cadastrais do cliente, seu contato, sua `version` e seus veículos.
 6. Caso não encontre, retornar erro informando que o cliente não foi encontrado.
 
 **Persistência**
 
 - Consulta: agregado/dados de `Cliente`.
 - Consulta: vínculo entre `Cliente` e `Veículo`.
-- Consulta: dados dos `Veículos` vinculados.
+- Consulta: dados dos `Veículos` vinculados, além do contato e da `version` do cliente.
 - Altera: nada.
 
 **Saída da API**
@@ -145,6 +145,10 @@ Consulta por CPF/CNPJ via query param.
   "id": "uuid-do-cliente",
   "nome": "Nome do Cliente",
   "documento": "00000000000",
+  "tipoDocumento": "CPF",
+  "telefone": "11988887777",
+  "email": "cliente@exemplo.com",
+  "version": 4,
   "veiculos": [
     {
       "id": "uuid-do-veiculo",
@@ -156,6 +160,10 @@ Consulta por CPF/CNPJ via query param.
   ]
 }
 ```
+
+> **Decisão de projeto.** A consulta de um recurso único devolve o objeto **direto**, sem envelope.
+> O envelope paginado `data`, `pagina`, `tamanho`, `totalElementos` e `totalPaginas` é usado apenas
+> em listagens. A resposta expõe `version` para que a atualização possa enviá-la no `If-Match`.
 
 **Códigos HTTP / Erros**
 

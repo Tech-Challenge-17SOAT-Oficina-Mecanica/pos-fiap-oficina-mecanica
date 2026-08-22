@@ -1,29 +1,47 @@
 ---
 documento: Pontos em Aberto — Contexto de Veículo
 dono: A definir
-versao: 0.1
+versao: 1.0
 atualizado_em: 2026-08-22
-status: rascunho
+status: em construcao
 ---
 
 # Pontos em Aberto — Veículo
 
-Este documento centraliza as decisões pendentes das tarefas do contexto de Veículo.
+## O que é este documento
 
-| # | Ponto | Arquivo relacionado | Responsável |
+Um ponto em aberto é uma **decisão que ainda não foi tomada** ou uma **inconsistência encontrada**
+entre os documentos deste contexto. Enquanto o ponto estiver aberto, quem for implementar não deve
+resolver sozinho: a escolha muda contrato de API, modelo de dados ou regra de negócio, e precisa
+valer para o time inteiro.
+
+Para fechar um ponto:
+
+1. aplique a decisão nos documentos afetados;
+2. registre o porquê — como *Decisão de projeto* no documento da tarefa, ou em
+   [02-decisoes-arquiteturais.md](../02-decisoes-arquiteturais.md) quando valer para todos os contextos;
+3. mova a linha para a tabela de decisões abaixo.
+
+O retrato do que já está decidido está em [00-resumo.md](00-resumo.md).
+
+## Inconsistências a corrigir
+
+Nenhuma. O último ponto aberto do contexto dependia da D-01 e foi fechado com ela, em 22/08/2026.
+
+## Decisões desta rodada
+
+| # | Ponto | Decisão | Onde foi aplicada |
 |---|---|---|---|
-| 1 | Confirmar o dono do documento do contexto Veículo. | — | — |
-| 2 | Confirmar se o escopo definitivo para consulta de veículos será `veiculos:ler` ou outro nome padronizado pelo time. | [`consultar-veiculo.md`](consultar-veiculo.md) | — |
-| 3 | Definir se a resposta de consulta de veículo deve usar envelope simples, como documentado aqui, ou algum envelope padronizado para recursos únicos. | [`consultar-veiculo.md`](consultar-veiculo.md) | — |
-| 4 | Definir o padrão definitivo de validação de placa, incluindo placa Mercosul e placa antiga. | [`consultar-veiculo.md`](consultar-veiculo.md) | — |
-| 5 | Confirmar se o escopo definitivo para cadastro de veículos será `veiculos:escrever` ou outro nome padronizado pelo time. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) | — |
-| 6 | Definir as validações de negócio para o campo `ano`, incluindo ano mínimo e se ano futuro é permitido. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) | — |
-| 7 | O refinamento de Deletar Veículo trazia a persona como Atendente e pedia restringir a operação aos perfis `ATENDENTE` e `GESTOR`, além de dizer que `MECANICO` recebe `403` logo depois de listar `MECANICO` entre os perfis permitidos. Foi padronizado como persona Mecânico e perfis `MECANICO` e `GESTOR`. Confirmar. | [`deletar-veiculo.md`](deletar-veiculo.md) | — |
-| 8 | A exclusão lógica depende de índice parcial `UNIQUE (placa) WHERE ativo = true` e da ausência de `ON DELETE CASCADE` nas foreign keys de OS. Confirmar com quem cuidar da migration. | [`deletar-veiculo.md`](deletar-veiculo.md) | — |
-| 9 | A reativação de veículo exige cliente proprietário ativo e devolve `422` nesse caso. Confirmar se `422` é o código certo, considerando a padronização de `409` e `422` discutida em [`02-decisoes-arquiteturais.md`](../02-decisoes-arquiteturais.md). | [`deletar-veiculo.md`](deletar-veiculo.md) | — |
-| 10 | Confirmar se atualização de veículo deve usar controle otimista com header `If-Match`, como outras operações de escrita do projeto. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
-| 11 | Confirmar se alteração de placa é permitida para veículo com Ordens de Serviço existentes ou se deve haver restrição específica. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
-| 12 | Confirmar se o escopo definitivo para atualização de veículos será `veiculos:escrever` ou se haverá escopo específico. | [`atualizar-veiculo.md`](atualizar-veiculo.md) | — |
-| 13 | Definir o dono do documento Cadastrar Veículo e Vincular ao Cliente. | [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |
-| 14 | Confirmar se a operação combinada exige somente `veiculos:escrever` ou também `clientes:escrever`, considerando que cria um vínculo com o cliente. | [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |
-| 15 | Confirmar se `POST /veiculos` continuará permitindo veículo sem cliente ou se todo veículo deverá nascer vinculado pela nova rota. | [`cadastrar-veiculo.md`](cadastrar-veiculo.md) e [`cadastrar-veiculo-e-vincular-ao-cliente.md`](cadastrar-veiculo-e-vincular-ao-cliente.md) | — |
+| 1 | Duplicidade de IDs: `RF-VEI-13` a `RF-VEI-19` e `RNF-VEI-10` a `RNF-VEI-14` apareciam em dois documentos. | **Renumerado.** Atualizar Veículo passou para `RF-VEI-27` a `RF-VEI-33` e `RNF-VEI-22` a `RNF-VEI-26`; Deletar Veículo ficou como estava. O contexto inteiro foi conferido e não há mais ID repetido. | [atualizar-veiculo.md](atualizar-veiculo.md) |
+| 2 | Três operações concorrentes de cadastro e vínculo de veículo. | **`POST /veiculos` aposentada.** Já aplicada junto com a revisão do contexto de Cliente; conferida aqui. | [cadastrar-veiculo.md](cadastrar-veiculo.md), [00-resumo.md](00-resumo.md), seção *Rotas aposentadas* de [../03-endpoints.md](../03-endpoints.md) e DT-05 |
+| 3 | A operação combinada usa rota sob `/clientes`, mas está documentada no contexto de Veículo. | **Fica onde está.** Com o cadastro avulso aposentado, esta passou a ser a única forma de cadastrar veículo, e o refinamento pertence a quem conhece as regras do veículo. | [cadastrar-veiculo-e-vincular-ao-cliente.md](cadastrar-veiculo-e-vincular-ao-cliente.md) |
+| 4 | A operação combinada exige `veiculos:escrever` mais `clientes:ler`. | **Exige apenas `veiculos:escrever`.** Não há validação cruzada contra o contexto de Cliente: a permissão vem nos escopos do próprio JWT. | [cadastrar-veiculo-e-vincular-ao-cliente.md](cadastrar-veiculo-e-vincular-ao-cliente.md) e DT-15 |
+| 5 | A persona da operação combinada é o Gestor; as demais tarefas têm o Mecânico. | **O perfil `GESTOR` deixou de existir.** Ficam `MECANICO`, `CLIENTE` e `SERVICO`. A troca foi aplicada em todos os contextos, não só neste. | Todas as tarefas do projeto, [../00-visao-geral.md](../00-visao-geral.md) e DT-11 |
+| 6 | Formato da placa: Mercosul e antigo convivem na frota. | **Aceita os dois**, `ABC1D23` e `ABC1234`, com normalização para maiúsculas, sem hífen e sem espaço antes de validar e de gravar. | [cadastrar-veiculo.md](cadastrar-veiculo.md), [atualizar-veiculo.md](atualizar-veiculo.md), [consultar-veiculo.md](consultar-veiculo.md) e DT-12 |
+| 7 | Faixa de validação do campo `ano` não definida. | **De `1900` até o ano corrente mais um**, o que cobre o modelo do ano seguinte vendido no fim do ano. | [cadastrar-veiculo.md](cadastrar-veiculo.md), [atualizar-veiculo.md](atualizar-veiculo.md) e DT-13 |
+| 8 | Alteração de placa em veículo com Ordens de Serviço existentes. | **Permitida.** A OS grava a placa vigente no momento da criação, então a correção do cadastro não reescreve o histórico. | [atualizar-veiculo.md](atualizar-veiculo.md), [../ordem-de-servico/criar-ordem-de-servico.md](../ordem-de-servico/criar-ordem-de-servico.md) e DT-14 |
+| 9 | Nenhuma operação de escrita usava `If-Match` com `version`. | **`If-Match` obrigatório** no `PUT /veiculos/{veiculoId}`: `412` quando a `version` diverge, `428` quando o header não vem. A consulta expõe `version`. | [atualizar-veiculo.md](atualizar-veiculo.md), [consultar-veiculo.md](consultar-veiculo.md) e D-24 |
+| 10 | A exclusão lógica depende do índice parcial `UNIQUE (placa) WHERE ativo = true` e da ausência de `ON DELETE CASCADE`. | **Viraram itens obrigatórios do review da primeira migration**, junto com as exigências equivalentes do contexto de Cliente. | [deletar-veiculo.md](deletar-veiculo.md) |
+| 11 | Não existe histórico de proprietários: ao trocar o dono, o vínculo anterior se perde. | **Fica como está no MVP.** Sem histórico de propriedade. | [00-resumo.md](00-resumo.md) e DT-16 |
+| 12 | O campo `dono` dos documentos está em "A definir". | **Sem ação por ora.** Fica para a definição de donos por contexto. | — |
+| 13 | A reativação com cliente inativo devolvia `422`, enquanto conflitos de estado em outros contextos usavam `409`. | **`409`.** A D-01 tirou o `422` da API: entrada inválida é `400`, conflito com o estado atual é `409`. Cliente proprietário inativo é conflito de estado. | [deletar-veiculo.md](deletar-veiculo.md), [cadastrar-veiculo-e-vincular-ao-cliente.md](cadastrar-veiculo-e-vincular-ao-cliente.md), [00-resumo.md](00-resumo.md) e D-01 |

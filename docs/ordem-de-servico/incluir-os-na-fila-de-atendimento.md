@@ -11,9 +11,9 @@ status: rascunho
 Este documento detalha a tarefa interna Incluir OS na Fila de Atendimento, do contexto de Ordem
 de Serviço.
 
-## 12 · Incluir OS na Fila de Atendimento
+## 6 · Incluir OS na Fila de Atendimento
 
-### 12.1 Refinamento de Produto
+### 6.1 Refinamento de Produto
 
 **Persona**
 
@@ -41,24 +41,24 @@ aprovada pode não aparecer na fila ou pode perder o vínculo com o profissional
 
 | ID | Requisito |
 |---|---|
-| RF-OS-129 | Alterar a Ordem de Serviço para `AGUARDANDO_EXECUCAO`. |
-| RF-OS-130 | Registrar a data e a hora da entrada mais recente na fila. |
-| RF-OS-131 | Incluir a Ordem de Serviço na fila após a aprovação do orçamento `PRINCIPAL`. |
-| RF-OS-132 | Permitir o retorno da Ordem de Serviço à fila após a aprovação de orçamento `COMPLEMENTAR`. |
-| RF-OS-133 | Preservar o mecânico responsável, quando já existir. |
-| RF-OS-134 | Permitir que a consulta da fila identifique a Ordem de Serviço como disponível. |
-| RF-OS-135 | Atualizar `dataEntradaFila` sempre que a Ordem de Serviço retornar à fila. |
-| RF-OS-136 | Representar a participação na fila pelos dados da própria Ordem de Serviço, sem criar registro duplicado. |
+| RF-OS-53 | Alterar a Ordem de Serviço para `AGUARDANDO_EXECUCAO`. |
+| RF-OS-54 | Registrar a data e a hora da entrada mais recente na fila. |
+| RF-OS-55 | Incluir a Ordem de Serviço na fila após a aprovação do orçamento `PRINCIPAL`. |
+| RF-OS-56 | Permitir o retorno da Ordem de Serviço à fila após a aprovação de orçamento `COMPLEMENTAR`. |
+| RF-OS-57 | Preservar o mecânico responsável, quando já existir. |
+| RF-OS-58 | Permitir que a consulta da fila identifique a Ordem de Serviço como disponível. |
+| RF-OS-59 | Atualizar `dataEntradaFila` sempre que a Ordem de Serviço retornar à fila. |
+| RF-OS-60 | Representar a participação na fila pelos dados da própria Ordem de Serviço, sem criar registro duplicado. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-70 | Executar a inclusão automaticamente após a aprovação do orçamento. |
-| RNF-OS-71 | Persistir a mudança de situação e a data de entrada de forma consistente. |
-| RNF-OS-72 | Não utilizar tabela ou agregado próprio para a fila de atendimento. |
-| RNF-OS-73 | Não calcular prioridade durante a inclusão; a ordenação pertence à consulta da fila. |
-| RNF-OS-74 | Preservar o vínculo com o mecânico durante a inclusão ou o retorno à fila. |
+| RNF-OS-25 | Executar a inclusão automaticamente após a aprovação do orçamento. |
+| RNF-OS-26 | Persistir a mudança de situação e a data de entrada de forma consistente. |
+| RNF-OS-27 | Não utilizar tabela ou agregado próprio para a fila de atendimento. |
+| RNF-OS-28 | Não calcular prioridade durante a inclusão; a ordenação pertence à consulta da fila. |
+| RNF-OS-29 | Preservar o vínculo com o mecânico durante a inclusão ou o retorno à fila. |
 
 **Fluxo Principal — Orçamento Principal**
 
@@ -103,7 +103,7 @@ aprovada pode não aparecer na fila ou pode perder o vínculo com o profissional
 
 ---
 
-### 12.2 Refinamento Técnico
+### 6.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -233,7 +233,7 @@ de aprovação que disparou a operação:
 
 ---
 
-### 12.3 Checklist de Implementação
+### 6.3 Checklist de Implementação
 
 **Domínio**
 

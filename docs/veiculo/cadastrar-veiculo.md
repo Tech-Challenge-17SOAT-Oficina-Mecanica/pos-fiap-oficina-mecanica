@@ -10,6 +10,13 @@ status: rascunho
 
 Este documento detalha a tarefa Cadastrar Veículo do contexto de Veículo.
 
+> **Decisão de projeto — rota aposentada.** `POST /veiculos` saiu da API. O cadastro de veículo
+> passa a acontecer sempre dentro do cliente, por
+> [cadastrar-veiculo-e-vincular-ao-cliente.md](cadastrar-veiculo-e-vincular-ao-cliente.md), porque
+> era o único caminho que permitia criar veículo sem dono. O refinamento abaixo continua valendo
+> como regra de negócio do cadastro — validação de placa, campos obrigatórios e unicidade —, e é
+> reaproveitado pelo caso de uso que cadastra e vincula na mesma operação.
+
 ## 2 · Cadastrar Veículo
 
 ### 2.1 Refinamento de Produto
@@ -96,9 +103,9 @@ não pode ser acompanhado corretamente ao longo dos atendimentos.
 POST /veiculos
 ```
 
-> **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `POST /veiculos`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `POST /veiculos` foi descartada por não usar o prefixo `/`.
+> **Decisão de projeto.** Esta rota foi aposentada. O contrato abaixo permanece documentado
+> porque descreve as regras do cadastro, hoje executadas por
+> `POST /clientes/{clienteId}/veiculos`.
 
 **Autenticação / Autorização**
 
@@ -110,10 +117,10 @@ POST /veiculos
 
 | Local | Param | Tipo | Descrição |
 |---|---|---|---|
-| Body | `placa` | string | Placa do veículo, obrigatória. |
+| Body | `placa` | string | Placa do veículo, obrigatória. Formato Mercosul `ABC1D23` ou antigo `ABC1234`. |
 | Body | `marca` | string | Marca do veículo, obrigatória. |
 | Body | `modelo` | string | Modelo do veículo, obrigatório. |
-| Body | `ano` | int | Ano do veículo, obrigatório. |
+| Body | `ano` | int | Ano do veículo, obrigatório. De `1900` até o ano corrente mais um. |
 
 ```json
 {
@@ -124,13 +131,25 @@ POST /veiculos
 }
 ```
 
+> **Decisão de projeto.** A validação de placa aceita **os dois formatos**, Mercosul `ABC1D23` e
+> antigo `ABC1234`, porque a frota atendida pela oficina tem carros dos dois períodos. A placa é
+> normalizada — maiúsculas, sem hífen e sem espaço — antes de validar e de gravar, para que a
+> unicidade funcione.
+
+> **Decisão de projeto.** O campo `ano` aceita de `1900` até o **ano corrente mais um**, o que
+> cobre o modelo do ano seguinte vendido no fim do ano.
+
 **Validações**
 
 - `placa` deve ser informada.
 - `marca` deve ser informada.
 - `modelo` deve ser informado.
 - `ano` deve ser informado.
-- `placa` deve possuir formato válido.
+- `placa` deve possuir formato válido em **um dos dois padrões aceitos**: Mercosul `ABC1D23` ou
+  antigo `ABC1234`.
+- `placa` é normalizada antes da validação e da persistência: sem hífen, sem espaço e em
+  maiúsculas.
+- `ano` deve estar entre `1900` e o ano corrente mais um.
 - Não pode existir veículo cadastrado com a mesma placa.
 
 **Processamento**
@@ -189,6 +208,11 @@ POST /veiculos
 - Rejeita cadastro quando modelo não for informado.
 - Rejeita cadastro quando ano não for informado.
 - Rejeita cadastro quando placa for inválida.
+- Aceita placa no formato Mercosul `ABC1D23`.
+- Aceita placa no formato antigo `ABC1234`.
+- Normaliza a placa recebida com hífen, espaço ou minúsculas.
+- Rejeita cadastro quando `ano` for menor que `1900`.
+- Rejeita cadastro quando `ano` for maior que o ano corrente mais um.
 - Rejeita cadastro quando já existir veículo com a mesma placa.
 
 *Integração*
@@ -213,7 +237,9 @@ POST /veiculos
 - [ ] Criar ou ajustar o modelo `Veículo`
 - [ ] Definir os campos necessários para cadastro do veículo
 - [ ] Garantir que o veículo possua placa como identificador de negócio
-- [ ] Criar validação de placa de veículo
+- [ ] Criar validação de placa aceitando os formatos Mercosul `ABC1D23` e antigo `ABC1234`
+- [ ] Normalizar a placa (maiúsculas, sem hífen e sem espaço) antes de validar e de gravar
+- [ ] Validar `ano` entre `1900` e o ano corrente mais um
 - [ ] Impedir cadastro duplicado de veículo
 
 **Caso de uso**
@@ -232,7 +258,7 @@ POST /veiculos
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /veiculos`
+- [ ] ~~Implementar `POST /veiculos`~~ — rota aposentada; o cadastro é feito por `POST /clientes/{clienteId}/veiculos`
 - [ ] Criar DTO/request de entrada
 - [ ] Criar DTO/response de saída com os dados do veículo cadastrado
 - [ ] Implementar validação do payload

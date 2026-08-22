@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Registrar Problema Encontrado do contexto de Ordem de Serviço.
 
-## 11 · Registrar Problema Encontrado
+## 3 · Registrar Problema Encontrado
 
-### 11.1 Refinamento de Produto
+### 3.1 Refinamento de Produto
 
 **Persona**
 
@@ -40,29 +40,29 @@ execução: quem tem tipo é o orçamento, não o problema.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-99 | Permitir registrar mais de um problema para a mesma OS. |
-| RF-OS-100 | Permitir informar a descrição do problema. |
-| RF-OS-101 | Permitir informar observações adicionais. |
-| RF-OS-102 | Vincular todo problema a um orçamento. |
-| RF-OS-103 | Definir automaticamente o tipo do orçamento de acordo com o status da OS. |
-| RF-OS-104 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `EM_DIAGNOSTICO`. |
-| RF-OS-105 | Criar o orçamento `PRINCIPAL` caso ainda não exista. |
-| RF-OS-106 | Permitir que vários problemas sejam vinculados ao mesmo orçamento `PRINCIPAL`. |
-| RF-OS-107 | Utilizar um orçamento `COMPLEMENTAR` com status `CRIADO` quando a OS estiver `EM_EXECUCAO`. |
-| RF-OS-108 | Criar um novo orçamento `COMPLEMENTAR` quando não existir um complementar com status `CRIADO`. |
-| RF-OS-109 | Permitir vários problemas no mesmo orçamento `COMPLEMENTAR` enquanto ele estiver `CRIADO`. |
-| RF-OS-110 | Permitir que uma OS possua mais de um orçamento `COMPLEMENTAR` ao longo da execução. |
-| RF-OS-111 | Não permitir adicionar novos problemas a orçamentos `APROVADO` ou `RECUSADO`. |
-| RF-OS-112 | Manter o problema sem classificação própria de tipo. |
+| RF-OS-15 | Permitir registrar mais de um problema para a mesma OS. |
+| RF-OS-16 | Permitir informar a descrição do problema. |
+| RF-OS-17 | Permitir informar observações adicionais. |
+| RF-OS-18 | Vincular todo problema a um orçamento. |
+| RF-OS-19 | Definir automaticamente o tipo do orçamento de acordo com o status da OS. |
+| RF-OS-20 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `EM_DIAGNOSTICO`. |
+| RF-OS-21 | Criar o orçamento `PRINCIPAL` caso ainda não exista. |
+| RF-OS-22 | Permitir que vários problemas sejam vinculados ao mesmo orçamento `PRINCIPAL`. |
+| RF-OS-23 | Utilizar um orçamento `COMPLEMENTAR` com status `CRIADO` quando a OS estiver `EM_EXECUCAO`. |
+| RF-OS-24 | Criar um novo orçamento `COMPLEMENTAR` quando não existir um complementar com status `CRIADO`. |
+| RF-OS-25 | Permitir vários problemas no mesmo orçamento `COMPLEMENTAR` enquanto ele estiver `CRIADO`. |
+| RF-OS-26 | Permitir que uma OS possua mais de um orçamento `COMPLEMENTAR` ao longo da execução. |
+| RF-OS-27 | Não permitir adicionar novos problemas a orçamentos `APROVADO` ou `RECUSADO`. |
+| RF-OS-28 | Manter o problema sem classificação própria de tipo. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-56 | Apenas usuários autorizados devem realizar o registro. |
-| RNF-OS-57 | O tipo do orçamento não deve ser informado pelo usuário. |
-| RNF-OS-58 | O registro do problema e seu vínculo com o orçamento devem ocorrer de forma consistente. |
-| RNF-OS-59 | Em caso de criação automática do orçamento, problema, orçamento e vínculo devem ser registrados na mesma operação. |
+| RNF-OS-09 | Apenas usuários autorizados devem realizar o registro. |
+| RNF-OS-10 | O tipo do orçamento não deve ser informado pelo usuário. |
+| RNF-OS-11 | O registro do problema e seu vínculo com o orçamento devem ocorrer de forma consistente. |
+| RNF-OS-12 | Em caso de criação automática do orçamento, problema, orçamento e vínculo devem ser registrados na mesma operação. |
 
 **Fluxo Principal — problema identificado no diagnóstico**
 
@@ -108,7 +108,7 @@ execução: quem tem tipo é o orçamento, não o problema.
 
 ---
 
-### 11.2 Refinamento Técnico
+### 3.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -246,7 +246,7 @@ em caso de erro.
 
 ---
 
-### 11.3 Checklist de Implementação
+### 3.3 Checklist de Implementação
 
 **Domínio**
 

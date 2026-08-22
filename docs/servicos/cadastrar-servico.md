@@ -1,21 +1,21 @@
 ---
 documento: Refinamento de Requisitos — Cadastrar Serviço
 dono: João Victor Silva de Oliveira
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-20
-status: rascunho
+status: em revisao
 ---
 
 # Refinamento de Requisitos — Cadastrar Serviço
 
 Este documento detalha a tarefa Cadastrar Serviço do contexto de Serviços.
 
-## 2 · Cadastrar Serviço
+## 1 · Cadastrar Serviço
 
-### 2.1 Refinamento de Produto
+### 1.1 Refinamento de Produto
 
 **Persona**
-Administrador/Gestor da oficina.
+Mecânico.
 
 **Objetivo**
 Cadastrar um novo serviço no catálogo da oficina para que ele possa ser utilizado em
@@ -37,23 +37,24 @@ rastreabilidade.
 
 | ID | Requisito |
 |---|---|
-| RF-SRV-07 | Permitir cadastrar um serviço. |
-| RF-SRV-08 | Registrar nome ou descrição do serviço. |
-| RF-SRV-09 | Registrar valor do serviço. |
-| RF-SRV-10 | Registrar demais informações necessárias para sua utilização no sistema. |
-| RF-SRV-11 | Validar os dados informados. |
-| RF-SRV-12 | Impedir o cadastro de serviços duplicados conforme a regra de negócio. |
-| RF-SRV-13 | Disponibilizar o serviço cadastrado para utilização em novas OS e orçamentos. |
+| RF-SRV-01 | Permitir cadastrar um serviço. |
+| RF-SRV-02 | Registrar nome ou descrição do serviço. |
+| RF-SRV-03 | Registrar valor do serviço. |
+| RF-SRV-04 | Registrar demais informações necessárias para sua utilização no sistema. |
+| RF-SRV-05 | Validar os dados informados. |
+| RF-SRV-06 | Impedir o cadastro de serviço duplicado: o nome normalizado deve ser único entre os serviços ativos. |
+| RF-SRV-07 | Disponibilizar o serviço cadastrado para utilização em novas OS e orçamentos. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-SRV-06 | A operação deve ser persistida de forma consistente. |
-| RNF-SRV-07 | Os valores monetários devem ser armazenados corretamente. |
-| RNF-SRV-08 | A operação deve exigir autenticação e autorização administrativa. |
-| RNF-SRV-09 | Os dados devem ser validados antes da persistência. |
-| RNF-SRV-10 | O cadastro não deve alterar serviços já existentes. |
+| RNF-SRV-01 | A operação deve ser persistida de forma consistente. |
+| RNF-SRV-02 | Os valores monetários devem ser armazenados corretamente. |
+| RNF-SRV-03 | A operação deve exigir autenticação e autorização administrativa. |
+| RNF-SRV-04 | Os dados devem ser validados antes da persistência. |
+| RNF-SRV-05 | O cadastro não deve alterar serviços já existentes. |
+| RNF-SRV-21 | O `codigo` deve ser gerado pelo sistema, em sequência global, sem reset. |
 
 **Fluxo Principal**
 
@@ -74,7 +75,7 @@ rastreabilidade.
 |---|---|---|
 | A1 | Dados obrigatórios ausentes | O sistema informa os campos que precisam ser preenchidos. |
 | A2 | Valor inválido | O sistema impede o cadastro. |
-| A3 | Serviço duplicado | O sistema informa que já existe um serviço equivalente. |
+| A3 | Serviço duplicado | O sistema informa que já existe um serviço ativo com o mesmo nome normalizado. |
 | A4 | Dados inválidos | O sistema rejeita o cadastro e informa os erros encontrados. |
 | A5 | Usuário sem autorização | O sistema impede a operação. |
 
@@ -91,7 +92,7 @@ rastreabilidade.
 
 ---
 
-### 2.2 Refinamento Técnico
+### 1.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -105,7 +106,7 @@ código funcional.
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfil esperado: `GESTOR`.
+- Perfil esperado: `MECANICO`.
 - Escopo: `servicos:escrever`.
 
 **Entrada**
@@ -115,7 +116,7 @@ código funcional.
 | Body | `nome` | string | Nome do serviço, obrigatório. |
 | Body | `descricao` | string | Descrição do serviço. |
 | Body | `valor` | decimal | Valor do serviço, obrigatório, maior ou igual a zero. |
-| Body | `tempoEstimadoMinutos` | int | Tempo estimado de execução, obrigatório caso adotado pelo time. |
+| Body | `tempoEstimadoMinutos` | int | Tempo estimado de execução, obrigatório, mínimo de 1 minuto. |
 
 ```json
 {
@@ -126,15 +127,30 @@ código funcional.
 }
 ```
 
-O cliente da API não informa `id`, `codigo`, `status` nem `dataCriacao`; esses dados são gerados
+O cliente da API não informa `id`, `codigo`, `ativo` nem `dataCriacao`; esses dados são gerados
 pelo sistema.
+
+> **Decisão de projeto.** A situação do serviço é o booleano `ativo`, com `dataDesativacao` e
+> `usuarioDesativacao`, como nos demais contextos. O enum `status` com `ATIVO`/`INATIVO` foi
+> descartado para o projeto inteiro ter uma representação só (D-19).
+
+> **Decisão de projeto.** A unicidade é por **nome normalizado** — sem acento, sem espaço duplo,
+> em minúsculas — e vale **apenas entre serviços ativos**, por índice parcial. Assim um serviço
+> desativado não bloqueia o cadastro de outro com o mesmo nome.
+
+> **Decisão de projeto.** O `codigo` segue o formato `SER-000001`, gerado pelo sistema em
+> **sequência global, sem reset por ano**, com seis dígitos — a mesma regra proposta para o código
+> de peças e insumos, para os dois contextos seguirem o mesmo padrão.
+
+> **Decisão de projeto.** `tempoEstimadoMinutos` é **obrigatório**, com mínimo de 1 minuto. Ele
+> alimenta a estimativa de entrega do orçamento, que fica sem base quando o campo é opcional.
 
 **Validações**
 
 - `nome` deve ser informado.
 - `valor` deve ser maior ou igual a zero.
-- `tempoEstimadoMinutos`, caso adotado, deve ser maior que zero.
-- Não deve existir outro serviço com o mesmo critério de unicidade definido.
+- `tempoEstimadoMinutos` deve ser informado e ser maior ou igual a 1.
+- Não deve existir outro serviço **ativo** com o mesmo nome normalizado.
 - O usuário deve possuir autorização para cadastrar serviços.
 
 **Processamento**
@@ -143,11 +159,11 @@ pelo sistema.
 2. Identificar o usuário autenticado.
 3. Validar autorização.
 4. Validar os dados informados.
-5. Verificar duplicidade.
-6. Gerar o `id`.
-7. Gerar o `codigo`.
+5. Normalizar o nome e verificar duplicidade entre serviços ativos.
+6. Gerar o `id` (UUID).
+7. Gerar o `codigo` a partir da sequência global.
 8. Criar a entidade `Servico`.
-9. Definir status inicial `ATIVO`.
+9. Definir `ativo = true`.
 10. Registrar data e hora de criação.
 11. Persistir o serviço.
 12. Retornar o serviço criado.
@@ -156,8 +172,9 @@ pelo sistema.
 
 - Consulta: `ServicoRepository` para verificar duplicidade.
 - Altera: `Servico` com novo registro.
-- Persiste: `id`, `codigo`, `nome`, `descricao`, `valor`, `tempo_estimado_minutos`, `status`,
-  `data_criacao` e `usuario_criacao`.
+- Persiste: `id`, `codigo`, `nome`, `nome_normalizado`, `descricao`, `valor`,
+  `tempo_estimado_minutos`, `ativo`, `version`, `data_criacao` e `usuario_criacao`.
+- Índice parcial `UNIQUE (nome_normalizado) WHERE ativo = true`.
 
 **Saída da API**
 
@@ -169,7 +186,8 @@ pelo sistema.
   "descricao": "Troca de óleo e filtro",
   "valor": 150.0,
   "tempoEstimadoMinutos": 60,
-  "status": "ATIVO",
+  "ativo": true,
+  "version": 1,
   "dataCriacao": "2026-08-19T20:00:00-03:00"
 }
 ```
@@ -185,7 +203,7 @@ sistema.
 | `400` | Dados inválidos. |
 | `401` | Token ausente ou expirado. |
 | `403` | Usuário sem o escopo `servicos:escrever`. |
-| `409` | Serviço duplicado. |
+| `409` | Já existe serviço ativo com o mesmo nome normalizado. |
 | `500` | Falha inesperada. |
 
 **Dependências**
@@ -204,10 +222,14 @@ sistema.
 - Cadastra serviço válido.
 - Gera `id`.
 - Gera `codigo`.
-- Inicia com status `ATIVO`.
+- Inicia com `ativo = true`.
+- Normaliza o nome antes de verificar duplicidade.
+- Rejeita `tempoEstimadoMinutos` ausente.
+- Rejeita `tempoEstimadoMinutos` menor que 1.
+- Aceita cadastro com nome igual ao de um serviço inativo.
 - Rejeita nome vazio.
 - Rejeita valor negativo.
-- Rejeita duplicidade.
+- Rejeita nome já usado por serviço ativo.
 - Não altera serviços já existentes.
 
 *Integração*
@@ -218,10 +240,11 @@ sistema.
 - Usuário sem permissão retorna `403`.
 - Serviço duplicado retorna `409`.
 - Dados inválidos retornam `400`.
+- Nome igual ao de serviço inativo retorna `201`.
 
 ---
 
-### 2.3 Checklist de Implementação
+### 1.3 Checklist de Implementação
 
 **Domínio**
 
@@ -232,22 +255,24 @@ sistema.
 - [ ] Validar descrição, caso aplicável
 - [ ] Validar valor do serviço
 - [ ] Impedir valor negativo
-- [ ] Definir tempo estimado, caso aplicável
-- [ ] Definir status inicial `ATIVO`
-- [ ] Validar duplicidade de serviço
+- [ ] Validar `tempoEstimadoMinutos` obrigatório e maior ou igual a 1
+- [ ] Definir `ativo = true` no cadastro
+- [ ] Implementar a normalização do nome (sem acento, sem espaço duplo, minúsculo)
+- [ ] Validar duplicidade de nome normalizado entre serviços ativos
 
 **Caso de uso**
 
 - [ ] Criar caso de uso `CadastrarServico`
 - [ ] Gerar `id`
-- [ ] Gerar `codigo`
+- [ ] Gerar `codigo` no formato `SER-000001`, a partir de sequência global sem reset
 - [ ] Registrar data e hora de criação
 - [ ] Registrar usuário de criação
 
 **Repositório**
 
 - [ ] Criar `ServicoRepository`
-- [ ] Criar método para verificar duplicidade
+- [ ] Criar método para verificar duplicidade por nome normalizado entre ativos
+- [ ] Criar o índice parcial `UNIQUE (nome_normalizado) WHERE ativo = true` na migration
 - [ ] Criar método para salvar novo serviço
 
 **Handler HTTP**
@@ -265,8 +290,8 @@ sistema.
 
 - [ ] Validar nome obrigatório
 - [ ] Validar valor maior ou igual a zero
-- [ ] Validar tempo estimado maior que zero, caso adotado
-- [ ] Validar critério de unicidade do serviço
+- [ ] Validar `tempoEstimadoMinutos` obrigatório, maior ou igual a 1
+- [ ] Validar unicidade do nome normalizado entre serviços ativos
 
 **Testes unitários**
 
@@ -274,7 +299,9 @@ sistema.
 - [ ] Nome obrigatório
 - [ ] Preço inválido
 - [ ] Duplicidade
-- [ ] Status inicial `ATIVO`
+- [ ] `ativo = true` no cadastro
+- [ ] Tempo estimado ausente ou menor que 1
+- [ ] Nome igual ao de serviço inativo aceito
 - [ ] Geração de `id` e `codigo`
 
 **Testes de integração**

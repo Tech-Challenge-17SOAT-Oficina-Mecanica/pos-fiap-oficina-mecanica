@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Aprovar Orçamento
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -103,9 +103,17 @@ POST /orcamentos/{orcamentoId}/aprovar
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Permitido apenas para o cliente vinculado à OS do orçamento.
-- Escopo: `orcamentos:aprovar`.
+- Perfil: `CLIENTE`, apenas o cliente vinculado à OS do orçamento.
+- Escopo: `orcamentos:decidir`.
 - O cliente aprovador é identificado pelo usuário autenticado; não se envia `clienteId` no body.
+
+> **Decisão de projeto.** Aprovar e recusar usam **um escopo só**, `orcamentos:decidir`. Os dois
+> escopos anteriores — `orcamentos:aprovar` e `orcamentos:recusar` — separavam duas metades da
+> mesma decisão, e ninguém no projeto tem uma sem a outra (D-23).
+
+> **Decisão de projeto.** O cliente se autentica por **token de escopo reduzido**, emitido no envio
+> do orçamento e válido apenas para aquela OS. Evita criar cadastro com senha para cliente no MVP,
+> e o mesmo token serve para consultar, aprovar e recusar.
 
 **Entrada**
 
@@ -134,10 +142,20 @@ Não há corpo na requisição.
 **Regra de domínio**
 
 ```
-OS em AGUARDANDO_APROVACAO → aprovar orçamento → OS em AGUARDANDO_EXECUCAO
+OS em AGUARDANDO_APROVACAO → aprovar orçamento → OS em AGUARDANDO_RECURSOS ou AGUARDANDO_EXECUCAO
 ```
 
 Orçamento em CRIADO → aprovar orçamento → orçamento em APROVADO.
+
+> **Decisão de projeto.** O `status` do **orçamento** é a fonte da verdade da decisão do cliente;
+> o `status` da **OS** é a fonte da verdade da etapa do atendimento. A transição da OS é
+> consequência da decisão, nunca o contrário — nenhuma regra deve ler o status da OS para saber se
+> o cliente aprovou.
+
+> **Decisão de projeto.** Aprovar orçamento complementar **devolve a OS para a fila**, igual à
+> aprovação do principal. A diferença está na recusa: recusar o principal cancela a OS; recusar um
+> complementar apenas marca aquele orçamento como `RECUSADO` e devolve a OS para a fila, com o
+> serviço original mantido.
 
 **Processamento**
 
@@ -149,14 +167,42 @@ Orçamento em CRIADO → aprovar orçamento → orçamento em APROVADO.
 6. Caso seja complementar, validar o vínculo com o orçamento principal.
 7. Atualizar `statusOrcamento` para `APROVADO`.
 8. Registrar o cliente e a data e hora da aprovação.
-9. Atualizar a OS para `AGUARDANDO_EXECUCAO`.
-10. Persistir as alterações em uma única transação.
-11. Registrar a operação em log, sem expor dados sensíveis.
+9. Chamar o processamento de itens do orçamento aprovado — reserva o disponível e abre pedido de
+   compra do faltante, por tipo de item.
+10. Definir o status da OS a partir do resultado: `AGUARDANDO_EXECUCAO` quando tudo foi reservado,
+    `AGUARDANDO_RECURSOS` quando algum item ficou pendente de compra.
+11. Persistir as alterações em uma única transação.
+12. Registrar a operação em log, sem expor dados sensíveis.
+
+**Fluxo de liberação de itens — proposta**
+
+A aprovação é o único gatilho que compromete estoque. O fluxo proposto, dentro da mesma transação:
+
+```
+AprovarOrcamento
+├── valida cliente, OS e orçamento
+├── marca o orçamento como APROVADO
+├── ProcessarPecas(os, itens do tipo PECA)      → reserva o disponível, abre pedido do faltante
+├── ProcessarInsumos(os, itens do tipo INSUMO)  → reserva o disponível, abre pedido do faltante
+├── define o status da OS pelo resultado:
+│     nada pendente        → AGUARDANDO_EXECUCAO
+│     algum item comprado  → AGUARDANDO_RECURSOS
+└── confirma a transação
+```
+
+O que a aprovação **não** faz: não chama a reserva direta nem o pedido de compra por conta
+própria. Ela chama apenas os dois processamentos, que já resolvem reserva e compra juntos. É essa
+regra que elimina os caminhos concorrentes de reserva apontados na D-16 — a reserva direta deixa de
+ter chamador público.
+
+Quando os itens comprados chegam, a entrada de estoque devolve a OS para `AGUARDANDO_EXECUCAO`.
+Aprovar um complementar repete o mesmo fluxo, apenas sobre os itens daquele orçamento.
 
 **Persistência**
 
 - Consulta: `orcamento`, `ordem_servico`, `cliente`.
 - Altera: `orcamento` (`status_orcamento = APROVADO`, `cliente_aprovador_id`, `data_aprovacao`), `ordem_servico.status`.
+- Altera, por meio dos processamentos chamados: `reserva_estoque`, `item_estoque.saldo_reservado`, `movimentacao_estoque` e `pedido_compra`.
 
 **Saída da API**
 
@@ -193,16 +239,18 @@ Exemplo para orçamento complementar:
 |---|---|
 | `200` | Aprovação registrada com sucesso. |
 | `401` | Token ausente ou expirado. |
-| `403` | Cliente sem permissão para aprovar o orçamento. |
+| `403` | Cliente sem o escopo `orcamentos:decidir`, ou orçamento de outra OS. |
 | `404` | Orçamento não encontrado. |
 | `409` | Orçamento já aprovado, recusado ou OS fora de `AGUARDANDO_APROVACAO`. |
-| `422` | Orçamento complementar sem vínculo válido com orçamento principal. |
+| `409` | Orçamento complementar sem vínculo válido com orçamento principal. |
 | `500` | Erro inesperado. |
 
 **Dependências**
 
 - `OrcamentoRepository`.
 - `OrdemDeServicoRepository`.
+- Caso de uso Processar Peças para Reserva e Compra.
+- Caso de uso Processar Insumos para Reserva e Compra.
 - Contexto do cliente autenticado.
 - Middleware de autenticação/autorização.
 
@@ -219,13 +267,16 @@ Exemplo para orçamento complementar:
 
 *Integração*
 
-- Aprovação válida retorna `200` e atualiza a OS para `AGUARDANDO_EXECUCAO`.
+- Aprovação válida com todos os itens em estoque retorna `200` e atualiza a OS para `AGUARDANDO_EXECUCAO`.
+- Aprovação válida com item faltante retorna `200`, abre pedido de compra e atualiza a OS para `AGUARDANDO_RECURSOS`.
+- Aprovação de complementar devolve a OS para a fila, sem alterar o orçamento principal.
 - Orçamento inexistente retorna `404`.
 - Orçamento de outro cliente retorna `403`.
 - Orçamento já decidido retorna `409`.
-- Orçamento complementar sem vínculo válido retorna `422`.
+- Orçamento complementar sem vínculo válido retorna `409`.
 - Sem autenticação retorna `401`.
-- Aprovação e atualização da OS ocorrem na mesma transação.
+- Aprovação, reserva, pedido de compra e atualização da OS ocorrem na mesma transação.
+- Falha no processamento de itens desfaz a aprovação por inteiro.
 
 ---
 
@@ -238,7 +289,7 @@ Exemplo para orçamento complementar:
 - [ ] Criar ou ajustar os campos `clienteAprovadorId` e `dataAprovacao` no orçamento
 - [ ] Garantir que orçamento complementar tenha orçamento principal vinculado
 - [ ] Garantir a transição do orçamento de `CRIADO` para `APROVADO`
-- [ ] Garantir a transição da OS de `AGUARDANDO_APROVACAO` para `AGUARDANDO_EXECUCAO`
+- [ ] Garantir a transição da OS de `AGUARDANDO_APROVACAO` para `AGUARDANDO_EXECUCAO` ou `AGUARDANDO_RECURSOS`, conforme o resultado do processamento dos itens
 
 **Caso de uso**
 
@@ -249,12 +300,19 @@ Exemplo para orçamento complementar:
 - [ ] Validar orçamento complementar e seu vínculo com o principal
 - [ ] Atualizar `statusOrcamento` para `APROVADO`
 - [ ] Registrar o cliente e a data e hora da aprovação
-- [ ] Atualizar a OS para `AGUARDANDO_EXECUCAO`
+- [ ] Chamar `ProcessarPecas` para os itens do tipo `PECA`
+- [ ] Chamar `ProcessarInsumos` para os itens do tipo `INSUMO`
+- [ ] Definir o status da OS pelo resultado do processamento
 
 **Repositório**
 
 - [ ] Criar ou ajustar `OrcamentoRepository`
 - [ ] Criar ou ajustar `OrdemDeServicoRepository`
+
+**Integrações**
+
+- [ ] Integrar com o caso de uso Processar Peças para Reserva e Compra
+- [ ] Integrar com o caso de uso Processar Insumos para Reserva e Compra
 
 **Transação**
 
@@ -265,12 +323,14 @@ Exemplo para orçamento complementar:
 - [ ] Implementar `POST /orcamentos/{orcamentoId}/aprovar`
 - [ ] Obter o cliente pelo JWT
 - [ ] Criar DTO/response de saída
-- [ ] Aplicar autenticação e autorização na rota
-- [ ] Retornar os erros `401`, `403`, `404`, `409` e `422`
+- [ ] Aplicar autenticação e autorização na rota, com o escopo `orcamentos:decidir`
+- [ ] Aceitar o token de escopo reduzido emitido para a OS
+- [ ] Retornar os erros `400`, `401`, `403`, `404` e `409`
 
 **Testes unitários**
 
 - [ ] Aprovação válida
+- [ ] Aprovação com item faltante abrindo pedido de compra
 - [ ] Orçamento inexistente
 - [ ] Orçamento de outro cliente
 - [ ] Orçamento já aprovado ou recusado
@@ -278,9 +338,11 @@ Exemplo para orçamento complementar:
 
 **Testes de integração**
 
-- [ ] `200` com a OS em `AGUARDANDO_EXECUCAO`
-- [ ] Persistência transacional
-- [ ] `401`, `403`, `404`, `409` e `422`
+- [ ] `200` com a OS em `AGUARDANDO_EXECUCAO` quando todos os itens estão em estoque
+- [ ] `200` com a OS em `AGUARDANDO_RECURSOS` quando algum item precisa ser comprado
+- [ ] Aprovação de complementar devolvendo a OS para a fila
+- [ ] Persistência transacional da aprovação, da reserva e do pedido de compra
+- [ ] `400`, `401`, `403`, `404` e `409`
 
 **Documentação**
 

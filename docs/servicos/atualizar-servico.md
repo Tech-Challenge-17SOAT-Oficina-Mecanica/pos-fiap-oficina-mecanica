@@ -1,9 +1,9 @@
 ---
 documento: Refinamento de Requisitos — Atualizar Serviço
 dono: João Victor Silva de Oliveira
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-20
-status: rascunho
+status: em revisao
 ---
 
 # Refinamento de Requisitos — Atualizar Serviço
@@ -15,7 +15,7 @@ Este documento detalha a tarefa Atualizar Serviço do contexto de Serviços.
 ### 3.1 Refinamento de Produto
 
 **Persona**
-Administrador/Gestor da oficina.
+Mecânico.
 
 **Objetivo**
 Atualizar os dados de um serviço existente no catálogo da oficina.
@@ -93,27 +93,42 @@ registrados em Ordens de Serviço e orçamentos.
 **Endpoint**
 
 ```http
-PATCH /servicos/{id}
+PATCH /servicos/{servicoId}
 ```
 
 O endpoint atualiza os dados cadastrais de um serviço existente sem alterar os valores históricos
 utilizados em Ordens de Serviço já registradas.
 
+> **Decisão de projeto.** `PATCH` é **atualização parcial de verdade**: campo ausente no corpo não
+> é alterado. Enviar o recurso inteiro continua funcionando, mas não é exigido.
+
+> **Decisão de projeto.** `id`, `codigo` e `dataCriacao` são **imutáveis**. Se vierem no corpo, a
+> requisição é rejeitada com `400` — em vez de serem ignorados em silêncio, o que esconderia erro
+> do cliente da API.
+
+> **Decisão de projeto.** A atualização usa controle otimista com `If-Match` e `version`, como em
+> Cliente, Veículo, Peças e Insumos (D-24).
+
+> **Decisão de projeto.** O path param é `{servicoId}`, e não `{id}`, alinhado aos demais
+> contextos.
+
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfil esperado: `GESTOR`.
+- Perfil esperado: `MECANICO`.
 - Escopo: `servicos:escrever`.
 
 **Entrada**
 
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Path | `id` | UUID | Identificador do serviço. |
-| Body | `nome` | string | Nome atualizado do serviço. |
-| Body | `descricao` | string | Descrição atualizada do serviço. |
-| Body | `valor` | decimal | Valor atualizado do serviço; não pode ser negativo. |
-| Body | `tempoEstimadoMinutos` | int | Tempo estimado atualizado, caso adotado pelo time. |
+| Path | `servicoId` | uuid | Identificador do serviço. |
+| Header | `If-Match` | string | `version` atual do registro, obrigatório. |
+| Body | `nome` | string | Opcional. Nome atualizado do serviço. |
+| Body | `descricao` | string | Opcional. Descrição atualizada do serviço. |
+| Body | `valor` | decimal | Opcional. Não pode ser negativo. |
+| Body | `tempoEstimadoMinutos` | int | Opcional. Mínimo de 1 minuto. |
+| Body | `ativo` | — | **Não aceito.** A desativação e a reativação têm rotas próprias. |
 
 ```json
 {
@@ -124,53 +139,57 @@ utilizados em Ordens de Serviço já registradas.
 }
 ```
 
-O `codigo` não deve ser alterado por esse fluxo caso seja definido como identificador funcional
-imutável.
+Como a atualização é parcial, o exemplo acima altera apenas os quatro campos enviados. Campos
+imutáveis (`id`, `codigo`, `dataCriacao`) e a situação (`ativo`) não são aceitos no corpo.
 
 **Validações**
 
-- `id` deve possuir formato válido de UUID.
+- `servicoId` deve possuir formato válido de UUID.
 - O serviço deve existir.
-- `nome` deve ser válido.
-- `valor` não pode ser negativo.
-- `tempoEstimadoMinutos`, caso adotado, deve ser válido.
-- A atualização não pode gerar conflito com outro serviço.
+- `nome`, quando informado, deve ser válido e não vazio.
+- `valor`, quando informado, não pode ser negativo.
+- `tempoEstimadoMinutos`, quando informado, deve ser maior ou igual a 1.
+- `id`, `codigo`, `dataCriacao` e `ativo` no corpo retornam `400`.
+- O nome normalizado resultante não pode pertencer a outro serviço **ativo**.
+- `If-Match` deve ser informado e bater com a `version` atual do registro.
 - O usuário deve possuir autorização para atualizar serviços.
 
 **Processamento**
 
-1. Receber o `id`.
+1. Receber o `servicoId`.
 2. Identificar o usuário autenticado.
 3. Validar autorização.
-4. Buscar o serviço.
+4. Buscar o serviço, com lock otimista.
 5. Validar existência.
-6. Validar payload.
-7. Validar duplicidade e conflitos.
-8. Executar `servico.Atualizar(...)`.
-9. Registrar data e hora da atualização.
-10. Registrar usuário responsável pela atualização.
-11. Persistir.
+6. Comparar `If-Match` com a `version` atual — divergência retorna `412`, ausência retorna `428`.
+7. Validar o payload e rejeitar campos imutáveis.
+8. Normalizar o nome resultante e validar duplicidade entre serviços ativos.
+9. Aplicar apenas os campos presentes no corpo.
+10. Registrar data, hora e usuário responsável pela atualização.
+11. Persistir e incrementar `version`.
 12. Retornar o serviço atualizado.
 
 **Persistência**
 
 - Consulta: `ServicoRepository` para buscar o serviço e validar duplicidade.
 - Altera: `Servico`.
-- Persiste: `nome`, `descricao`, `valor`, `tempo_estimado_minutos`, `data_atualizacao` e
-  `usuario_atualizacao`.
-- Não altera: `id`, `codigo` e histórico das OS ou orçamentos já registrados.
+- Persiste: apenas os campos enviados, mais `nome_normalizado`, `data_atualizacao`,
+  `usuario_atualizacao` e `version` incrementada.
+- Não altera: `id`, `codigo`, `data_criacao`, `ativo` e o histórico das OS ou orçamentos já
+  registrados.
 
 **Saída da API**
 
 ```json
 {
-  "id": "123",
+  "id": "4b8e2c17-95a3-4f60-b7d1-6e0c58a3f942",
   "codigo": "SER-000001",
   "nome": "Troca de óleo e filtro",
   "descricao": "Troca de óleo, filtro e inspeção",
   "valor": 180.0,
   "tempoEstimadoMinutos": 75,
-  "status": "ATIVO",
+  "ativo": true,
+  "version": 4,
   "dataAtualizacao": "2026-08-19T20:20:00-03:00"
 }
 ```
@@ -180,11 +199,13 @@ imutável.
 | Código | Situação |
 |---|---|
 | `200` | Serviço atualizado. |
-| `400` | Dados inválidos. |
+| `400` | Dados inválidos, ou campo imutável enviado no corpo. |
 | `401` | Token ausente ou expirado. |
 | `403` | Usuário sem o escopo `servicos:escrever`. |
 | `404` | Serviço inexistente. |
-| `409` | Conflito com outro serviço. |
+| `409` | Nome já usado por outro serviço ativo. |
+| `412` | `If-Match` divergente — o serviço foi alterado por outro usuário. |
+| `428` | `If-Match` não informado. |
 | `500` | Falha inesperada. |
 
 **Dependências**
@@ -203,16 +224,24 @@ imutável.
 - Mantém o mesmo `codigo`.
 - Rejeita valor negativo.
 - Rejeita serviço inexistente.
-- Rejeita duplicidade.
+- Rejeita nome já usado por outro serviço ativo.
+- Rejeita `codigo` enviado no corpo.
+- Rejeita `ativo` enviado no corpo.
+- Rejeita `tempoEstimadoMinutos` menor que 1.
+- Atualiza apenas os campos enviados, preservando os demais.
 - Preserva valores históricos das OS.
 
 *Integração*
 
-- `PATCH /servicos/{id}` válido retorna `200`.
+- `PATCH /servicos/{servicoId}` válido retorna `200`.
+- `PATCH` com um campo só altera apenas esse campo.
+- `PATCH` com `If-Match` antigo retorna `412`.
+- `PATCH` sem `If-Match` retorna `428`.
+- `PATCH` com `codigo` no corpo retorna `400`.
 - Serviço atualizado é persistido corretamente no banco.
 - Serviço inexistente retorna `404`.
 - Dados inválidos retornam `400`.
-- Conflito com outro serviço retorna `409`.
+- Nome já usado por outro serviço ativo retorna `409`.
 - Requisição sem autenticação retorna `401`.
 - Usuário sem permissão retorna `403`.
 
@@ -223,10 +252,12 @@ imutável.
 **Domínio**
 
 - [ ] Criar método de domínio `Atualizar` em `Servico`
-- [ ] Definir quais campos podem ser alterados
+- [ ] Definir quais campos podem ser alterados: `nome`, `descricao`, `valor` e `tempoEstimadoMinutos`
+- [ ] Declarar `id`, `codigo`, `dataCriacao` e `ativo` como imutáveis neste fluxo
+- [ ] Adicionar o campo `version` ao modelo `Servico` para controle otimista
 - [ ] Validar campos obrigatórios
 - [ ] Validar valor
-- [ ] Validar duplicidade de nome
+- [ ] Validar duplicidade de nome normalizado entre serviços ativos
 - [ ] Permitir alteração dos dados previstos
 - [ ] Preservar histórico das OS existentes
 - [ ] Não alterar retroativamente valores utilizados em OS
@@ -236,6 +267,8 @@ imutável.
 - [ ] Criar caso de uso `AtualizarServico`
 - [ ] Buscar serviço existente
 - [ ] Validar existência
+- [ ] Aplicar apenas os campos presentes no corpo
+- [ ] Comparar `If-Match` com a `version` atual antes de aplicar as alterações
 - [ ] Registrar data e hora de atualização
 - [ ] Registrar usuário responsável, caso aplicável
 
@@ -243,36 +276,43 @@ imutável.
 
 - [ ] Consultar serviço por identificador no `ServicoRepository`
 - [ ] Consultar duplicidade de nome ou critério equivalente
-- [ ] Persistir alterações do serviço
+- [ ] Persistir alterações do serviço e incrementar `version`
 
 **Handler HTTP**
 
-- [ ] Implementar `PATCH /servicos/{id}`
+- [ ] Implementar `PATCH /servicos/{servicoId}`
 - [ ] Criar DTO/request
 - [ ] Criar DTO/response
 - [ ] Aplicar autenticação JWT
 - [ ] Aplicar autorização para o escopo `servicos:escrever`
 - [ ] Retornar `404` para serviço inexistente
-- [ ] Retornar `409` para conflito
+- [ ] Retornar `409` para nome já usado por outro serviço ativo
+- [ ] Retornar `412` quando o `If-Match` divergir da `version` atual
+- [ ] Retornar `428` quando o `If-Match` não for informado
 
 **Validações**
 
-- [ ] Validar formato do `id`
-- [ ] Validar nome
-- [ ] Validar valor não negativo
-- [ ] Validar tempo estimado, caso adotado
-- [ ] Validar duplicidade de serviço
+- [ ] Validar formato do `servicoId`
+- [ ] Validar nome quando informado
+- [ ] Validar valor não negativo quando informado
+- [ ] Validar tempo estimado maior ou igual a 1 quando informado
+- [ ] Rejeitar com `400` os campos imutáveis enviados no corpo
+- [ ] Validar duplicidade de nome normalizado entre serviços ativos
 
 **Concorrência**
 
-- [ ] Definir e implementar estratégia para conflito de atualização
+- [ ] Implementar controle otimista com `If-Match` comparado ao campo `version`
+- [ ] Incrementar `version` a cada atualização persistida
 
 **Testes unitários**
 
 - [ ] Atualização de serviço existente
 - [ ] Serviço inexistente
-- [ ] Nome duplicado
+- [ ] Nome já usado por outro serviço ativo
 - [ ] Valor negativo
+- [ ] Campo imutável enviado no corpo
+- [ ] Atualização parcial preservando os campos não enviados
+- [ ] `If-Match` divergente
 - [ ] Preservação do histórico
 - [ ] Manutenção de `id` e `codigo`
 
@@ -281,7 +321,9 @@ imutável.
 - [ ] Endpoint atualiza serviço válido e retorna `200`
 - [ ] Endpoint retorna `404` para serviço inexistente
 - [ ] Endpoint retorna `400` para dados inválidos
-- [ ] Endpoint retorna `409` para conflito
+- [ ] Endpoint retorna `409` para nome já usado por outro serviço ativo
+- [ ] Endpoint retorna `412` com `If-Match` antigo
+- [ ] Endpoint retorna `428` sem `If-Match`
 - [ ] Endpoint bloqueia usuário sem autorização
 
 **Documentação**

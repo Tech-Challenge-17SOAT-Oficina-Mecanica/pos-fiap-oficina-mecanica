@@ -13,9 +13,9 @@ Este documento detalha a tarefa Registrar Problema Relatado do contexto de Ordem
 > Esta tarefa **substitui** a antiga tarefa Iniciar Diagnóstico: o início do diagnóstico passou a
 > ser consequência do registro do relato do cliente, e não uma operação separada.
 
-## 1 · Registrar Problema Relatado
+## 2 · Registrar Problema Relatado
 
-### 1.1 Refinamento de Produto
+### 2.1 Refinamento de Produto
 
 **Persona**
 
@@ -41,21 +41,21 @@ o diagnóstico que será realizado depois.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-82 | Permitir registrar a descrição do problema relatado pelo cliente. |
-| RF-OS-83 | Permitir registrar observações adicionais. |
-| RF-OS-84 | Vincular o relato à Ordem de Serviço. |
-| RF-OS-85 | Iniciar a etapa de diagnóstico ao registrar o relato. |
-| RF-OS-86 | Alterar o status da OS de `RECEBIDA` para `EM_DIAGNOSTICO`. |
-| RF-OS-87 | Registrar a data e hora de início do diagnóstico. |
-| RF-OS-88 | Impedir que um novo problema inicial seja registrado depois do início do diagnóstico. |
+| RF-OS-08 | Permitir registrar a descrição do problema relatado pelo cliente. |
+| RF-OS-09 | Permitir registrar observações adicionais. |
+| RF-OS-10 | Vincular o relato à Ordem de Serviço. |
+| RF-OS-11 | Iniciar a etapa de diagnóstico ao registrar o relato. |
+| RF-OS-12 | Alterar o status da OS de `RECEBIDA` para `EM_DIAGNOSTICO`. |
+| RF-OS-13 | Registrar a data e hora de início do diagnóstico. |
+| RF-OS-14 | Impedir que um novo problema inicial seja registrado depois do início do diagnóstico. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-49 | Apenas usuários autorizados devem realizar o registro. |
-| RNF-OS-50 | O relato e a mudança de status devem ser registrados na mesma operação. |
-| RNF-OS-51 | A operação deve manter a consistência dos dados da Ordem de Serviço. |
+| RNF-OS-06 | Apenas usuários autorizados devem realizar o registro. |
+| RNF-OS-07 | O relato e a mudança de status devem ser registrados na mesma operação. |
+| RNF-OS-08 | A operação deve manter a consistência dos dados da Ordem de Serviço. |
 
 **Fluxo Principal**
 
@@ -91,7 +91,7 @@ o diagnóstico que será realizado depois.
 
 ---
 
-### 1.2 Refinamento Técnico
+### 2.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -108,7 +108,7 @@ POST /ordens-servico/{osId}/problema-relatado
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `os:escrever`.
 
 **Entrada**
@@ -218,7 +218,7 @@ RECEBIDA → registrar problema relatado → EM_DIAGNOSTICO
 
 ---
 
-### 1.3 Checklist de Implementação
+### 2.3 Checklist de Implementação
 
 **Domínio**
 

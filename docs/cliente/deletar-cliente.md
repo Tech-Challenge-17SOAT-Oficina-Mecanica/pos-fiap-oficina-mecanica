@@ -117,7 +117,7 @@ POST   /clientes/{clienteId}/reativacao
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `clientes:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -156,17 +156,21 @@ Nenhuma das duas operações tem corpo na requisição.
 5. Abrir transação.
 6. Marcar `cliente.ativo = false` e gravar `inativadoEm`, `inativadoPor` e `motivoInativacao`.
 7. Registrar na trilha de auditoria.
-8. Publicar `ClienteInativado`.
+8. Inativar os veículos vinculados por **chamada direta** ao módulo de veículos, na mesma
+   transação, com o motivo "Cliente inativado".
 9. Commit.
-10. A política "cliente inativado, então inativar veículos" consome o evento e inativa cada veículo vinculado.
+
+> **Decisão de projeto.** A cascata é uma **chamada direta dentro da mesma transação**, não um
+> evento. O projeto não usa mensageria nem eventos de domínio: ou o cliente e seus veículos são
+> inativados juntos, ou nada é gravado. A alternativa por evento deixaria uma janela com o cliente
+> inativo e os veículos ainda ativos.
 
 *Reativação (`POST /reativacao`)*
 
 1. Carregar o cliente e verificar que está inativo.
 2. Verificar que não existe outro cliente ativo com o mesmo CPF/CNPJ; havendo, retornar `409`.
 3. Marcar `ativo = true` e limpar os campos de inativação.
-4. Registrar na trilha de auditoria.
-5. Publicar `ClienteReativado`.
+4. Registrar a reativação na trilha de auditoria.
 
 Os veículos não são reativados em cascata: a reativação é individual e deliberada, para não
 trazer de volta carros que o cliente já não tem.
@@ -255,7 +259,8 @@ Conflito por OS em aberto — `409`:
 - `VeiculoRepository` (inativação em cascata).
 - `AuditoriaRepository`.
 - Módulo Ordem de Serviço — consulta de OS em aberto.
-- Publicador de eventos de domínio.
+- Módulo de veículos, para a inativação em cascata.
+- Trilha de auditoria.
 - Caso de uso Deletar Veículo (acionado pela política de cascata).
 - Caso de uso Consultar Cliente (não deve retornar inativos).
 - Caso de uso Cadastrar Cliente (depende do índice parcial para permitir recadastro).
@@ -311,8 +316,8 @@ Conflito por OS em aberto — `409`:
 
 - [ ] Implementar `ClienteRepository.inativar` e `ClienteRepository.reativar`
 - [ ] Ajustar as consultas padrão para filtrar somente clientes ativos
-- [ ] Criar índice parcial `UNIQUE (cpf_cnpj) WHERE ativo = true`
-- [ ] Remover qualquer `ON DELETE CASCADE` em foreign key que aponte para cliente
+- [ ] Criar índice parcial `UNIQUE (cpf_cnpj) WHERE ativo = true` **na migration**
+- [ ] Remover qualquer `ON DELETE CASCADE` em foreign key que aponte para cliente, **na migration**
 - [ ] Implementar registro na trilha de auditoria
 
 **Integrações**
@@ -336,10 +341,10 @@ Conflito por OS em aberto — `409`:
 - [ ] Retornar `409` quando houver OS em aberto
 - [ ] Retornar `409` na reativação com CPF/CNPJ em uso por cliente ativo
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `ClienteInativado`
-- [ ] Publicar `ClienteReativado`
+- [ ] Registrar a inativação e a reativação na trilha de auditoria
+- [ ] Inativar os veículos vinculados por chamada direta, na mesma transação
 
 **Testes unitários**
 
@@ -377,5 +382,13 @@ Conflito por OS em aberto — `409`:
 - [ ] Executar testes automatizados
 - [ ] Code Review aprovado
 - [ ] Migration versionada e reversível
+- [ ] Conferir no review da migration que o índice parcial `UNIQUE (cpf_cnpj) WHERE ativo = true`
+      foi criado
+- [ ] Conferir no review da migration que nenhuma foreign key para cliente usa `ON DELETE CASCADE`
+
+> **Decisão de projeto.** As duas exigências de banco — o índice parcial e a ausência de
+> `ON DELETE CASCADE` — são itens obrigatórios do review da primeira migration do projeto. Sem o
+> índice, o mesmo CPF não pode ser recadastrado depois de uma inativação; com o cascade, inativar
+> vira apagar de verdade e o histórico de OS se perde.
 
 ---

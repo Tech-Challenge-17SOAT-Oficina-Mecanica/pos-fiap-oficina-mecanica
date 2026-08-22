@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Registrar Serviços Necessários do contexto de Ordem de Serviço.
 
-## 2 · Registrar Serviços Necessários
+## 4 · Registrar Serviços Necessários
 
-### 2.1 Refinamento de Produto
+### 4.1 Refinamento de Produto
 
 **Persona**
 
@@ -39,25 +39,25 @@ necessários para realizar o reparo e compor o orçamento que será apresentado 
 
 | ID | Requisito |
 |---|---|
-| RF-OS-89 | Permitir registrar um ou mais serviços necessários. |
-| RF-OS-90 | Permitir informar uma observação para cada serviço. |
-| RF-OS-91 | Vincular os serviços diretamente ao orçamento correspondente. |
-| RF-OS-92 | Identificar automaticamente o orçamento a partir da Ordem de Serviço. |
-| RF-OS-93 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `EM_DIAGNOSTICO`. |
-| RF-OS-94 | Utilizar o orçamento `COMPLEMENTAR` com status `CRIADO` quando a OS estiver `EM_EXECUCAO`. |
-| RF-OS-95 | Utilizar o valor cadastrado do serviço na composição do orçamento. |
-| RF-OS-96 | Atualizar o valor total do orçamento após o registro. |
-| RF-OS-97 | Impedir a inclusão do mesmo serviço mais de uma vez no mesmo orçamento. |
-| RF-OS-98 | Impedir alterações em orçamento `APROVADO` ou `RECUSADO`. |
+| RF-OS-29 | Permitir registrar um ou mais serviços necessários. |
+| RF-OS-30 | Permitir informar uma observação para cada serviço. |
+| RF-OS-31 | Vincular os serviços diretamente ao orçamento correspondente. |
+| RF-OS-32 | Identificar automaticamente o orçamento a partir da Ordem de Serviço. |
+| RF-OS-33 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `EM_DIAGNOSTICO`. |
+| RF-OS-34 | Utilizar o orçamento `COMPLEMENTAR` com status `CRIADO` quando a OS estiver `EM_EXECUCAO`. |
+| RF-OS-35 | Utilizar o valor cadastrado do serviço na composição do orçamento. |
+| RF-OS-36 | Atualizar o valor total do orçamento após o registro. |
+| RF-OS-37 | Impedir a inclusão do mesmo serviço mais de uma vez no mesmo orçamento. |
+| RF-OS-38 | Impedir alterações em orçamento `APROVADO` ou `RECUSADO`. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-52 | Apenas usuários autorizados devem realizar o registro. |
-| RNF-OS-53 | O tipo do orçamento não deve ser informado pelo usuário. |
-| RNF-OS-54 | O serviço deve ser vinculado ao orçamento, sem necessidade de vínculo direto com um problema. |
-| RNF-OS-55 | O registro dos serviços e a atualização do orçamento devem ocorrer de forma consistente. |
+| RNF-OS-13 | Apenas usuários autorizados devem realizar o registro. |
+| RNF-OS-14 | O tipo do orçamento não deve ser informado pelo usuário. |
+| RNF-OS-15 | O serviço deve ser vinculado ao orçamento, sem necessidade de vínculo direto com um problema. |
+| RNF-OS-16 | O registro dos serviços e a atualização do orçamento devem ocorrer de forma consistente. |
 
 **Fluxo Principal**
 
@@ -96,7 +96,7 @@ necessários para realizar o reparo e compor o orçamento que será apresentado 
 
 ---
 
-### 2.2 Refinamento Técnico
+### 4.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -270,7 +270,7 @@ Durante a execução, o mesmo contrato responde com o orçamento complementar:
 
 ---
 
-### 2.3 Checklist de Implementação
+### 4.3 Checklist de Implementação
 
 **Domínio**
 

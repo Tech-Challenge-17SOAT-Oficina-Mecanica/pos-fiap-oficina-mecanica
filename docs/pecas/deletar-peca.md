@@ -1,22 +1,22 @@
 ---
 documento: Refinamento de Requisitos — Deletar Peça
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-19
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Deletar Peça
 
-Este documento detalha a tarefa Deletar Peça do contexto de Peças & Insumos.
+Este documento detalha a tarefa Deletar Peça do contexto de Peças.
 
-## 11 · Deletar Peça
+## 4 · Deletar Peça
 
-### 11.1 Refinamento de Produto
+### 4.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -35,33 +35,33 @@ utilizadas em atendimentos anteriores, pois isso comprometeria o histórico da o
 - A peça deve estar ativa.
 - O usuário deve possuir autorização para realizar a operação.
 - A peça não pode ser removida fisicamente caso possua histórico de utilização.
-- Deve ser considerada a existência de saldo em estoque, conforme a regra definida pela oficina.
+- A peça não pode ter **saldo reservado**; saldo físico não impede a inativação.
 
 **Requisitos Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RF-EST-70 | Permitir ao usuário autorizado desativar uma peça. |
-| RF-EST-71 | Alterar a situação da peça de ativa para inativa. |
-| RF-EST-72 | Impedir que uma peça inativa seja utilizada em novos orçamentos. |
-| RF-EST-73 | Impedir que uma peça inativa seja adicionada a novas Ordens de Serviço. |
-| RF-EST-74 | Manter a peça disponível para consulta histórica. |
-| RF-EST-75 | Preservar as informações da peça utilizadas em Ordens de Serviço anteriores. |
-| RF-EST-76 | Registrar a data da desativação. |
-| RF-EST-77 | Registrar o usuário responsável pela desativação. |
-| RF-EST-78 | Permitir identificar que a peça não está mais disponível para novos atendimentos. |
-| RF-EST-79 | Não remover fisicamente a peça do histórico do sistema. |
+| RF-PEC-31 | Permitir ao usuário autorizado desativar uma peça. |
+| RF-PEC-32 | Alterar a situação da peça de ativa para inativa. |
+| RF-PEC-33 | Impedir que uma peça inativa seja utilizada em novos orçamentos. |
+| RF-PEC-34 | Impedir que uma peça inativa seja adicionada a novas Ordens de Serviço. |
+| RF-PEC-35 | Manter a peça disponível para consulta histórica. |
+| RF-PEC-36 | Preservar as informações da peça utilizadas em Ordens de Serviço anteriores. |
+| RF-PEC-37 | Registrar a data da desativação. |
+| RF-PEC-38 | Registrar o usuário responsável pela desativação. |
+| RF-PEC-39 | Permitir identificar que a peça não está mais disponível para novos atendimentos. |
+| RF-PEC-40 | Não remover fisicamente a peça do histórico do sistema. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-55 | A desativação deve ser persistida de forma consistente. |
-| RNF-EST-56 | Somente usuários autorizados devem poder desativar peças. |
-| RNF-EST-57 | O histórico das Ordens de Serviço não pode ser alterado pela desativação. |
-| RNF-EST-58 | A operação deve manter a rastreabilidade da peça. |
-| RNF-EST-59 | A desativação não deve alterar valores ou itens de Ordens de Serviço já registradas. |
-| RNF-EST-60 | A operação deve ter comportamento consistente em caso de erro ou concorrência. |
+| RNF-PEC-20 | A desativação deve ser persistida de forma consistente. |
+| RNF-PEC-21 | Somente usuários autorizados devem poder desativar peças. |
+| RNF-PEC-22 | O histórico das Ordens de Serviço não pode ser alterado pela desativação. |
+| RNF-PEC-23 | A operação deve manter a rastreabilidade da peça. |
+| RNF-PEC-24 | A desativação não deve alterar valores ou itens de Ordens de Serviço já registradas. |
+| RNF-PEC-25 | A operação deve ter comportamento consistente em caso de erro ou concorrência. |
 
 **Fluxo Principal**
 
@@ -86,8 +86,9 @@ utilizadas em atendimentos anteriores, pois isso comprometeria o histórico da o
 | A2 | Peça já inativa | Informa que a peça já está desativada. |
 | A3 | Usuário sem autorização | Impede a operação. |
 | A4 | Peça utilizada em OS anteriores | Mantém o registro e realiza apenas a desativação lógica. |
-| A5 | Peça com saldo em estoque | Segue a regra de negócio definida para peças com estoque disponível. |
-| A6 | Peça vinculada a orçamento pendente | Comportamento a definir: permitir a desativação ou bloquear a operação. |
+| A5 | Peça com saldo físico e sem reserva | Permite a inativação: o saldo continua registrado e volta a valer se a peça for reativada. |
+| A6 | Peça vinculada a orçamento aguardando aprovação | Bloqueia a operação: o cliente ainda pode aprovar aquele orçamento. |
+| A7 | Peça com saldo reservado | Bloqueia a operação e informa as OS que seguram a reserva. |
 | A7 | Erro na persistência | Não considera a peça desativada até que a alteração seja persistida com sucesso. |
 
 **Saída**
@@ -104,7 +105,7 @@ utilizadas em atendimentos anteriores, pois isso comprometeria o histórico da o
 
 ---
 
-### 11.2 Refinamento Técnico
+### 4.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -122,7 +123,7 @@ DELETE /estoque/pecas/{pecaId}
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -145,7 +146,9 @@ Não há corpo na requisição.
 - A peça deve existir.
 - A peça deve estar ativa.
 - A peça não pode ser removida fisicamente caso possua histórico.
-- Comportamento a definir quando houver saldo em estoque ou orçamento pendente.
+- Bloquear quando houver **saldo reservado**, com `409` e a lista das OS que seguram a reserva.
+- Permitir quando houver apenas saldo físico: o saldo é preservado e volta a valer na reativação.
+- Bloquear quando o item estiver em orçamento com status `CRIADO`, aguardando decisão do cliente.
 - A peça não pode ser utilizada em novos orçamentos após a operação.
 
 **Regra de domínio**
@@ -227,7 +230,7 @@ A peça continua armazenada para preservar as referências das Ordens de Serviç
 
 ---
 
-### 11.3 Checklist de Implementação
+### 4.3 Checklist de Implementação
 
 **Domínio**
 
@@ -240,7 +243,9 @@ A peça continua armazenada para preservar as referências das Ordens de Serviç
 
 - [ ] Implementar `DesativarPeca`
 - [ ] Validar que a peça existe e está ativa
-- [ ] Definir o comportamento quando houver saldo em estoque
+- [ ] Bloquear a inativação quando houver saldo reservado
+- [ ] Permitir a inativação quando houver apenas saldo físico
+- [ ] Bloquear a inativação quando o item estiver em orçamento com status `CRIADO`
 - [ ] Verificar se a peça já foi utilizada em alguma Ordem de Serviço
 - [ ] Impedir exclusão física de peça com histórico
 
@@ -263,7 +268,9 @@ A peça continua armazenada para preservar as referências das Ordens de Serviç
 - [ ] Desativação válida
 - [ ] Peça inexistente
 - [ ] Peça já inativa
-- [ ] Peça com saldo em estoque
+- [ ] Peça com saldo físico e sem reserva: inativação permitida
+- [ ] Peça com saldo reservado: inativação bloqueada
+- [ ] Peça em orçamento aguardando aprovação: inativação bloqueada
 - [ ] Peça utilizada em histórico
 - [ ] Usuário sem autorização
 

@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Deletar Veículo
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -113,7 +113,7 @@ POST   /veiculos/{veiculoId}/reativacao
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `veiculos:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -153,23 +153,25 @@ Nenhuma das duas operações tem corpo na requisição.
 5. Abrir transação.
 6. Marcar `veiculo.ativo = false` e gravar `inativadoEm`, `inativadoPor` e `motivoInativacao`.
 7. Registrar na trilha de auditoria.
-8. Publicar `VeiculoInativado`.
+8. Registrar a inativação na trilha de auditoria.
 9. Commit.
 
 *Reativação (`POST /reativacao`)*
 
 1. Carregar o veículo e verificar que está inativo.
 2. Verificar que não existe outro veículo ativo com a mesma placa; havendo, retornar `409`.
-3. Verificar que o cliente proprietário está ativo; caso contrário, retornar `422`.
+3. Verificar que o cliente proprietário está ativo; caso contrário, retornar `409`.
 4. Marcar `ativo = true` e limpar os campos de inativação.
-5. Registrar na trilha de auditoria.
-6. Publicar `VeiculoReativado`.
+5. Registrar a reativação na trilha de auditoria.
 
-*Consumo do evento `ClienteInativado`*
+*Inativação em cascata, chamada por Cliente*
 
-1. Receber o evento do agregado Cliente.
+1. Receber a chamada direta do caso de uso `InativarCliente`, dentro da transação aberta por ele.
 2. Buscar os veículos ativos do cliente.
 3. Inativar cada um com o motivo "Cliente inativado".
+
+> **Decisão de projeto.** A cascata é uma chamada em processo, não um evento: o projeto não usa
+> mensageria. Uma falha aqui desfaz também a inativação do cliente.
 
 **Persistência**
 
@@ -243,7 +245,7 @@ Conflito por OS em aberto — `409`:
 | `403` | Perfil sem o escopo `veiculos:escrever`. |
 | `404` | Veículo não encontrado. |
 | `409` | Veículo possui OS em aberto; reativação com placa já usada por veículo ativo. |
-| `422` | Reativação com cliente proprietário inativo. |
+| `409` | Reativação com cliente proprietário inativo. |
 
 **Dependências**
 
@@ -251,7 +253,7 @@ Conflito por OS em aberto — `409`:
 - `ClienteRepository` (verificação da situação do proprietário na reativação).
 - `AuditoriaRepository`.
 - Módulo Ordem de Serviço — consulta de OS em aberto.
-- Publicador e consumidor de eventos de domínio.
+- Trilha de auditoria.
 - Caso de uso Deletar Cliente — aciona este caso de uso via política de cascata.
 - Caso de uso Consultar Veículo (não deve retornar inativos).
 - Caso de uso Cadastrar Veículo (depende do índice parcial para permitir recadastro).
@@ -276,7 +278,7 @@ Conflito por OS em aberto — `409`:
 - Perfil sem o escopo `veiculos:escrever` retorna `403`.
 - `POST /reativacao` válido retorna `200` e marca `ativo = true`.
 - Reativação com placa em uso por veículo ativo retorna `409`.
-- Reativação com cliente inativo retorna `422`.
+- Reativação com cliente inativo retorna `409`.
 
 *Regressão*
 
@@ -310,14 +312,14 @@ Conflito por OS em aberto — `409`:
 - [ ] Implementar `VeiculoRepository.inativar` e `VeiculoRepository.reativar`
 - [ ] Implementar a consulta de veículo ativo por placa
 - [ ] Ajustar as consultas padrão para filtrar somente veículos ativos
-- [ ] Criar índice parcial `UNIQUE (placa) WHERE ativo = true`
-- [ ] Remover qualquer `ON DELETE CASCADE` em foreign key que aponte para `veiculo`
+- [ ] Criar índice parcial `UNIQUE (placa) WHERE ativo = true` **na migration**
+- [ ] Remover qualquer `ON DELETE CASCADE` em foreign key que aponte para `veiculo`, **na migration**
 - [ ] Implementar registro na trilha de auditoria
 
 **Integrações**
 
 - [ ] Consultar o módulo de Ordem de Serviço para verificar OS em aberto
-- [ ] Consumir o evento `ClienteInativado` e inativar os veículos vinculados em cascata
+- [ ] Expor o caso de uso de inativação em cascata para o módulo de clientes chamar na mesma transação
 - [ ] Validar a situação do cliente proprietário junto ao `ClienteRepository` na reativação
 
 **Handler HTTP**
@@ -336,10 +338,9 @@ Conflito por OS em aberto — `409`:
 - [ ] Bloquear reativação quando o cliente proprietário estiver inativo
 - [ ] Restringir a operação ao escopo `veiculos:escrever`
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `VeiculoInativado`
-- [ ] Publicar `VeiculoReativado`
+- [ ] Registrar a inativação e a reativação na trilha de auditoria
 
 **Testes unitários**
 
@@ -359,7 +360,7 @@ Conflito por OS em aberto — `409`:
 - [ ] Perfil sem escopo retornando `403`
 - [ ] `POST /reativacao` válido retornando `200` com `ativo` verdadeiro
 - [ ] Reativação com placa em uso retornando `409`
-- [ ] Reativação com cliente inativo retornando `422`
+- [ ] Reativação com cliente inativo retornando `409`
 
 **Testes de regressão**
 
@@ -380,5 +381,13 @@ Conflito por OS em aberto — `409`:
 - [ ] Executar testes automatizados
 - [ ] Code Review aprovado
 - [ ] Migration versionada e reversível
+- [ ] Conferir no review da migration que o índice parcial `UNIQUE (placa) WHERE ativo = true`
+      foi criado
+- [ ] Conferir no review da migration que nenhuma foreign key para `veiculo` usa `ON DELETE CASCADE`
+
+> **Decisão de projeto.** As duas exigências de banco são itens obrigatórios do review da primeira
+> migration, junto com as equivalentes do contexto de Cliente. Sem o índice, a mesma placa não pode
+> ser recadastrada depois de uma inativação; com o cascade, inativar vira apagar de verdade e o
+> histórico de OS se perde.
 
 ---

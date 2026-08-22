@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Finalizar Serviço
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-19
 status: rascunho
 ---
@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Finalizar Serviço do contexto de Ordem de Serviço.
 
-## 7 · Finalizar Serviço
+## 9 · Finalizar Serviço
 
-### 7.1 Refinamento de Produto
+### 9.1 Refinamento de Produto
 
 **Persona**
 
@@ -40,26 +40,26 @@ que o cliente compareça, pague e retire o veículo.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-43 | Permitir ao mecânico finalizar a execução da OS. |
-| RF-OS-44 | Validar se todos os serviços autorizados foram concluídos. |
-| RF-OS-45 | Validar se não existem serviços pendentes. |
-| RF-OS-46 | Registrar a data e hora da finalização. |
-| RF-OS-47 | Permitir registrar observações finais, quando necessário. |
-| RF-OS-48 | Alterar o status da OS para `FINALIZADA`. |
-| RF-OS-49 | Notificar o cliente de que o veículo está disponível para retirada. |
-| RF-OS-50 | Registrar que a notificação foi realizada. |
-| RF-OS-51 | Manter a OS como `FINALIZADA` enquanto o veículo aguarda retirada. |
+| RF-OS-81 | Permitir ao mecânico finalizar a execução da OS. |
+| RF-OS-82 | Validar se todos os serviços autorizados foram concluídos. |
+| RF-OS-83 | Validar se não existem serviços pendentes. |
+| RF-OS-84 | Registrar a data e hora da finalização. |
+| RF-OS-85 | Permitir registrar observações finais, quando necessário. |
+| RF-OS-86 | Alterar o status da OS para `FINALIZADA`. |
+| RF-OS-87 | Notificar o cliente de que o veículo está disponível para retirada. |
+| RF-OS-88 | Registrar que a notificação foi realizada. |
+| RF-OS-89 | Manter a OS como `FINALIZADA` enquanto o veículo aguarda retirada. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-26 | A finalização deve ser persistida de forma consistente. |
-| RNF-OS-27 | Somente usuários autorizados devem poder finalizar o serviço. |
-| RNF-OS-28 | A alteração do status e o registro da finalização devem ocorrer de forma consistente. |
-| RNF-OS-29 | O histórico da Ordem de Serviço deve ser preservado. |
-| RNF-OS-30 | Uma falha no envio da notificação não deve provocar perda das informações de finalização da OS. |
-| RNF-OS-31 | As informações da notificação devem permitir rastrear quando o cliente foi comunicado. |
+| RNF-OS-40 | A finalização deve ser persistida de forma consistente. |
+| RNF-OS-41 | Somente usuários autorizados devem poder finalizar o serviço. |
+| RNF-OS-42 | A alteração do status e o registro da finalização devem ocorrer de forma consistente. |
+| RNF-OS-43 | O histórico da Ordem de Serviço deve ser preservado. |
+| RNF-OS-44 | Uma falha no envio da notificação não deve provocar perda das informações de finalização da OS. |
+| RNF-OS-45 | As informações da notificação devem permitir rastrear quando o cliente foi comunicado. |
 
 **Fluxo Principal**
 
@@ -103,7 +103,7 @@ que o cliente compareça, pague e retire o veículo.
 
 ---
 
-### 7.2 Refinamento Técnico
+### 9.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -151,7 +151,16 @@ POST /ordens-servico/{osId}/finalizar
 - Todos os serviços adicionais aprovados devem estar concluídos.
 - Não pode haver atividade obrigatória pendente.
 - Não é permitido finalizar OS já `FINALIZADA` nem `ENTREGUE`.
-- As peças e insumos utilizados devem ter sido baixados, conforme a regra definida para o estoque.
+- As peças e os insumos utilizados devem ter sido baixados por `POST /estoque/saidas`.
+
+> **Decisão de projeto.** A baixa de consumo é **pré-condição da finalização**: enquanto houver
+> reserva ativa da OS sem baixa registrada, a finalização retorna `409` com a lista dos itens
+> pendentes. Sem esse bloqueio a OS encerraria com peça ainda comprometida, o saldo reservado nunca
+> zeraria e o inventário jamais fecharia.
+
+> **Decisão de projeto.** A **notificação ao cliente é por e-mail** no MVP, usando o contato do
+> cadastro do cliente, e o resultado do envio é gravado para permitir reenvio. A falha do envio não
+> desfaz a finalização: o serviço está pronto, e o aviso é consequência.
 
 **Regra de domínio**
 
@@ -205,14 +214,14 @@ não houver pendência que impeça a entrega do veículo.
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `os:escrever`. |
 | `404` | Ordem de Serviço não encontrada. |
-| `409` | OS não está `EM_EXECUCAO`; existem serviços autorizados pendentes; existem serviços adicionais aprovados pendentes; existem pendências que impedem a finalização. |
+| `409` | OS não está `EM_EXECUCAO`; existem serviços autorizados pendentes; existem serviços adicionais aprovados pendentes; **existe reserva ativa da OS sem baixa de estoque registrada**. |
 
 **Dependências**
 
 - `OrdemDeServicoRepository`.
 - `OrcamentoRepository`, para validar os serviços autorizados.
-- Repositório ou serviço de Estoque, quando a finalização depender da confirmação das movimentações.
-- Serviço de notificação ao cliente.
+- `ReservaEstoqueRepository`, para verificar reservas ativas da OS sem baixa registrada.
+- Serviço de notificação ao cliente, por e-mail.
 - Middleware de autenticação/autorização.
 
 **Fora do escopo desta tarefa**
@@ -237,12 +246,13 @@ cliente; gerar novo orçamento; executar reparos adicionais; refazer diagnóstic
 - OS inexistente retorna `404`.
 - OS fora de `EM_EXECUCAO` retorna `409`.
 - Serviço pendente ou reparo adicional pendente retorna `409`.
+- Reserva ativa sem baixa registrada retorna `409` com a lista dos itens pendentes.
 - Sem token retorna `401` e perfil sem escopo retorna `403`.
-- A notificação do cliente é disparada e a falha dela não desfaz a finalização.
+- A notificação por e-mail é disparada, o resultado do envio é gravado, e a falha dela não desfaz a finalização.
 
 ---
 
-### 7.3 Checklist de Implementação
+### 9.3 Checklist de Implementação
 
 **Domínio**
 
@@ -251,7 +261,8 @@ cliente; gerar novo orçamento; executar reparos adicionais; refazer diagnóstic
 - [ ] Validar que todos os serviços autorizados estão concluídos
 - [ ] Validar que todos os serviços adicionais aprovados estão concluídos
 - [ ] Validar que não existem pendências impeditivas
-- [ ] Definir se movimentações pendentes de estoque bloqueiam a finalização
+- [ ] Bloquear a finalização quando ainda houver reserva ativa da OS sem baixa registrada
+- [ ] Enviar a notificação de conclusão por e-mail e gravar o resultado do envio
 - [ ] Definir o tratamento para orçamento complementar ainda aguardando decisão
 - [ ] Registrar data e hora da finalização e as observações finais
 - [ ] Alterar o status da OS para `FINALIZADA`
@@ -286,6 +297,7 @@ cliente; gerar novo orçamento; executar reparos adicionais; refazer diagnóstic
 - [ ] Retornar `409` para OS fora de `EM_EXECUCAO`
 - [ ] Retornar `409` quando houver serviço pendente
 - [ ] Retornar `409` quando houver reparo adicional aprovado pendente
+- [ ] Retornar `409` quando houver reserva ativa da OS sem baixa de estoque registrada
 
 **Testes unitários**
 

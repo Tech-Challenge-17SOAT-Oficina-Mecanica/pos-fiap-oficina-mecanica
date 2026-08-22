@@ -1,18 +1,23 @@
 ---
-documento: Refinamento de Requisitos — Registrar Entrada de Estoque
+documento: Refinamento de Requisitos — Registrar Entrada de Insumos
 dono: A definir
-versao: 0.2
+versao: 0.4
 atualizado_em: 2026-08-22
 status: rascunho
 ---
 
-# Refinamento de Requisitos — Registrar Entrada de Estoque
+# Refinamento de Requisitos — Registrar Entrada de Insumos
 
-Este documento detalha a tarefa Registrar Entrada de Estoque do contexto de Peças & Insumos.
+Este documento detalha a tarefa Registrar Entrada de Insumos do contexto de Insumos.
 
-## 4 · Registrar Entrada de Estoque
+> **Escopo deste documento.** O recebimento é **uma rota só**, compartilhada com peças. Este
+> documento descreve a parte de **insumos**; a de peças está em [registrar-entrada-de-pecas.md](../pecas/registrar-entrada-de-pecas.md).
+> As duas compartilham a rota, o recurso `pedido_compra` e a mesma regra de liberação de OS — o
+> que muda são as validações do item.
 
-### 4.1 Refinamento de Produto
+## 8 · Registrar Entrada de Insumos
+
+### 8.1 Refinamento de Produto
 
 **Persona**
 
@@ -20,8 +25,8 @@ Mecânico.
 
 **Objetivo**
 
-Registrar o recebimento de peças e insumos, aumentando o saldo físico do estoque e liberando para
-execução as Ordens de Serviço que estavam paradas esperando esses itens.
+Registrar o recebimento de insumos, aumentando o saldo físico do estoque e liberando para execução as
+Ordens de Serviço que estavam paradas esperando esses itens.
 
 **Problema**
 
@@ -33,7 +38,7 @@ que o serviço já pode começar.
 
 **Pré-condições**
 
-- O item, peça ou insumo, deve estar cadastrado e ativo.
+- O insumo recebido deve estar cadastrado e ativo.
 - Deve existir um documento de origem do recebimento, nota fiscal ou pedido de compra.
 - O usuário deve estar autorizado a movimentar estoque.
 
@@ -41,29 +46,30 @@ que o serviço já pode começar.
 
 | ID | Requisito |
 |---|---|
-| RF-EST-120 | Permitir registrar entrada informando item, quantidade, custo unitário e documento de origem. |
-| RF-EST-121 | Permitir registrar a entrada de vários itens em um mesmo recebimento. |
-| RF-EST-122 | Validar que a quantidade informada é maior que zero. |
-| RF-EST-123 | Vincular a entrada ao pedido de compra correspondente, quando houver. |
-| RF-EST-124 | Atualizar o saldo físico do item. |
-| RF-EST-125 | Efetivar as reservas vinculadas ao pedido de compra recebido. |
-| RF-EST-126 | Registrar a movimentação no histórico de estoque. |
-| RF-EST-127 | Atualizar a situação do pedido de compra conforme o recebimento seja parcial ou total. |
-| RF-EST-128 | Identificar as Ordens de Serviço vinculadas ao pedido recebido. |
-| RF-EST-129 | Alterar o status dessas OS de `AGUARDANDO_RECURSOS` para `AGUARDANDO_EXECUCAO` quando todos os seus itens pendentes estiverem atendidos. |
-| RF-EST-130 | Manter em `AGUARDANDO_RECURSOS` as OS que ainda possuem itens pendentes. |
+| RF-INS-97 | Atualizar o custo unitário do insumo com o custo da entrada mais recente. |
+| RF-INS-66 | Permitir registrar entrada informando item, quantidade, custo unitário e documento de origem. |
+| RF-INS-67 | Permitir registrar a entrada de vários itens em um mesmo recebimento. |
+| RF-INS-68 | Validar que a quantidade informada é maior que zero. |
+| RF-INS-69 | Vincular a entrada ao pedido de compra correspondente, quando houver. |
+| RF-INS-70 | Atualizar o saldo físico do item. |
+| RF-INS-71 | Efetivar as reservas vinculadas ao pedido de compra recebido. |
+| RF-INS-72 | Registrar a movimentação no histórico de estoque. |
+| RF-INS-73 | Atualizar a situação do pedido de compra conforme o recebimento seja parcial ou total. |
+| RF-INS-74 | Identificar as Ordens de Serviço vinculadas ao pedido recebido. |
+| RF-INS-75 | Alterar o status dessas OS de `AGUARDANDO_RECURSOS` para `AGUARDANDO_EXECUCAO` quando todos os seus itens pendentes estiverem atendidos. |
+| RF-INS-76 | Manter em `AGUARDANDO_RECURSOS` as OS que ainda possuem itens pendentes. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-88 | A operação deve ser feita por API RESTful. |
-| RNF-EST-89 | A operação deve ser acessível somente por usuário autorizado com permissão de estoque. |
-| RNF-EST-90 | A entrada deve ser transacional — ou todos os itens do recebimento entram, ou nenhum entra. |
-| RNF-EST-91 | A mudança de status das OS deve ocorrer na mesma operação da entrada. |
-| RNF-EST-92 | A operação deve ser idempotente em relação ao documento de origem, para impedir dupla contagem em caso de reenvio. |
-| RNF-EST-93 | A movimentação deve ser auditável e o histórico imutável. |
-| RNF-EST-94 | A operação deve ser protegida contra concorrência, sem perda de atualização de saldo. |
+| RNF-INS-43 | A operação deve ser feita por API RESTful. |
+| RNF-INS-44 | A operação deve ser acessível somente por usuário autorizado com permissão de estoque. |
+| RNF-INS-45 | A entrada deve ser transacional — ou todos os itens do recebimento entram, ou nenhum entra. |
+| RNF-INS-46 | A mudança de status das OS deve ocorrer na mesma operação da entrada. |
+| RNF-INS-47 | A operação deve ser idempotente em relação ao documento de origem, para impedir dupla contagem em caso de reenvio. |
+| RNF-INS-48 | A movimentação deve ser auditável e o histórico imutável. |
+| RNF-INS-49 | A operação deve ser protegida contra concorrência, sem perda de atualização de saldo. |
 
 **Fluxo Principal**
 
@@ -111,13 +117,24 @@ que o serviço já pode começar.
 
 ---
 
-### 4.2 Refinamento Técnico
+### 8.2 Refinamento Técnico
 
 **Endpoint**
 
 ```http
 POST /estoque/entradas
 ```
+
+> **Decisão de projeto.** `Idempotency-Key` é **obrigatório**, e não recomendado. A entrada é a
+> operação em que a repetição faz mais estrago: reenviar a mesma nota soma o saldo duas vezes.
+> Vale para todas as operações que movimentam saldo (D-02).
+
+> **Decisão de projeto.** O recebimento tem **uma rota só**, `POST /estoque/entradas`, para peça
+> e insumo. Chegou a existir uma rota por tipo, criada junto com a divisão dos contextos, mas ela
+> foi descartada: a nota fiscal do fornecedor costuma trazer os dois tipos, e obrigar duas
+> chamadas para o mesmo recebimento quebraria a transação e a idempotência por
+> `documentoOrigem`. Este documento descreve a parte de **insumos** do recebimento; a de peças está em
+> [registrar-entrada-de-pecas.md](../pecas/registrar-entrada-de-pecas.md).
 
 > **Decisão de projeto.** A entrada não é só um lançamento de saldo: ela é o gatilho que
 > **destrava as Ordens de Serviço**. Por isso a mudança de status das OS acontece na mesma
@@ -127,21 +144,21 @@ POST /estoque/entradas
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:movimentar`.
 
 **Entrada**
 
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Header | `Idempotency-Key` | uuid | Recomendado; impede dupla contagem em caso de reenvio. |
+| Header | `Idempotency-Key` | uuid | **Obrigatório**; impede dupla contagem em caso de reenvio. |
 | Body | `documentoOrigem` | string | Obrigatório; nota fiscal ou documento do recebimento. |
 | Body | `fornecedorId` | uuid | Fornecedor do recebimento. |
 | Body | `pedidoCompraId` | uuid | Pedido de compra vinculado, quando houver. |
 | Body | `confirmarDivergencia` | boolean | Obrigatório quando a quantidade recebida excede a pedida. |
 | Body | `itens[]` | array | Obrigatório, não vazio, máximo 200 linhas. |
 | Body | `itens[].itemId` | uuid | Item recebido; não pode repetir no mesmo payload. |
-| Body | `itens[].quantidade` | decimal | Maior que zero. |
+| Body | `itens[].quantidade` | decimal | Maior que zero; casas decimais conforme a `unidadeMedida` quando o item for insumo. |
 | Body | `itens[].custoUnitario` | decimal | Maior que zero. |
 
 ```json
@@ -153,8 +170,8 @@ POST /estoque/entradas
   "itens": [
     {
       "itemId": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
-      "quantidade": 10,
-      "custoUnitario": 118.40
+      "quantidade": 60.0,
+      "custoUnitario": 22.75
     },
     {
       "itemId": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
@@ -171,13 +188,17 @@ POST /estoque/entradas
 
 - `documentoOrigem` obrigatório.
 - `itens` não vazio, com no máximo 200 linhas.
-- `quantidade` maior que zero em cada linha.
+- `quantidade` maior que zero, com as casas decimais compatíveis com a `unidadeMedida` nas linhas do tipo `INSUMO`.
 - `custoUnitario` maior que zero.
+
+> **Decisão de projeto — D-14.** O custo do insumo é o **último custo de entrada**: cada
+> recebimento sobrescreve `custo_unitario` com o valor daquela nota. Média ponderada fica para
+> quando existir histórico que justifique o cálculo.
 - Sem `itemId` repetido no mesmo payload.
 
 *Negócio*
 
-- Todos os `itemId` existem e estão ativos.
+- Todos os `itemId` existem e estão ativos. A rota aceita peça e insumo no mesmo recebimento; as validações abaixo tratam das linhas do tipo `INSUMO`.
 - `documentoOrigem` ainda não registrado — chave única em `movimentacao_estoque`.
 - Quando há `pedidoCompraId`, os itens devem pertencer ao pedido.
 - Quantidade recebida maior que a pedida exige `confirmarDivergencia: true` no body.
@@ -191,7 +212,7 @@ POST /estoque/entradas
 3. Validar o payload e carregar todos os itens com `SELECT ... FOR UPDATE`, ordenados por `item_id`.
 4. Verificar duplicidade de `documentoOrigem`.
 5. Havendo `pedidoCompraId`, carregar o pedido e conferir divergência de quantidade.
-6. Para cada linha: `saldo_fisico += quantidade`.
+6. Para cada linha: `saldo_fisico += quantidade` e `custo_unitario = custoUnitario recebido`.
 7. Efetivar as reservas vinculadas ao pedido: `saldo_reservado += quantidade reservada recebida`.
 8. Inserir uma `movimentacao_estoque` do tipo `ENTRADA` por linha.
 9. Atualizar `quantidade_recebida` em `pedido_compra_item`.
@@ -200,7 +221,7 @@ POST /estoque/entradas
 12. Para cada OS, verificar se ainda existem itens pendentes de recebimento.
 13. Alterar para `AGUARDANDO_EXECUCAO` as OS sem itens pendentes.
 14. Commit.
-15. Publicar `EntradaRegistrada` e, para cada OS liberada, `OrdemServicoLiberadaParaExecucao`.
+15. Registrar a entrada na trilha de auditoria.
 
 **Persistência**
 
@@ -223,16 +244,18 @@ POST /estoque/entradas
   "itens": [
     {
       "itemId": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
-      "codigo": "PC-0142",
-      "quantidade": 10,
-      "saldoFisicoAnterior": 6,
-      "saldoFisicoAtual": 16,
-      "saldoReservado": 10,
-      "saldoDisponivel": 6
+      "codigo": "INS-000077",
+      "unidadeMedida": "L",
+      "quantidade": 60.0,
+      "saldoFisicoAnterior": 12.5,
+      "saldoFisicoAtual": 72.5,
+      "saldoReservado": 60.0,
+      "saldoDisponivel": 12.5
     },
     {
       "itemId": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
-      "codigo": "IN-0031",
+      "codigo": "INS-000031",
+      "unidadeMedida": "L",
       "quantidade": 20.0,
       "saldoFisicoAnterior": 27.5,
       "saldoFisicoAtual": 47.5,
@@ -268,12 +291,12 @@ POST /estoque/entradas
 |---|---|
 | `201` | Entrada registrada. |
 | `200` | Requisição repetida com a mesma `Idempotency-Key` — retorna a resposta original. |
-| `400` | Body inválido; quantidade menor ou igual a zero; item repetido no payload. |
+| `400` | Body inválido; quantidade menor ou igual a zero; item repetido no payload; `Idempotency-Key` ausente. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `estoque:movimentar`. |
 | `404` | Item ou pedido de compra não encontrado. |
 | `409` | `documentoOrigem` já registrado. |
-| `422` | Item inativo; quantidade recebida maior que a pedida sem `confirmarDivergencia`. |
+| `409` | Item inativo; quantidade recebida maior que a pedida sem `confirmarDivergencia`. |
 
 **Dependências**
 
@@ -283,7 +306,7 @@ POST /estoque/entradas
 - `ReservaEstoqueRepository`, para a efetivação das reservas.
 - `OrdemDeServicoRepository`, para a verificação de pendências e a mudança de status.
 - Serviço de idempotência.
-- Publicador de eventos de domínio.
+- Trilha de auditoria.
 - Caso de uso Solicitar Compra, origem do `pedidoCompraId`.
 
 **Testes**
@@ -304,7 +327,7 @@ POST /estoque/entradas
 - Entrada de 2 itens atualiza os dois saldos e cria 2 movimentações.
 - Mesma `Idempotency-Key` duas vezes: o saldo sobe uma vez só.
 - `documentoOrigem` repetido retorna `409`.
-- Item inativo retorna `422` e nenhum saldo é alterado, com rollback total.
+- Item inativo retorna `409` e nenhum saldo é alterado, com rollback total.
 - Recebimento parcial mantém o pedido em `PARCIAL` e a OS em `AGUARDANDO_RECURSOS`.
 - Recebimento total move o pedido para `CONCLUIDO` e libera a OS para `AGUARDANDO_EXECUCAO`.
 - OS com itens de dois pedidos só é liberada após o segundo recebimento.
@@ -319,7 +342,7 @@ POST /estoque/entradas
 
 ---
 
-### 4.3 Checklist de Implementação
+### 8.3 Checklist de Implementação
 
 **Domínio**
 
@@ -348,7 +371,7 @@ POST /estoque/entradas
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /estoque/entradas`
+- [ ] Implementar `POST /estoque/entradas`, compartilhado com o outro contexto
 - [ ] Criar DTO/request de entrada e DTO/response com saldos, pedido e OS afetadas
 - [ ] Aplicar autenticação JWT e autorização por escopo na rota
 - [ ] Mapear erros de domínio para os códigos HTTP documentados
@@ -358,6 +381,7 @@ POST /estoque/entradas
 - [ ] Validar `documentoOrigem` obrigatório
 - [ ] Validar `itens` não vazio e sem `itemId` repetido
 - [ ] Validar `quantidade` e `custoUnitario` maiores que zero
+- [ ] Sobrescrever o custo unitário do insumo com o custo da entrada
 - [ ] Validar que todos os itens existem e estão ativos
 
 **Transação e idempotência**
@@ -371,10 +395,10 @@ POST /estoque/entradas
 - [ ] Implementar `SELECT ... FOR UPDATE` ordenado por `item_id`
 - [ ] Garantir que entradas concorrentes não gerem dupla transição de status da mesma OS
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `EntradaRegistrada`
-- [ ] Publicar `OrdemServicoLiberadaParaExecucao` para cada OS liberada
+- [ ] Registrar a entrada na trilha de auditoria
+- [ ] Atualizar diretamente, na mesma transação, o status das OS liberadas
 
 **Testes unitários**
 
@@ -391,7 +415,7 @@ POST /estoque/entradas
 - [ ] Entrada com 2 itens atualizando saldos e criando 2 movimentações
 - [ ] `Idempotency-Key` repetida somando o saldo uma única vez
 - [ ] `documentoOrigem` repetido retornando `409`
-- [ ] Item inativo retornando `422` com rollback total
+- [ ] Item inativo retornando `409` com rollback total
 - [ ] Recebimento parcial e recebimento total
 - [ ] OS com itens de dois pedidos liberada apenas no segundo recebimento
 - [ ] Entrada sem pedido não alterando nenhuma OS

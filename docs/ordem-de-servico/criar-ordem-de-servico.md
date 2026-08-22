@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Criar Ordem de Serviço do contexto de Ordem de Serviço.
 
-## 3 · Criar Ordem de Serviço
+## 1 · Criar Ordem de Serviço
 
-### 3.1 Refinamento de Produto
+### 1.1 Refinamento de Produto
 
 **Persona**
 
@@ -37,23 +37,23 @@ A oficina precisa iniciar formalmente o atendimento do veículo para permitir o 
 
 | ID | Requisito |
 |---|---|
-| RF-OS-12 | Permitir ao mecânico criar uma Ordem de Serviço. |
-| RF-OS-13 | Associar a Ordem de Serviço ao cliente. |
-| RF-OS-14 | Associar a Ordem de Serviço ao veículo. |
-| RF-OS-15 | Validar se o veículo pertence ao cliente informado. |
-| RF-OS-16 | Criar a Ordem de Serviço com status inicial `RECEBIDA`. |
-| RF-OS-17 | Registrar a data e hora de criação da Ordem de Serviço. |
-| RF-OS-18 | Permitir que a Ordem de Serviço seja acompanhada posteriormente. |
+| RF-OS-01 | Permitir ao mecânico criar uma Ordem de Serviço. |
+| RF-OS-02 | Associar a Ordem de Serviço ao cliente. |
+| RF-OS-03 | Associar a Ordem de Serviço ao veículo. |
+| RF-OS-04 | Validar se o veículo pertence ao cliente informado. |
+| RF-OS-05 | Criar a Ordem de Serviço com status inicial `RECEBIDA`. |
+| RF-OS-06 | Registrar a data e hora de criação da Ordem de Serviço. |
+| RF-OS-07 | Permitir que a Ordem de Serviço seja acompanhada posteriormente. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-10 | A operação deve ser feita por API RESTful. |
-| RNF-OS-11 | A operação deve ser acessível somente por usuário autorizado. |
-| RNF-OS-12 | A criação da Ordem de Serviço deve ser persistida de forma consistente. |
-| RNF-OS-13 | O vínculo entre cliente, veículo e Ordem de Serviço deve preservar o histórico de atendimento. |
-| RNF-OS-14 | A criação da Ordem de Serviço deve ocorrer de forma atômica. |
+| RNF-OS-01 | A operação deve ser feita por API RESTful. |
+| RNF-OS-02 | A operação deve ser acessível somente por usuário autorizado. |
+| RNF-OS-03 | A criação da Ordem de Serviço deve ser persistida de forma consistente. |
+| RNF-OS-04 | O vínculo entre cliente, veículo e Ordem de Serviço deve preservar o histórico de atendimento. |
+| RNF-OS-05 | A criação da Ordem de Serviço deve ocorrer de forma atômica. |
 
 **Fluxo Principal**
 
@@ -91,15 +91,17 @@ A oficina precisa iniciar formalmente o atendimento do veículo para permitir o 
 - A Ordem de Serviço fica disponível para consulta e acompanhamento.
 - O fluxo pode seguir para Iniciar Diagnóstico ou Registrar problema identificado, conforme o processo definido.
 
-### 3.2 Refinamento Técnico
+### 1.2 Refinamento Técnico
 
 **Endpoint**
 
-- `POST /ordens-servico`
+```http
+POST /ordens-servico
+```
 
 **Autenticação / Autorização**
 
-- Requer autenticação JWT.
+- `Bearer <JWT>` obrigatório.
 - Permitido para usuário com perfil/permissão de Mecânico.
 - Requer escopo `os:escrever`.
 
@@ -125,6 +127,10 @@ Body:
 - Não exigir problema relatado, serviços, peças ou insumos na criação da OS.
 - Não gerar orçamento durante a criação da OS.
 
+> **Decisão de projeto.** A OS grava a placa vigente do veículo no momento em que é criada. O
+> cadastro do veículo permite corrigir a placa depois, e sem essa cópia a correção reescreveria o
+> histórico de todas as OS anteriores.
+
 **Processamento**
 
 - Receber `clienteId` e `veiculoId`.
@@ -133,6 +139,7 @@ Body:
 - Validar o vínculo entre cliente e veículo.
 - Criar a Ordem de Serviço com status `RECEBIDA`.
 - Associar o cliente e o veículo à Ordem de Serviço.
+- Gravar na OS a **placa vigente do veículo** no momento da criação.
 - Registrar a data e hora de criação.
 - Persistir a Ordem de Serviço em uma transação.
 - Retornar os dados da OS criada.
@@ -197,7 +204,7 @@ Body:
 - Deve garantir a persistência atômica da Ordem de Serviço.
 - Deve possuir teste de integração do endpoint.
 
-### 3.3 Check-list de Implementação
+### 1.3 Check-list de Implementação
 
 **Domínio e Persistência**
 

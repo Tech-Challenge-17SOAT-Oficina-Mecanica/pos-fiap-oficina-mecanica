@@ -10,9 +10,9 @@ status: rascunho
 
 Este documento detalha a tarefa Iniciar Execução do contexto de Ordem de Serviço.
 
-## 5 · Iniciar Execução
+## 8 · Iniciar Execução
 
-### 5.1 Refinamento de Produto
+### 8.1 Refinamento de Produto
 
 **Persona**
 
@@ -44,28 +44,28 @@ atendimento.
 
 | ID | Requisito |
 |---|---|
-| RF-OS-28 | Permitir ao mecânico selecionar uma OS disponível na fila de atendimento. |
-| RF-OS-29 | Validar se a OS está apta para execução. |
-| RF-OS-30 | Validar se o orçamento foi aprovado. |
-| RF-OS-31 | Validar se os serviços estão autorizados. |
-| RF-OS-32 | Validar a disponibilidade das peças e insumos necessários, quando aplicável. |
-| RF-OS-33 | Registrar o início da execução. |
-| RF-OS-34 | Registrar a data e hora de início da execução. |
-| RF-OS-35 | Alterar o status da OS para `EM_EXECUCAO`. |
-| RF-OS-36 | Retirar ou marcar a OS como atendida na fila de atendimento. |
-| RF-OS-37 | Disponibilizar ao mecânico os serviços autorizados que deverão ser executados. |
-| RF-OS-38 | Associar o mecânico autenticado somente quando a OS não possuir mecânico responsável. |
-| RF-OS-39 | Manter o mecânico já vinculado à OS, sem sobrescrever ou criar novo vínculo. |
+| RF-OS-69 | Permitir ao mecânico selecionar uma OS disponível na fila de atendimento. |
+| RF-OS-70 | Validar se a OS está apta para execução. |
+| RF-OS-71 | Validar se o orçamento foi aprovado. |
+| RF-OS-72 | Validar se os serviços estão autorizados. |
+| RF-OS-73 | Validar a disponibilidade das peças e insumos necessários, quando aplicável. |
+| RF-OS-74 | Registrar o início da execução. |
+| RF-OS-75 | Registrar a data e hora de início da execução. |
+| RF-OS-76 | Alterar o status da OS para `EM_EXECUCAO`. |
+| RF-OS-77 | Retirar ou marcar a OS como atendida na fila de atendimento. |
+| RF-OS-78 | Disponibilizar ao mecânico os serviços autorizados que deverão ser executados. |
+| RF-OS-79 | Associar o mecânico autenticado somente quando a OS não possuir mecânico responsável. |
+| RF-OS-80 | Manter o mecânico já vinculado à OS, sem sobrescrever ou criar novo vínculo. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-OS-19 | A operação deve ser persistida de forma consistente. |
-| RNF-OS-20 | Somente usuários autorizados devem poder iniciar a execução. |
-| RNF-OS-21 | A mudança de status e o registro do início da execução devem ocorrer de forma consistente. |
-| RNF-OS-22 | Deve ser mantida a rastreabilidade do início da execução da OS. |
-| RNF-OS-23 | O vínculo do mecânico responsável não pode ser substituído indevidamente. |
+| RNF-OS-35 | A operação deve ser persistida de forma consistente. |
+| RNF-OS-36 | Somente usuários autorizados devem poder iniciar a execução. |
+| RNF-OS-37 | A mudança de status e o registro do início da execução devem ocorrer de forma consistente. |
+| RNF-OS-38 | Deve ser mantida a rastreabilidade do início da execução da OS. |
+| RNF-OS-39 | O vínculo do mecânico responsável não pode ser substituído indevidamente. |
 
 **Fluxo Principal**
 
@@ -84,6 +84,14 @@ atendimento.
 13. O sistema atualiza a situação da OS na fila de atendimento.
 14. O sistema confirma o início da execução.
 15. O sistema disponibiliza os serviços autorizados para execução pelo mecânico.
+16. Ao longo da execução, conforme usa as peças e os insumos, o mecânico registra a baixa por
+    `POST /estoque/saidas`, quantas vezes for preciso.
+
+> **Decisão de projeto.** A **baixa de consumo acontece durante a execução**, não na finalização, e
+> pode ocorrer mais de uma vez na mesma OS: o mecânico dá baixa do que usou conforme usa. A rota é
+> de Peças e Insumos — [registrar-consumo-e-saida-de-pecas.md](../pecas/registrar-consumo-e-saida-de-pecas.md)
+> e [registrar-consumo-e-saida-de-insumos.md](../insumos/registrar-consumo-e-saida-de-insumos.md) —,
+> e a finalização confere se sobrou reserva ativa sem baixa.
 
 **Fluxos Alternativos / Exceções**
 
@@ -110,12 +118,13 @@ atendimento.
 - A OS deixa de estar aguardando atendimento na fila.
 - Os serviços autorizados ficam disponíveis para execução e o mecânico pode registrar o andamento.
 - O mecânico responsável existente é preservado; quando não existir, o mecânico autenticado fica vinculado à OS.
-- Caso seja encontrado um novo problema durante o reparo, o fluxo pode seguir para Registrar
-  Problema Adicional.
+- Caso seja encontrado um novo problema durante o reparo, o fluxo segue para Registrar Problema
+  Encontrado, que abre um orçamento complementar.
+- A baixa das peças e dos insumos usados é registrada durante a execução, por `POST /estoque/saidas`.
 
 ---
 
-### 5.2 Refinamento Técnico
+### 8.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -253,7 +262,7 @@ o cliente sobre a conclusão. Cada uma dessas operações tem o seu próprio cas
 
 ---
 
-### 5.3 Checklist de Implementação
+### 8.3 Checklist de Implementação
 
 **Domínio**
 

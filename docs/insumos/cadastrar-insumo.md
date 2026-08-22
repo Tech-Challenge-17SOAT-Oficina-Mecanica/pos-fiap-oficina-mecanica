@@ -1,22 +1,22 @@
 ---
 documento: Refinamento de Requisitos — Cadastrar Insumo
 dono: A definir
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.3
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Cadastrar Insumo
 
-Este documento detalha a tarefa Cadastrar Insumo do contexto de Peças & Insumos.
+Este documento detalha a tarefa Cadastrar Insumo do contexto de Insumos.
 
-## 12 · Cadastrar Insumo
+## 1 · Cadastrar Insumo
 
-### 12.1 Refinamento de Produto
+### 1.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -38,26 +38,26 @@ disponibilidade e consumo para evitar falta de materiais e inconsistências no e
 
 | ID | Requisito |
 |---|---|
-| RF-EST-80 | Permitir cadastrar um insumo. |
-| RF-EST-81 | Registrar o nome e a descrição do insumo. |
-| RF-EST-82 | Registrar a unidade de medida. |
-| RF-EST-83 | Registrar o custo unitário. |
-| RF-EST-84 | Registrar a quantidade disponível como estoque inicial, quando informada. |
-| RF-EST-85 | Permitir definir as informações necessárias para o controle de estoque, incluindo o estoque mínimo. |
-| RF-EST-86 | Validar os dados informados. |
-| RF-EST-87 | Impedir duplicidade do insumo. |
-| RF-EST-88 | Disponibilizar o insumo para utilização em Ordens de Serviço. |
+| RF-INS-01 | Permitir cadastrar um insumo. |
+| RF-INS-02 | Registrar o nome e a descrição do insumo. |
+| RF-INS-03 | Registrar a unidade de medida. |
+| RF-INS-04 | Registrar o custo unitário. |
+| RF-INS-05 | Não aceitar estoque inicial no cadastro: o saldo entra pela movimentação de entrada. |
+| RF-INS-06 | Permitir definir as informações necessárias para o controle de estoque, incluindo o estoque mínimo. |
+| RF-INS-07 | Validar os dados informados. |
+| RF-INS-08 | Impedir duplicidade: a descrição normalizada é única dentro da mesma categoria e unidade de medida, entre insumos ativos. |
+| RF-INS-09 | Disponibilizar o insumo para utilização em Ordens de Serviço. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-61 | O cadastro deve ser persistido de forma consistente. |
-| RNF-EST-62 | O controle de estoque deve evitar saldos incorretos. |
-| RNF-EST-63 | Os valores monetários devem ser armazenados de forma adequada. |
-| RNF-EST-64 | Somente usuário autorizado poderá realizar o cadastro. |
-| RNF-EST-65 | A operação deve preservar o histórico das movimentações de estoque. |
-| RNF-EST-66 | O cadastro não deve alterar outros insumos já existentes. |
+| RNF-INS-01 | O cadastro deve ser persistido de forma consistente. |
+| RNF-INS-02 | O controle de estoque deve evitar saldos incorretos. |
+| RNF-INS-03 | Os valores monetários devem ser armazenados de forma adequada. |
+| RNF-INS-04 | Somente usuário autorizado poderá realizar o cadastro. |
+| RNF-INS-05 | A operação deve preservar o histórico das movimentações de estoque. |
+| RNF-INS-06 | O cadastro não deve alterar outros insumos já existentes. |
 
 **Fluxo Principal**
 
@@ -98,7 +98,7 @@ disponibilidade e consumo para evitar falta de materiais e inconsistências no e
 
 ---
 
-### 12.2 Refinamento Técnico
+### 1.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -113,7 +113,7 @@ POST /estoque/insumos
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `estoque:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -121,72 +121,102 @@ POST /estoque/insumos
 
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
-| Body | `codigo` | string | Código funcional do insumo; único no catálogo. |
 | Body | `nome` | string | Obrigatório; nome do insumo. |
-| Body | `descricao` | string | Opcional; descrição complementar. |
-| Body | `categoria` | string | Categoria do insumo. |
+| Body | `descricao` | string | Obrigatória; descrição usada na regra de duplicidade. |
+| Body | `categoriaId` | uuid | Obrigatório; categoria ativa do catálogo. |
 | Body | `unidadeMedida` | enum | Obrigatória; `UN` \| `L` \| `ML` \| `KG` \| `G` \| `M`. |
 | Body | `custoUnitario` | decimal | Obrigatório; não pode ser negativo. |
 | Body | `estoqueMinimo` | decimal | Maior ou igual a zero; aceita casas decimais. |
-| Body | `saldoFisicoInicial` | decimal | Opcional; maior ou igual a zero; aceita casas decimais. |
 
 ```json
 {
-  "codigo": "OLEO-001",
   "nome": "Óleo 5W30",
-  "descricao": "Óleo sintético",
-  "categoria": "Lubrificantes",
+  "descricao": "Óleo sintético 5W30 API SN",
+  "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
   "unidadeMedida": "L",
   "custoUnitario": 45.0,
-  "estoqueMinimo": 20.0,
-  "saldoFisicoInicial": 5.0
+  "estoqueMinimo": 20.0
 }
 ```
+
+O cliente **não** informa `id`, `codigo`, `ativo`, `dataCriacao` nem saldo: são responsabilidade do
+sistema ou de outros fluxos.
+
+> **Decisão de projeto.** O `codigo` é **gerado pelo sistema**, no formato `INS-000001`, em
+> sequência global, sem reset, com seis dígitos. Antes o cliente enviava o código, e conviviam os
+> formatos `IN-0031`, `INS-0012` e `OLEO-001`. Mesmo padrão do `PEC-000001` de Peças e do
+> `SER-000001` de Serviços.
+
+> **Decisão de projeto.** O cadastro **não aceita estoque inicial**. `saldoFisicoInicial` saiu do
+> contrato: todo saldo entra por movimentação de entrada, que é o único lugar que gera histórico
+> auditável. O cadastro de peça já funcionava assim.
+
+> **Decisão de projeto.** A duplicidade é decidida por **descrição normalizada dentro da mesma
+> categoria e unidade de medida**, entre insumos **ativos**, por índice parcial.
+
+> **Decisão de projeto.** **Cada unidade de medida é um item de estoque independente, sem
+> conversão.** O mesmo óleo em `L` e em `ML` são dois cadastros, com saldos próprios: comprar 1 L
+> não aumenta o saldo do item em mililitro, e a baixa de um não afeta o outro. Converter unidades
+> exigiria fator de conversão por família, arredondamento e reconciliação de saldo — complexidade
+> que o MVP não paga. Na prática, a oficina cadastra o insumo na unidade em que compra e consome.
+
+> **Decisão de projeto.** O insumo mantém **`nome` e `descricao`**, e os dois aparecem no cadastro,
+> na consulta e na atualização.
 
 **Validações**
 
 *Técnicas*
 
 - `nome` obrigatório.
-- `unidadeMedida` obrigatória e pertencente ao enum.
+- `descricao` obrigatória.
+- `categoriaId` obrigatório, no formato uuid.
+- `unidadeMedida` obrigatória e pertencente ao enum. Não há conversão entre unidades: cada uma é
+  um item independente.
 - `custoUnitario` não pode ser negativo.
-- `saldoFisicoInicial` e `estoqueMinimo` não podem ser negativos.
+- `estoqueMinimo` não pode ser negativo.
 
 *Negócio*
 
-- `codigo` único no catálogo.
-- Não pode existir insumo duplicado, conforme a regra de identificação adotada.
+- O `codigo` gerado é único no catálogo.
+- Não pode existir outro insumo **ativo** com a mesma descrição normalizada — sem acento, sem
+  espaço duplo, em minúsculas — na mesma categoria e unidade de medida.
+- O cadastro não movimenta estoque e não aceita saldo inicial.
 
 **Processamento**
 
 1. Validar o payload.
-2. Verificar duplicidade de código e de insumo equivalente.
-3. Criar o insumo com `tipo = INSUMO`.
-4. Definir `ativo = true`.
-5. Registrar o estoque inicial, quando informado, com a movimentação correspondente.
+2. Carregar a categoria pelo `categoriaId`, validar que existe e está ativa, normalizar a
+   descrição e verificar duplicidade entre insumos ativos da mesma categoria e
+   unidade de medida.
+3. Gerar o `id` técnico e o `codigo` funcional.
+4. Criar o insumo com `tipo = INSUMO`.
+5. Definir `ativo = true` e saldos zerados.
 6. Persistir.
 7. Retornar o insumo cadastrado.
 
 **Persistência**
 
-- Consulta: `item_estoque` (verificação de duplicidade).
-- Altera: `item_estoque` (insert), `movimentacao_estoque` (insert do saldo inicial, quando informado).
-- O insumo e seu estoque inicial são persistidos na mesma transação.
+- Consulta: `item_estoque` (verificação de duplicidade e de unicidade do código).
+- Altera: `item_estoque` (insert, com `descricao_normalizada` e saldos zerados).
+- Não altera: nenhum saldo de estoque nem `movimentacao_estoque`.
+- Chave estrangeira `categoria_id` para a tabela `categoria`.
+- Índice parcial `UNIQUE (categoria_id, unidade_medida, descricao_normalizada) WHERE ativo = true`.
 
 **Saída da API**
 
 ```json
 {
   "id": "c48e7d05-2a19-4b63-9f27-6e5a1c930b48",
-  "codigo": "OLEO-001",
+  "codigo": "INS-000001",
   "tipo": "INSUMO",
   "nome": "Óleo 5W30",
-  "descricao": "Óleo sintético",
+  "descricao": "Óleo sintético 5W30 API SN",
+  "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
   "categoria": "Lubrificantes",
   "unidadeMedida": "L",
   "custoUnitario": 45.0,
   "estoqueMinimo": 20.0,
-  "saldoFisico": 5.0,
+  "saldoFisico": 0.0,
   "ativo": true,
   "dataCriacao": "2026-08-19T19:55:00-03:00"
 }
@@ -197,7 +227,7 @@ POST /estoque/insumos
 | Código | Situação |
 |---|---|
 | `201` | Insumo cadastrado. |
-| `400` | Dados inválidos; unidade fora do enum; custo ou estoque negativo. |
+| `400` | Dados inválidos; unidade fora do enum; custo ou estoque mínimo negativo. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `estoque:escrever`. |
 | `409` | Insumo duplicado, ou código já usado no catálogo. |
@@ -230,13 +260,14 @@ POST /estoque/insumos
 
 ---
 
-### 12.3 Checklist de Implementação
+### 1.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Criar ou ajustar a entidade `Insumo` no agregado de item de estoque
 - [ ] Definir código, nome, descrição, categoria, unidade de medida, custo unitário, estoque mínimo e situação
-- [ ] Definir o estoque inicial como dado opcional do cadastro
+- [ ] Garantir que o cadastro nasce com saldos zerados e não aceita estoque inicial
+- [ ] Gerar o `codigo` no formato `INS-000001`, em sequência global, sem reset
 - [ ] Garantir que saldo, estoque mínimo e consumo aceitem valores decimais
 - [ ] Definir a situação inicial como ativa
 - [ ] Impedir quantidade negativa
@@ -244,13 +275,14 @@ POST /estoque/insumos
 **Caso de uso**
 
 - [ ] Implementar `CadastrarInsumo`
-- [ ] Implementar o registro do estoque inicial, quando informado
+- [ ] Implementar a normalização da descrição para a checagem de duplicidade
 
 **Repositório**
 
 - [ ] Implementar a persistência do insumo em `ItemEstoqueRepository`
-- [ ] Implementar a consulta de duplicidade e a verificação de unicidade do código
-- [ ] Registrar a movimentação do estoque inicial
+- [ ] Implementar a consulta de duplicidade por descrição normalizada, categoria e unidade
+- [ ] Criar a tabela `categoria` e a chave estrangeira `categoria_id` na migration
+- [ ] Criar o índice parcial `UNIQUE (categoria_id, unidade_medida, descricao_normalizada) WHERE ativo = true` na migration
 
 **Handler HTTP**
 
@@ -262,25 +294,27 @@ POST /estoque/insumos
 **Validações**
 
 - [ ] Validar `nome` obrigatório
-- [ ] Validar `codigo` único
+- [ ] Validar `descricao` e `categoriaId` obrigatórios
 - [ ] Validar `unidadeMedida` dentro do enum
 - [ ] Validar `custoUnitario` não negativo
-- [ ] Validar `estoqueMinimo` e `saldoFisicoInicial` não negativos
+- [ ] Validar `estoqueMinimo` não negativo
+- [ ] Rejeitar `codigo` e saldo enviados pelo cliente
 - [ ] Retornar `400` para dados inválidos e `409` para duplicidade
 
 **Testes unitários**
 
 - [ ] Cadastro válido
 - [ ] Quantidade decimal aceita
-- [ ] Estoque negativo rejeitado
+- [ ] Estoque mínimo negativo rejeitado
 - [ ] Custo negativo rejeitado
 - [ ] Unidade inválida rejeitada
-- [ ] Código duplicado rejeitado
+- [ ] Descrição repetida na mesma categoria e unidade rejeitada
+- [ ] Descrição igual à de um insumo inativo aceita
 - [ ] Situação inicial ativa
 
 **Testes de integração**
 
-- [ ] `201` com persistência do insumo e do saldo inicial
+- [ ] `201` com o insumo persistido, saldos zerados e `codigo` gerado
 - [ ] `409` para duplicidade
 - [ ] `400` para dados inválidos
 - [ ] `401` sem autenticação e `403` sem permissão

@@ -93,9 +93,9 @@ GET /veiculos
 
 Consulta por placa via query param.
 
-> **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `GET /veiculos?placa=...`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `GET /veiculos` foi descartada por não usar o prefixo `/`.
+> **Decisão de projeto.** A rota segue o padrão compartilhado do projeto: recurso no plural,
+> em minúsculas e **sem prefixo de versão**. A alternativa com prefixo `/api/v1` foi descartada
+> para manter todas as rotas do sistema no mesmo formato.
 
 **Autenticação / Autorização**
 
@@ -119,7 +119,7 @@ Consulta por placa via query param.
 **Processamento**
 
 1. Receber a placa informada no query param `placa`.
-2. Validar presença e formato da placa.
+2. Normalizar e validar presença e formato da placa, nos padrões Mercosul `ABC1D23` e antigo `ABC1234`.
 3. Consultar o cadastro de veículos pela placa.
 4. Caso encontre o veículo, retornar os dados cadastrais.
 5. Caso não encontre, retornar erro informando que o veículo não foi encontrado.
@@ -137,9 +137,13 @@ Consulta por placa via query param.
   "placa": "ABC1D23",
   "marca": "Marca do Veículo",
   "modelo": "Modelo do Veículo",
-  "ano": 2020
+  "ano": 2020,
+  "version": 3
 }
 ```
+
+> **Decisão de projeto.** A consulta expõe `version` para que a atualização possa enviá-la no
+> header `If-Match`. A resposta de recurso único vai **direta**, sem envelope (D-21).
 
 **Códigos HTTP / Erros**
 

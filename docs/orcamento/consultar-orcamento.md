@@ -111,9 +111,18 @@ GET /orcamentos
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Permitido apenas para o cliente vinculado à OS dos orçamentos.
+- Perfis: `CLIENTE`, apenas para os orçamentos da própria OS, e `MECANICO`.
 - Escopo: `orcamentos:ler`.
 - A operação é somente leitura.
+
+> **Decisão de projeto.** Esta rota devolve **um orçamento isolado**, por identificador ou por
+> documento do cliente. A visão consolidada da OS — principal mais complementares — é
+> `GET /ordens-servico/{osId}/orcamento`, do contexto de Ordem de Serviço. As duas ficam, com esses
+> papéis.
+
+> **Decisão de projeto.** O cliente se autentica por **token de escopo reduzido**, emitido no envio
+> do orçamento e válido apenas para aquela OS. O mesmo token serve para consultar, aprovar e
+> recusar.
 
 **Entrada**
 
@@ -121,8 +130,8 @@ GET /orcamentos
 |---|---|---|---|---|
 | Query | `orcamentoId` | uuid | Não* | Identificador do orçamento. |
 | Query | `documento` | string | Não* | CPF ou CNPJ do cliente. |
-| Query | `page` | inteiro | Não | Página da consulta por documento. Padrão: `0`. |
-| Query | `size` | inteiro | Não | Quantidade de registros por página. Padrão: `20`. |
+| Query | `pagina` | inteiro | Não | Página da consulta por documento. Padrão: `0`. |
+| Query | `tamanho` | inteiro | Não | Quantidade de registros por página. Padrão: `20`. |
 
 *Deve ser informado ao menos um dos parâmetros `orcamentoId` ou `documento`.*
 
@@ -131,7 +140,7 @@ GET /orcamentos?orcamentoId=uuid-do-orcamento
 ```
 
 ```http
-GET /orcamentos?documento=00000000000&page=0&size=20
+GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
 ```
 
 **Validações**
@@ -139,7 +148,7 @@ GET /orcamentos?documento=00000000000&page=0&size=20
 *Técnicas*
 
 - `orcamentoId`, quando informado, deve possuir formato UUID válido.
-- `page` e `size` devem possuir valores válidos.
+- `pagina` e `tamanho` devem possuir valores válidos.
 - O CPF/CNPJ deve possuir formato válido, quando informado.
 
 *Negócio*
@@ -180,7 +189,7 @@ GET /orcamentos?documento=00000000000&page=0&size=20
 
 ```json
 {
-  "content": [
+  "data": [
     {
       "cliente": {
         "clienteId": "uuid-do-cliente",
@@ -235,12 +244,16 @@ GET /orcamentos?documento=00000000000&page=0&size=20
       "valorTotalGeral": 350.00
     }
   ],
-  "page": 0,
-  "size": 20,
-  "totalElements": 1,
-  "totalPages": 1
+  "pagina": 0,
+  "tamanho": 20,
+  "totalElementos": 1,
+  "totalPaginas": 1
 }
 ```
+
+> **Decisão de projeto.** A listagem usa o envelope padrão do projeto — `data`, `pagina`,
+> `tamanho`, `totalElementos` e `totalPaginas`. O envelope `content`/`page`/`size`, herdado de
+> outra convenção, foi abandonado (D-21). Recurso único, quando houver, vai direto, sem envelope.
 
 **Códigos HTTP / Erros**
 
@@ -319,7 +332,7 @@ GET /orcamentos?documento=00000000000&page=0&size=20
 **Handler HTTP**
 
 - [ ] Criar handler para `GET /orcamentos`.
-- [ ] Validar query params `orcamentoId`, `documento`, `page` e `size`.
+- [ ] Validar query params `orcamentoId`, `documento`, `pagina` e `tamanho`.
 - [ ] Aplicar autenticação JWT na rota.
 - [ ] Aplicar autorização para o cliente vinculado à OS.
 - [ ] Retornar erros `400`, `401`, `403` e `404`.

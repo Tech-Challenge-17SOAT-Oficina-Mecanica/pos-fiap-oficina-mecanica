@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Solicitar Compra de Peças
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Solicitar Compra de Peças
 
-Este documento detalha a tarefa Solicitar Compra de Peças do contexto de Peças & Insumos.
+Este documento detalha a tarefa Solicitar Compra de Peças do contexto de Peças.
 
-## 8 · Solicitar Compra de Peças
+## 7 · Solicitar Compra de Peças
 
-### 8.1 Refinamento de Produto
+### 7.1 Refinamento de Produto
 
 **Persona**
 
@@ -40,28 +40,28 @@ peça comprada sendo consumida por outra OS, e impede saber por que um veículo 
 
 | ID | Requisito |
 |---|---|
-| RF-EST-100 | Permitir criar pedido de compra informando fornecedor, peças e quantidades. |
-| RF-EST-101 | Permitir gerar o pedido a partir da consulta de peças faltantes, com as quantidades sugeridas já preenchidas. |
-| RF-EST-102 | Validar que as quantidades informadas são maiores que zero. |
-| RF-EST-103 | Validar que a quantidade comprada de cada peça é igual à quantidade necessária apurada nas Ordens de Serviço. |
-| RF-EST-104 | Vincular o pedido às OS que dependem das peças solicitadas. |
-| RF-EST-105 | Reservar integralmente as peças compradas para as OS vinculadas. |
-| RF-EST-106 | Atualizar cada OS vinculada com as peças necessárias e suas quantidades reservadas. |
-| RF-EST-107 | Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`. |
-| RF-EST-108 | Permitir cancelar pedido ainda não recebido. |
-| RF-EST-109 | Registrar a situação do pedido: aberto, parcialmente recebido, concluído ou cancelado. |
+| RF-PEC-57 | Permitir criar pedido de compra informando fornecedor, peças e quantidades. |
+| RF-PEC-58 | Permitir gerar o pedido a partir das peças pendentes de compra apuradas no processamento, com as quantidades já preenchidas. |
+| RF-PEC-59 | Validar que as quantidades informadas são maiores que zero. |
+| RF-PEC-60 | Validar que a quantidade comprada de cada peça é igual à quantidade necessária apurada nas Ordens de Serviço. |
+| RF-PEC-61 | Vincular o pedido às OS que dependem das peças solicitadas. |
+| RF-PEC-62 | Reservar integralmente as peças compradas para as OS vinculadas. |
+| RF-PEC-63 | Atualizar cada OS vinculada com as peças necessárias e suas quantidades reservadas. |
+| RF-PEC-64 | Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`. |
+| RF-PEC-65 | Permitir cancelar pedido ainda não recebido. |
+| RF-PEC-66 | Registrar a situação do pedido: aberto, parcialmente recebido, concluído ou cancelado. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-EST-74 | A operação deve ser feita por API RESTful. |
-| RNF-EST-75 | A operação deve ser acessível somente por usuário autorizado com permissão de compras. |
-| RNF-EST-76 | O pedido de compra não altera o saldo físico de estoque — o saldo só muda no registro da entrada. |
-| RNF-EST-77 | A reserva criada pelo pedido não consome saldo físico: ela compromete a quantidade comprada para a OS de destino. |
-| RNF-EST-78 | O pedido deve ser auditável, com registro de quem solicitou e quando. |
-| RNF-EST-79 | O sistema deve alertar quando já existir pedido em aberto para a mesma peça, evitando compra duplicada. |
-| RNF-EST-80 | A criação do pedido, as reservas e a mudança de status das OS devem ocorrer na mesma operação. |
+| RNF-PEC-36 | A operação deve ser feita por API RESTful. |
+| RNF-PEC-37 | A operação deve ser acessível somente por usuário autorizado com permissão de compras. |
+| RNF-PEC-38 | O pedido de compra não altera o saldo físico de estoque — o saldo só muda no registro da entrada. |
+| RNF-PEC-39 | A reserva criada pelo pedido não consome saldo físico: ela compromete a quantidade comprada para a OS de destino. |
+| RNF-PEC-40 | O pedido deve ser auditável, com registro de quem solicitou e quando. |
+| RNF-PEC-41 | O sistema deve alertar quando já existir pedido em aberto para a mesma peça, evitando compra duplicada. |
+| RNF-PEC-42 | A criação do pedido, as reservas e a mudança de status das OS devem ocorrer na mesma operação. |
 
 **Fluxo Principal**
 
@@ -106,7 +106,7 @@ peça comprada sendo consumida por outra OS, e impede saber por que um veículo 
 
 ---
 
-### 8.2 Refinamento Técnico
+### 7.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -120,10 +120,20 @@ DELETE /compras/pedidos/{pedidoId}
 > mesmo; o tipo do item diferencia apenas a validação de unidade de medida. A alternativa
 > `POST /compras/pedidos/pecas` foi descartada por duplicar a lógica de reserva e de recebimento.
 
+> **Decisão de projeto.** `pedido_compra` e `fornecedor` continuam **compartilhados** entre Peças e
+> Insumos, com **dono único**: o contexto de **Peças** é o responsável pelo agregado de Compras, e
+> Insumos apenas o referencia. A alternativa de dividir a rota em `/compras/pedidos/pecas` e
+> `/compras/pedidos/insumos` foi descartada porque o pedido real mistura os dois tipos, e duplicar
+> a rota duplicaria a reserva e o recebimento.
+
+> **Decisão de projeto.** O **cadastro de fornecedor entra no MVP**, com um CRUD mínimo — nome,
+> documento e contato —, documentado no contexto de Peças, que é o dono de Compras. Sem ele, o
+> pedido de compra não é implementável de ponta a ponta.
+
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `MECANICO`, `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `compras:escrever`.
 
 **Entrada**
@@ -134,7 +144,7 @@ DELETE /compras/pedidos/{pedidoId}
 | Body | `confirmarDuplicidade` | boolean | Obrigatório quando já houver pedido em aberto para a mesma peça. |
 | Body | `itens[]` | array | Obrigatório, não vazio, sem `itemId` repetido. |
 | Body | `itens[].itemId` | uuid | Peça a comprar; item do tipo `INSUMO` é rejeitado. |
-| Body | `itens[].quantidade` | int | Inteiro maior que zero, igual à necessidade apurada nas OS. |
+| Body | `itens[].quantidade` | int | Inteiro maior que zero, **maior ou igual** à necessidade apurada nas OS. |
 | Path (DELETE) | `pedidoId` | uuid | Pedido a cancelar. |
 
 ```json
@@ -178,7 +188,7 @@ DELETE /compras/pedidos/{pedidoId}
 8. Criar as reservas das peças compradas para as OS demandantes.
 9. Vincular o pedido às OS e atualizar cada OS com as peças necessárias e as quantidades reservadas.
 10. Alterar o status das OS vinculadas para `AGUARDANDO_RECURSOS`.
-11. Publicar `PedidoCompraCriado`.
+11. Registrar o pedido na trilha de auditoria.
 
 **Persistência**
 
@@ -203,7 +213,7 @@ DELETE /compras/pedidos/{pedidoId}
   "itens": [
     {
       "itemId": "b62d4f18-9e33-4a71-8c05-1d7f2ab63e90",
-      "codigo": "PC-0311",
+      "codigo": "PEC-000311",
       "descricao": "Disco de freio ventilado",
       "quantidadeNecessaria": 5,
       "quantidadePedida": 5,
@@ -212,7 +222,7 @@ DELETE /compras/pedidos/{pedidoId}
     },
     {
       "itemId": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
-      "codigo": "PC-0142",
+      "codigo": "PEC-000142",
       "descricao": "Pastilha de freio dianteira",
       "quantidadeNecessaria": 10,
       "quantidadePedida": 10,
@@ -247,12 +257,11 @@ DELETE /compras/pedidos/{pedidoId}
 |---|---|
 | `201` | Pedido criado, peças reservadas e OS atualizadas para `AGUARDANDO_RECURSOS`. |
 | `204` | Pedido cancelado (`DELETE`). |
-| `400` | Body inválido, item repetido ou quantidade menor ou igual a zero. |
+| `400` | Body inválido, item repetido, quantidade menor ou igual a zero, ou item do tipo `INSUMO` enviado ao endpoint de peças. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `compras:escrever`. |
 | `404` | Fornecedor, item ou pedido não encontrado. |
-| `409` | Pedido em aberto para a mesma peça sem `confirmarDuplicidade`; tentativa de cancelar pedido com recebimento parcial. |
-| `422` | Item inativo ou do tipo `INSUMO`; quantidade comprada diferente da necessária apurada; item sem necessidade registrada em nenhuma OS. |
+| `409` | Pedido em aberto para a mesma peça sem `confirmarDuplicidade`; tentativa de cancelar pedido com recebimento parcial; peça inativa; quantidade comprada menor que a necessária apurada; item sem necessidade registrada em nenhuma OS. |
 
 **Dependências**
 
@@ -262,7 +271,7 @@ DELETE /compras/pedidos/{pedidoId}
 - `ReservaEstoqueRepository`.
 - Módulo Ordem de Serviço — apuração da necessidade, vinculação, atualização das peças necessárias
   e mudança de status.
-- Publicador de eventos de domínio.
+- Trilha de auditoria.
 - Casos de uso Consultar Peças Faltantes (origem) e Registrar Entrada de Estoque (destino).
 
 **Testes**
@@ -282,14 +291,15 @@ DELETE /compras/pedidos/{pedidoId}
 - Pedido válido atualiza as OS vinculadas com as peças necessárias.
 - Pedido válido altera as OS vinculadas para `AGUARDANDO_RECURSOS`.
 - Duplicidade sem confirmação retorna `409`; com `confirmarDuplicidade: true`, retorna `201`.
-- Item do tipo `INSUMO` retorna `422`; quantidade divergente da necessidade retorna `422`.
+- Item do tipo `INSUMO` retorna `400`; quantidade menor que a necessidade retorna `409`.
+- Quantidade acima da necessidade retorna `201`, reserva só o necessário e deixa o excedente livre.
 - Criar pedido não altera nenhum saldo físico de estoque.
 - `DELETE` em pedido `ABERTO` retorna `204` e libera as reservas.
 - `DELETE` em pedido `PARCIAL` retorna `409`.
 
 ---
 
-### 8.3 Checklist de Implementação
+### 7.3 Checklist de Implementação
 
 **Domínio**
 
@@ -339,15 +349,16 @@ DELETE /compras/pedidos/{pedidoId}
 - [ ] Rejeitar quantidade divergente da quantidade necessária apurada
 - [ ] Exigir `confirmarDuplicidade` quando já houver pedido em aberto para a mesma peça
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `PedidoCompraCriado`
-- [ ] Implementar a política de atualização das OS vinculadas para `AGUARDANDO_RECURSOS`
+- [ ] Registrar o pedido de compra na trilha de auditoria
+- [ ] Atualizar diretamente as OS vinculadas para `AGUARDANDO_RECURSOS`
 
 **Testes unitários**
 
 - [ ] Rejeição de quantidade zero
-- [ ] Rejeição de quantidade divergente da necessidade apurada
+- [ ] Rejeição de quantidade menor que a necessidade apurada
+- [ ] Compra acima da necessidade reservando apenas o necessário
 - [ ] Detecção de pedido em aberto para a mesma peça
 - [ ] Reserva integral das peças compradas
 - [ ] Geração do número sequencial
@@ -359,8 +370,8 @@ DELETE /compras/pedidos/{pedidoId}
 - [ ] OS vinculadas atualizadas com as peças necessárias e quantidades reservadas
 - [ ] OS vinculadas com status `AGUARDANDO_RECURSOS`
 - [ ] Duplicidade sem confirmação retornando `409` e com confirmação retornando `201`
-- [ ] Item do tipo `INSUMO` retornando `422`
-- [ ] Quantidade divergente da necessidade retornando `422`
+- [ ] Item do tipo `INSUMO` retornando `400`
+- [ ] Quantidade menor que a necessidade retornando `409`
 - [ ] Nenhum saldo físico de estoque alterado após a criação do pedido
 - [ ] `DELETE` em pedido `ABERTO` retornando `204` e liberando as reservas
 - [ ] `DELETE` em pedido `PARCIAL` retornando `409`

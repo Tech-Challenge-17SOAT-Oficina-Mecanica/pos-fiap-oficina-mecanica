@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Atualizar Peça
 dono: José Lázaro
-versao: 0.1
-atualizado_em: 2026-08-19
+versao: 0.4
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Atualizar Peça
 
-Este documento detalha a tarefa Atualizar Peça do contexto de Peças & Insumos.
+Este documento detalha a tarefa Atualizar Peça do contexto de Peças.
 
-## 2 · Atualizar Peça
+## 3 · Atualizar Peça
 
-### 2.1 Refinamento de Produto
+### 3.1 Refinamento de Produto
 
 **Persona**
 Mecânico.
@@ -35,22 +35,22 @@ por preço fora de mercado — e o alerta de reposição dispara na hora errada.
 
 | ID        | Requisito                                                                           |
 | --------- | ----------------------------------------------------------------------------------- |
-| RF-EST-06 | Permitir alterar descrição, preço de venda, estoque mínimo, categoria e fabricante. |
-| RF-EST-07 | Permitir inativar e reativar a peça.                                                |
-| RF-EST-08 | Validar os dados informados antes de gravar.                                        |
-| RF-EST-09 | Impedir descrição duplicada dentro da mesma categoria.                              |
-| RF-EST-10 | Registrar o histórico de alteração de preço, com data e responsável.                |
-| RF-EST-11 | Manter inalterados os valores já registrados em OS e orçamentos anteriores.         |
+| RF-PEC-25 | Permitir alterar descrição, preço de venda, estoque mínimo, categoria — pelo `categoriaId` — e fabricante. |
+| RF-PEC-26 | Permitir inativar e reativar a peça.                                                |
+| RF-PEC-27 | Validar os dados informados antes de gravar.                                        |
+| RF-PEC-28 | Impedir descrição duplicada dentro da mesma categoria.                              |
+| RF-PEC-29 | Registrar o histórico de alteração de preço, com data e responsável.                |
+| RF-PEC-30 | Manter inalterados os valores já registrados em OS e orçamentos anteriores.         |
 
 **Requisitos Não Funcionais**
 
 | ID         | Requisito                                                                           |
 | ---------- | ----------------------------------------------------------------------------------- |
-| RNF-EST-06 | A operação deve ser feita por API RESTful.                                          |
-| RNF-EST-07 | A operação deve ser acessível somente por usuário autorizado com perfil de estoque. |
-| RNF-EST-08 | A alteração deve ser auditável — quem alterou, quando e o valor anterior.           |
-| RNF-EST-09 | A alteração de preço não pode ter efeito retroativo sobre documentos já emitidos.   |
-| RNF-EST-10 | A operação não deve alterar saldo de estoque.                                       |
+| RNF-PEC-15 | A operação deve ser feita por API RESTful.                                          |
+| RNF-PEC-16 | A operação deve ser acessível somente por usuário autorizado com perfil de estoque. |
+| RNF-PEC-17 | A alteração deve ser auditável — quem alterou, quando e o valor anterior.           |
+| RNF-PEC-18 | A alteração de preço não pode ter efeito retroativo sobre documentos já emitidos.   |
+| RNF-PEC-19 | A operação não deve alterar saldo de estoque.                                       |
 
 **Fluxo Principal**
 
@@ -86,7 +86,7 @@ por preço fora de mercado — e o alerta de reposição dispara na hora errada.
 
 ---
 
-### 2.2 Refinamento Técnico
+### 3.2 Refinamento Técnico
 
 **Endpoint**
 
@@ -97,7 +97,7 @@ PUT /estoque/pecas/{pecaId}
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório
-- Perfis: `MECANICO`, `GESTOR`
+- Perfil: `MECANICO`
 - Escopo: `estoque:escrever`
 
 **Entrada**
@@ -105,53 +105,64 @@ PUT /estoque/pecas/{pecaId}
 | Local  | Param           | Tipo    | Descrição                                                  |
 | ------ | --------------- | ------- | ---------------------------------------------------------- |
 | Path   | `pecaId`        | uuid    | Identificador da peça                                      |
-| Header | `If-Match`      | string  | `version` atual do registro, para controle de concorrência |
+| Header | `If-Match`      | string  | **Obrigatório.** `version` atual do registro, para controle de concorrência |
+| Body   | `nome`          | string  | Obrigatório; nome curto da peça                            |
 | Body   | `descricao`     | string  | Obrigatório, 3 a 120 caracteres                            |
 | Body   | `categoria`     | string  | Categoria da peça                                          |
 | Body   | `fabricante`    | string  | Fabricante da peça                                         |
 | Body   | `precoVenda`    | decimal | Obrigatório, maior que zero, até 2 casas decimais          |
 | Body   | `estoqueMinimo` | int     | Maior ou igual a zero                                      |
-| Body   | `ativo`         | boolean | Situação da peça                                           |
+| Body   | `ativo`         | —       | **Não aceito.** A inativação é feita pelo `DELETE`         |
 
 ```json
 {
+  "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira cerâmica",
-  "categoria": "Freios",
+  "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
   "fabricante": "Bosch",
   "precoVenda": 199.9,
-  "estoqueMinimo": 6,
-  "ativo": true
+  "estoqueMinimo": 6
 }
 ```
+
+> **Decisão de projeto.** `ativo` **não é aceito** neste endpoint. Existiam dois caminhos para
+> inativar a mesma peça — `PUT` com `ativo: false` e `DELETE` —, com validações diferentes, o que
+> permitia burlar a checagem de saldo usando o caminho mais permissivo. A situação passa a mudar
+> apenas pelo `DELETE`, onde as validações estão. Mesma regra já adotada em Serviços.
+
+> **Decisão de projeto.** `nome` passa a ser atualizável e retornado, junto com `descricao`: o
+> campo era gravado no cadastro e sumia daqui e da consulta.
 
 **Validações**
 
 _Técnicas_
 
 - `pecaId` existe e é do tipo `PECA`.
+- `nome` obrigatório.
 - `descricao` obrigatória, de 3 a 120 caracteres.
 - `precoVenda` obrigatório, maior que zero, com no máximo 2 casas decimais.
 - `estoqueMinimo` inteiro maior ou igual a zero.
-- `If-Match` deve bater com a `version` atual do registro.
+- `If-Match` é obrigatório e deve bater com a `version` atual do registro.
 
 _Negócio_
 
-- `descricao` única dentro da mesma categoria.
+- `descricao` normalizada única dentro da mesma categoria, entre peças **ativas**.
 - O `codigo` é o identificador de negócio da peça e não é alterado por esta operação.
-- Não permitir `ativo = false` quando `saldoReservado > 0`.
+- A operação não altera `ativo`: qualquer valor enviado para esse campo retorna `400`.
 - Alteração de preço não propaga para OS ou orçamentos já emitidos.
 
 **Processamento**
 
 1. Carregar a peça por id, com lock otimista.
-2. Comparar `If-Match` com a `version` atual — conflito retorna `412`.
-3. Validar unicidade de descrição na categoria.
-4. Se `ativo = false`, verificar reservas ativas.
+2. Exigir o header `If-Match` — ausente, retorna `428`.
+3. Comparar `If-Match` com a `version` atual — divergente, retorna `412`.
+3. Rejeitar `ativo` no corpo, se vier.
+4. Carregar a categoria pelo `categoriaId`, validar que existe e está ativa, e normalizar a
+   descrição para validar unicidade na categoria, entre peças ativas.
 5. Detectar mudança de `precoVenda`.
 6. Aplicar as alterações na entidade.
 7. Se o preço mudou, gravar registro em `historico_preco_item`.
 8. Persistir e incrementar `version`.
-9. Publicar o evento `PecaAtualizada`.
 
 **Persistência**
 
@@ -164,9 +175,11 @@ _Negócio_
 ```json
 {
   "id": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
-  "codigo": "PC-0142",
+  "codigo": "PEC-000142",
   "tipo": "PECA",
+  "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira cerâmica",
+  "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
   "categoria": "Freios",
   "fabricante": "Bosch",
   "precoVenda": 199.9,
@@ -183,20 +196,18 @@ _Negócio_
 | Código | Situação                                                                       |
 | ------ | ------------------------------------------------------------------------------ |
 | `200`  | Peça atualizada                                                                |
-| `400`  | Body inválido — campo obrigatório ausente, preço menor ou igual a zero         |
+| `400`  | Body inválido — campo obrigatório ausente, preço menor ou igual a zero, ou `ativo` enviado |
 | `401`  | Token ausente ou expirado                                                      |
 | `403`  | Perfil sem permissão                                                           |
 | `404`  | Peça não encontrada                                                            |
-| `409`  | Descrição duplicada na categoria; tentativa de inativar peça com reserva ativa |
+| `409`  | Descrição duplicada na categoria entre peças ativas                             |
 | `412`  | `If-Match` divergente — registro alterado por outro usuário                    |
-| `422`  | Regra de negócio violada                                                       |
+| `428`  | `If-Match` ausente                                                             |
 
 **Dependências**
 
 - `ItemEstoqueRepository`
-- `ReservaEstoqueRepository` (verificação de reserva ativa)
 - `HistoricoPrecoRepository`
-- Publicador de eventos de domínio
 
 **Testes**
 
@@ -205,15 +216,17 @@ _Unitários_
 - Rejeita `precoVenda` zero e negativo.
 - Rejeita `descricao` com menos de 3 caracteres.
 - Gera registro de histórico apenas quando o preço muda.
-- Bloqueia inativação com reserva ativa.
+- Rejeita `ativo` enviado no corpo.
+- Atualiza `nome` e `descricao` juntos.
 
 _Integração_
 
 - `PUT` válido retorna `200` e incrementa `version`.
-- `PUT` com `If-Match` antigo retorna `412`.
+- `PUT` com `If-Match` antigo retorna `412`, e sem o header retorna `428`.
 - Descrição duplicada na mesma categoria retorna `409`.
 - Descrição duplicada em categoria diferente é aceita.
-- Inativar peça com reserva ativa retorna `409`.
+- Descrição igual à de uma peça inativa é aceita.
+- `ativo` no corpo retorna `400`.
 - Peça inexistente retorna `404`.
 - Perfil sem o escopo `estoque:escrever` recebe `403`.
 
@@ -223,12 +236,13 @@ _Regressão_
 
 ---
 
-### 2.3 Checklist de Implementação
+### 3.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Implementar o método `atualizarDados()` na entidade `ItemEstoque` com as regras de peça
-- [ ] Implementar a regra de bloqueio de inativação quando houver saldo reservado
+- [ ] Rejeitar `ativo` no payload: a situação muda apenas pelo `DELETE`
+- [ ] Implementar a normalização da descrição para a checagem de duplicidade
 - [ ] Garantir que a alteração de preço não altera o `precoNoMomento` de OS já emitidas
 
 **Caso de uso**
@@ -256,9 +270,9 @@ _Regressão_
 
 - [ ] Implementar controle otimista comparando o header `If-Match` com a `version` atual
 
-**Eventos**
+**Auditoria**
 
-- [ ] Publicar `PecaAtualizada`
+- [ ] Registrar a atualização na trilha de auditoria
 
 **Testes unitários**
 
@@ -269,7 +283,7 @@ _Regressão_
 **Testes de integração**
 
 - [ ] `PUT` válido retornando `200` com `version` incrementada
-- [ ] `If-Match` divergente retornando `412`
+- [ ] `If-Match` divergente retornando `412` e ausente retornando `428`
 - [ ] Descrição duplicada na mesma categoria retornando `409`
 - [ ] Descrição duplicada em categoria diferente sendo aceita
 - [ ] Peça inexistente retornando `404`

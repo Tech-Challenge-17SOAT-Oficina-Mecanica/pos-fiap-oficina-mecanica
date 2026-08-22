@@ -1,7 +1,7 @@
 ---
 documento: Visão Geral do Projeto
 dono: José Lázaro
-versao: 0.5
+versao: 0.6
 atualizado_em: 2026-08-22
 status: em construcao
 ---
@@ -12,9 +12,9 @@ Documento de entrada do projeto. Explica o que estamos construindo, por quê, co
 organiza e onde encontrar cada coisa. É o primeiro arquivo que alguém novo — pessoa ou agente
 de IA — deve ler.
 
-Este documento cresce junto com o projeto: hoje ele descreve em profundidade apenas o contexto
-de Peças & Insumos, que é o único já refinado. À medida que os outros contextos delimitados
-forem documentados, as seções correspondentes deixam de ser esboço.
+Este documento cresce junto com o projeto. Os sete contextos delimitados já estão refinados, cada
+um no seu diretório, com resumo, uma tarefa por arquivo e a lista de pontos em aberto. O que ainda
+muda aqui são as decisões de padrão de API que continuam na pauta.
 
 ---
 
@@ -68,19 +68,21 @@ O caminho que um atendimento percorre, e quem responde por cada etapa:
 | Cadastro do veículo (placa, marca, modelo, ano) e vínculo com o cliente | Veículo |
 | Abertura da OS e registro dos serviços solicitados | Ordem de Serviço |
 | Diagnóstico e identificação de problemas | Ordem de Serviço |
-| Consulta de disponibilidade de peças e insumos | Peças & Insumos |
+| Consulta de disponibilidade de peças e insumos | Peças / Insumos |
 | Geração automática do orçamento a partir de serviços e peças | Orçamento |
 | Envio do orçamento e aprovação pelo cliente | Orçamento |
-| Reserva das peças da OS aprovada | Peças & Insumos |
-| Execução do serviço e baixa das peças e insumos usados | Peças & Insumos / Ordem de Serviço |
+| Reserva das peças e insumos da OS aprovada | Peças / Insumos |
+| Execução do serviço e baixa das peças e insumos usados | Peças / Insumos / Ordem de Serviço |
 | Problema adicional, orçamento complementar e nova aprovação | Orçamento / Ordem de Serviço |
-| Reposição de estoque: itens faltantes, pedido de compra e recebimento | Peças & Insumos |
+| Reposição de estoque: pedido de compra e recebimento | Peças / Insumos |
 | Finalização e entrega do veículo | Ordem de Serviço |
 
-**Status da OS**, conforme o enunciado: `Recebida` → `Em diagnóstico` → `Aguardando aprovação`
-→ `Em execução` → `Finalizada` → `Entregue`. O board de Event Storming também prevê o
-cancelamento da OS; o comportamento exato do cancelamento ainda será definido pelo contexto
-de Ordem de Serviço.
+**Status da OS.** O enunciado lista seis — `Recebida`, `Em diagnóstico`, `Aguardando aprovação`,
+`Em execução`, `Finalizada` e `Entregue` — e o refinamento chegou a nove, acrescentando
+`AGUARDANDO_RECURSOS` (parada esperando peça comprada), `AGUARDANDO_EXECUCAO` (orçamento
+aprovado, serviço ainda não iniciado) e `CANCELADA` (destino da recusa do orçamento). A máquina
+de estados completa, com as transições e quem dispara cada uma, está no
+[resumo de Ordem de Serviço](ordem-de-servico/00-resumo.md).
 
 ---
 
@@ -91,35 +93,30 @@ documentação e pela manutenção das regras.
 
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
-| Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 12 de 18 tarefas refinadas |
-| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
-| Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 16 tarefas refinadas |
+| Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas — ver [resumo](cliente/00-resumo.md) |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas — ver [resumo](veiculo/00-resumo.md) |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 13 tarefas — ver [resumo](ordem-de-servico/00-resumo.md) |
+| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 4 tarefas — ver [resumo](orcamento/00-resumo.md) |
+| Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas — ver [resumo](servicos/00-resumo.md) |
+| Peças | `Item de Estoque` (`PECA`), `Reserva`, `Movimentação`, `Pedido de Compra`, `Fornecedor` | [`pecas/`](pecas/) | 15 tarefas — ver [resumo](pecas/00-resumo.md) |
+| Insumos | `Item de Estoque` (`INSUMO`), `Reserva`, `Movimentação`, `Pedido de Compra` | [`insumos/`](insumos/) | 10 tarefas — ver [resumo](insumos/00-resumo.md) |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
 conhecidas: os documentos de contexto são o lugar de corrigir e explicar as divergências, não
 de copiar o board sem crítica.
 
-### Peças & Insumos (único contexto já refinado)
+### Peças e Insumos
 
-Cobre o catálogo de peças e insumos, os saldos, a reserva para ordens de serviço, a baixa no
-consumo e o ciclo de compras. Nove requisitos documentados:
+Eram um contexto só e foram **divididos em dois**: [`pecas/`](pecas/) e [`insumos/`](insumos/).
+Os dois seguem o mesmo desenho — catálogo, saldos, reserva para ordens de serviço, baixa no
+consumo e ciclo de compras — e cada um tem as suas rotas, `/estoque/pecas` e `/estoque/insumos`.
+A diferença é de negócio: a peça é cobrada do cliente item a item, pelo `precoVenda`; o insumo
+entra no custo do serviço, pelo `custoUnitario`.
 
-1. Consultar Peças
-2. Atualizar Peça
-3. Atualizar Insumo
-4. Registrar Entrada de Estoque
-5. Reservar Peça para Ordem de Serviço
-6. Reservar Insumo para Ordem de Serviço
-7. Processar Peças para Reserva e Compra
-8. Processar Insumos para Reserva e Compra
-9. Registrar Consumo e Saída
-10. Consultar Peças Faltantes
-11. Solicitar Compra de Peças
-12. Solicitar Compra de Insumos
+O agregado de **Compras** — `Pedido de Compra` e `Fornecedor` — não é contexto separado: ele
+pertence a Peças, e Insumos apenas o referencia. Por isso `/fornecedores`, `/compras/pedidos`,
+`/estoque/entradas` e `/estoque/saidas` são rotas compartilhadas pelos dois.
 
 O conceito central é a separação de saldos: **saldo físico** (o que está na prateleira),
 **saldo reservado** (o que já tem dono, uma OS aprovada) e **saldo disponível** (a diferença
@@ -136,7 +133,7 @@ Termos já estabelecidos. Cada contexto amplia esta lista no seu próprio docume
 | Ordem de Serviço (OS) | Registro do atendimento de um veículo, do recebimento à entrega |
 | Orçamento | Valor proposto ao cliente a partir dos serviços e peças da OS, sujeito a aprovação |
 | Peça | Item cobrado do cliente e aplicado no veículo; é reservável |
-| Insumo | Material de consumo diluído no custo do serviço; não é reservado, tem baixa direta |
+| Insumo | Material de consumo diluído no custo do serviço; é reservado como a peça, com baixa na execução |
 | Saldo físico | Quantidade existente no estoque |
 | Saldo reservado | Quantidade já comprometida com OS aprovadas |
 | Saldo disponível | Saldo físico menos saldo reservado |
@@ -165,23 +162,29 @@ Termos já estabelecidos. Cada contexto amplia esta lista no seu próprio docume
 
 - Rotas sem prefixo de versão: o recurso começa na raiz, por exemplo `/clientes`.
 - Autorização por **escopo** no token (`estoque:ler`, `estoque:escrever`, `estoque:movimentar`,
-  `compras:escrever`), e não por perfil. Os perfis existentes são `MECANICO`, `GESTOR` e
-  `SERVICO`; **não existe perfil `ESTOQUISTA`**.
+  `compras:escrever`), e não por perfil. Os perfis existentes são `MECANICO`, `CLIENTE` e
+  `SERVICO`; **não existem os perfis `ESTOQUISTA` nem `GESTOR`**.
 - Envelope de listagem paginada: `data`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`.
   Lista vazia é `200` com `"data": []`, nunca `404`.
 - Escrita concorrente em cadastro usa **lock otimista**: header `If-Match` comparado com o
   campo `version`.
 - Operação que movimenta saldo é **transacional** (tudo ou nada) e protegida por
   `SELECT ... FOR UPDATE` com ordenação fixa por `item_id`, para evitar deadlock.
-- Compras **não** é contexto separado: `pedido_compra` pertence a Peças & Insumos.
-- Insumo **não** é reservado; a baixa acontece direto na execução do serviço.
+- Compras **não** é contexto separado: `pedido_compra` e `fornecedor` pertencem a Peças, e
+  Insumos os referencia.
+- **Insumo é reservado como a peça.** A reserva dos dois nasce da aprovação do orçamento e é
+  consumida pela baixa, em `POST /estoque/saidas`, durante a execução do serviço.
+- **Sem mensageria e sem eventos de domínio.** A conversa entre contextos é consulta síncrona ou
+  chamada direta dentro da mesma transação; o histórico da OS é trilha de auditoria.
 
-### Ainda em aberto
+### Pauta fechada
 
-Quinze decisões estão pendentes de discussão em equipe, três delas bloqueantes: o padrão de
-códigos HTTP (`409` x `422`), o mecanismo de idempotência e o formato do corpo de erro. Todas
-estão em [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md), com opções e recomendação
-para cada uma.
+As vinte e cinco decisões de [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) foram
+fechadas em 22/08/2026, com as opções descartadas preservadas para explicar o porquê de cada
+escolha. As últimas a cair mudaram contrato de API em todos os contextos: o `422` saiu (`400` para
+entrada inválida, `409` para conflito de estado), o corpo de erro passou a ser Problem Details
+vindo de um handler global, `categoria` virou tabela referenciada por identificador, e as
+listagens de peça e insumo passaram a devolver `version`.
 
 ---
 
@@ -195,9 +198,12 @@ para cada uma.
 | [`veiculo/`](veiculo/) | Contexto de Veículo: refinamentos separados por tarefa |
 | [`ordem-de-servico/`](ordem-de-servico/) | Contexto de Ordem de Serviço: refinamentos separados por tarefa |
 | [`orcamento/`](orcamento/) | Contexto de Orçamento: refinamentos separados por tarefa |
-| [`pecas-e-insumos/`](pecas-e-insumos/) | Contexto de Peças & Insumos: um arquivo por tarefa, mais os pontos em aberto do contexto |
+| [`pecas/`](pecas/) | Contexto de Peças: um arquivo por tarefa, mais o resumo e os pontos em aberto |
+| [`insumos/`](insumos/) | Contexto de Insumos: um arquivo por tarefa, mais o resumo e os pontos em aberto |
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
 | [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
+| `<contexto>/00-resumo.md` | O que o contexto cobre: tarefas, rotas, tipos e convenções em vigor |
+| `<contexto>/pontos-em-aberto.md` | Decisões pendentes e inconsistências a corrigir naquele contexto |
 | [`files/`](files/) | Material de apoio: enunciado do Tech Challenge, board de Event Storming, levantamento dos fluxos atuais |
 
 Cada contexto delimitado tem um arquivo próprio, nomeado como
@@ -224,11 +230,11 @@ processamento, testes) e **Checklist de Implementação** (o passo a passo até 
 
 ## 9. Próximos passos
 
-1. Fechar as decisões bloqueantes de [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md)
-   (D-01, D-02 e D-03) — elas mudam o contrato de todos os endpoints.
-2. Documentar os contextos restantes seguindo o
-   [guia](01-guia-de-documentacao.md): Cliente, Veículo, Ordem de Serviço, Orçamento e Serviços.
+1. Documentar `GET /estoque/categorias`, a única rota do catálogo ainda sem documento — ela nasceu
+   da D-09 e sem ela ninguém descobre o `categoriaId` que o cadastro exige.
+2. Decidir se a fila de atendimento é recurso próprio ou visão da OS, último ponto em aberto do
+   catálogo de rotas.
 3. Definir os donos de cada contexto e preencher a coluna de responsáveis.
-4. Consolidar a linguagem ubíqua num glossário único, quando os cinco contextos estiverem escritos.
+4. Consolidar a linguagem ubíqua num glossário único, agora que os sete contextos estão escritos.
 5. Escolher e justificar o banco de dados.
 6. Iniciar a implementação pelos requisitos com checklist pronto.

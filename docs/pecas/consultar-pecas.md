@@ -1,18 +1,18 @@
 ---
 documento: Refinamento de Requisitos — Consultar Peças
 dono: Desconhecido
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Consultar Peças
 
-Este documento detalha a tarefa Consultar Peças do contexto de Peças & Insumos.
+Este documento detalha a tarefa Consultar Peças do contexto de Peças.
 
-## 11 · Consultar Peças
+## 2 · Consultar Peças
 
-### 11.1 Refinamento de Produto
+### 2.1 Refinamento de Produto
 
 **Persona**
 
@@ -36,28 +36,28 @@ Durante o diagnóstico, o mecânico precisa saber se a peça necessária está d
 
 | ID | Requisito |
 |---|---|
-| RF-PEC-01 | Permitir consultar peça por código exato. |
-| RF-PEC-02 | Permitir consultar peça por descrição parcial. |
-| RF-PEC-03 | Permitir filtrar por categoria e fabricante. |
-| RF-PEC-04 | Permitir filtrar apenas peças com saldo disponível. |
-| RF-PEC-05 | Exibir saldo físico, saldo reservado e saldo disponível da peça. |
-| RF-PEC-06 | Indicar se a peça está disponível para uso. |
-| RF-PEC-07 | Permitir informar quantidade desejada e indicar se o saldo atende à necessidade. |
-| RF-PEC-08 | Indicar se a peça está abaixo do estoque mínimo. |
-| RF-PEC-09 | Indicar se existe pedido de compra em aberto para a peça. |
-| RF-PEC-10 | Excluir peças inativas do resultado por padrão, salvo quando solicitado. |
-| RF-PEC-11 | Informar quando nenhuma peça corresponde aos parâmetros informados. |
+| RF-PEC-14 | Permitir consultar peça por código exato. |
+| RF-PEC-15 | Permitir consultar peça por descrição parcial. |
+| RF-PEC-16 | Permitir filtrar por categoria, pelo `categoriaId`, e por fabricante. |
+| RF-PEC-17 | Permitir filtrar apenas peças com saldo disponível. |
+| RF-PEC-18 | Exibir saldo físico, saldo reservado e saldo disponível da peça. |
+| RF-PEC-19 | Indicar se a peça está disponível para uso. |
+| RF-PEC-20 | Permitir informar quantidade desejada e indicar se o saldo atende à necessidade. |
+| RF-PEC-21 | Indicar se a peça está abaixo do estoque mínimo. |
+| RF-PEC-22 | Indicar se existe pedido de compra em aberto para a peça. |
+| RF-PEC-23 | Excluir peças inativas do resultado por padrão, salvo quando solicitado. |
+| RF-PEC-24 | Informar quando nenhuma peça corresponde aos parâmetros informados. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-PEC-01 | A consulta deve ser realizada por API RESTful. |
-| RNF-PEC-02 | A operação deve ser acessível somente por usuário autorizado. |
-| RNF-PEC-03 | A consulta não deve alterar o saldo, gerar reserva ou solicitação de compra. |
-| RNF-PEC-04 | A listagem deve ser paginada. |
-| RNF-PEC-05 | O saldo apresentado deve refletir o estado do estoque no momento da consulta. |
-| RNF-PEC-06 | A disponibilidade deve ser calculada pelo saldo disponível, e não apenas pelo saldo físico. |
+| RNF-PEC-09 | A consulta deve ser realizada por API RESTful. |
+| RNF-PEC-10 | A operação deve ser acessível somente por usuário autorizado. |
+| RNF-PEC-11 | A consulta não deve alterar o saldo, gerar reserva ou solicitação de compra. |
+| RNF-PEC-12 | A listagem deve ser paginada. |
+| RNF-PEC-13 | O saldo apresentado deve refletir o estado do estoque no momento da consulta. |
+| RNF-PEC-14 | A disponibilidade deve ser calculada pelo saldo disponível, e não apenas pelo saldo físico. |
 
 **Fluxo Principal**
 
@@ -98,41 +98,48 @@ Durante o diagnóstico, o mecânico precisa saber se a peça necessária está d
 - Nenhum pedido de compra é criado.
 - O mecânico possui as informações necessárias para registrar a peça na OS ou seguir para uma eventual solicitação de compra.
 
-### 11.2 Refinamento Técnico
+### 2.2 Refinamento Técnico
 
 **Endpoint**
 
-- `GET /estoque/pecas`
+```http
+GET /estoque/pecas
+GET /estoque/pecas/{pecaId}
+```
 
 **Autenticação / Autorização**
 
-- Requer autenticação JWT.
-- Permitido para usuário com perfil/permissão de Mecânico ou Gestor.
-- Requer escopo `estoque:ler`.
+- `Bearer <JWT>` obrigatório.
+- Perfil: `MECANICO`.
+- Escopo: `estoque:ler`.
+
+> **Decisão de projeto.** Este documento era o único do projeto sem seção de autenticação e
+> autorização, e o escopo do catálogo tinha sido inferido. Fica confirmado: `estoque:ler`, com o
+> mesmo perfil da consulta de insumos.
 
 **Entrada**
 
-Todos os campos são query params.
-
-| Parâmetro | Tipo | Descrição |
-|---|---|---|
-| `codigo` | string | Código exato da peça. |
-| `descricao` | string | Busca parcial pela descrição. |
-| `categoria` | string | Filtro por categoria. |
-| `fabricante` | string | Filtro por fabricante. |
-| `somenteDisponiveis` | boolean | Retorna somente peças com saldo disponível. |
-| `incluirInativos` | boolean | Inclui peças inativas. Default: `false`. |
-| `quantidadeDesejada` | number | Quantidade que o mecânico deseja utilizar. |
-| `page` | integer | Página da consulta. Default: `0`. |
-| `size` | integer | Tamanho da página. Default: `20`; máximo: `100`. |
+| Local | Parâmetro | Tipo | Descrição |
+|---|---|---|---|
+| Path | `pecaId` | UUID | Identificador da peça na consulta individual. |
+| Query | `codigo` | string | Código exato da peça. |
+| Query | `descricao` | string | Busca parcial pela descrição. |
+| Query | `categoriaId` | UUID | Filtro por categoria. |
+| Query | `fabricante` | string | Filtro por fabricante. |
+| Query | `somenteDisponiveis` | boolean | Retorna somente peças com saldo disponível. |
+| Query | `incluirInativos` | boolean | Inclui peças inativas. Padrão `false`. |
+| Query | `quantidadeDesejada` | number | Quantidade que o mecânico deseja utilizar. |
+| Query | `pagina` | inteiro | Página iniciada em zero. Padrão `0`. |
+| Query | `tamanho` | inteiro | Itens por página. Padrão `20`, máximo `100`. |
 
 Exemplos:
 
 ```http
-GET /estoque/pecas?codigo=PC-0142
-GET /estoque/pecas?descricao=pastilha&categoria=Freios
-GET /estoque/pecas?codigo=PC-0142&quantidadeDesejada=4
+GET /estoque/pecas?codigo=PEC-000142
+GET /estoque/pecas?descricao=pastilha&categoriaId=7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94
+GET /estoque/pecas?codigo=PEC-000142&quantidadeDesejada=4
 GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
+GET /estoque/pecas/3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4
 ```
 
 **Validações**
@@ -141,8 +148,8 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 - Exigir ao menos um filtro de busca: `codigo` ou `descricao`.
 - Validar que `descricao` possui no mínimo 2 caracteres, quando informada.
 - Validar que `quantidadeDesejada` é maior que zero, quando informada.
-- Validar que `page` é maior ou igual a zero.
-- Validar que `size` não excede 100.
+- Validar que `pagina` é maior ou igual a zero.
+- Validar que `tamanho` não excede 100.
 - Validar o formato dos filtros informados.
 - Garantir que a consulta não altera o estoque, não cria reserva e não cria pedido de compra.
 
@@ -170,11 +177,14 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 
 ```json
 {
-  "conteudo": [
+  "data": [
     {
-      "codigo": "PC-0142",
+      "id": "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4",
+      "codigo": "PEC-000142",
       "tipo": "PECA",
+      "nome": "Pastilha de freio",
       "descricao": "Pastilha de freio dianteira",
+      "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
       "categoria": "Freios",
       "fabricante": "Bosch",
       "unidadeMedida": "UN",
@@ -188,7 +198,8 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
       "disponivel": true,
       "abaixoDoMinimo": false,
       "possuiPedidoEmAberto": false,
-      "ativo": true
+      "ativo": true,
+      "version": 3
     }
   ],
   "pagina": 0,
@@ -199,6 +210,15 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 ```
 
 > Peça sem saldo não significa peça inexistente: ela retorna `200 OK` com `disponivel: false`. Peça inexistente retorna `404 Not Found`.
+
+> **Decisão de projeto — D-10.** A resposta passou a trazer **`version`**, e a peça ganhou rota de
+> detalhe, `GET /estoque/pecas/{pecaId}`, espelhando a que insumo já tinha. Sem os dois não havia
+> como montar o `If-Match` que o `PUT` exige. A paginação também foi corrigida para o envelope do
+> projeto: `pagina` e `tamanho`, não `page` e `size` (D-21).
+
+> **Decisão de projeto.** A resposta traz **`nome` e `descricao`**: `nome` é o termo curto que o
+> mecânico procura, `descricao` é o detalhamento que sai no orçamento. Antes o `nome` era gravado
+> no cadastro e não aparecia aqui.
 
 **Códigos HTTP / Erros**
 
@@ -228,13 +248,14 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 - Deve comparar saldo disponível e quantidade desejada.
 - Deve indicar peça abaixo do estoque mínimo.
 - Deve buscar por código exato e descrição parcial.
-- Deve aplicar os filtros de categoria, fabricante, disponibilidade e peças inativas.
+- Deve aplicar os filtros de `categoriaId`, fabricante, disponibilidade e peças inativas.
+- Deve devolver `version` na listagem e no detalhe, e `404` no detalhe de peça inexistente.
 - Deve retornar `404 Not Found` quando não houver peça correspondente.
 - Deve retornar `400 Bad Request` sem filtro de busca, com descrição curta, quantidade inválida ou paginação inválida.
 - Deve retornar `401 Unauthorized` sem token e `403 Forbidden` sem escopo.
 - Deve garantir que a consulta não cria reserva, não altera saldo e não cria pedido de compra.
 
-### 11.3 Check-list de Implementação
+### 2.3 Check-list de Implementação
 
 **Domínio**
 
@@ -245,7 +266,7 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 **Caso de Uso e Repositório**
 
 - [ ] Implementar o caso de uso `ConsultarPecas`.
-- [ ] Implementar filtros de código, descrição, categoria, fabricante, disponibilidade e peças ativas.
+- [ ] Implementar filtros de código, descrição, `categoriaId`, fabricante, disponibilidade e peças ativas.
 - [ ] Implementar paginação.
 - [ ] Implementar a comparação com quantidade desejada.
 - [ ] Implementar `ItemEstoqueRepository.buscarPorFiltro`.
@@ -255,7 +276,8 @@ GET /estoque/pecas?descricao=pastilha&somenteDisponiveis=true
 
 **API e Segurança**
 
-- [ ] Criar handler para `GET /estoque/pecas`.
+- [ ] Criar handler para `GET /estoque/pecas` e para `GET /estoque/pecas/{pecaId}`.
+- [ ] Devolver `version` na listagem e no detalhe.
 - [ ] Implementar recebimento e validação dos query params.
 - [ ] Implementar resposta paginada.
 - [ ] Retornar `404` quando nenhuma peça for encontrada.
