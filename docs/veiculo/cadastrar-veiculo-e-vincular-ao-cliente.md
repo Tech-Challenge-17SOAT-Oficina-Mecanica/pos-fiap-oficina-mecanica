@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Cadastrar Veículo e Vincular ao Cliente
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -16,7 +16,7 @@ Este documento detalha a tarefa Cadastrar Veículo e Vincular ao Cliente, do con
 
 **Persona**
 
-Gestor da oficina.
+Mecânico.
 
 **Objetivo**
 
@@ -107,18 +107,24 @@ POST /clientes/{clienteId}/veiculos
 
 O endpoint cria um veículo e seu vínculo com um cliente existente na mesma operação.
 
-> **Decisão de projeto.** Esta rota representa a criação de um veículo subordinado ao cliente.
-> `POST /veiculos` permanece responsável pelo cadastro sem vínculo, enquanto
-> `POST /clientes/{clienteId}/veiculos/{veiculoId}` vincula um veículo já existente. A
-> alternativa de reutilizar `POST /veiculos` com `clienteId` no corpo criaria dois contratos
-> diferentes para a mesma rota.
+> **Decisão de projeto.** Esta rota representa a criação de um veículo subordinado ao cliente e
+> passou a ser **o único caminho de cadastro de veículo**: `POST /veiculos` foi aposentada, por ser
+> a única rota que permitia criar veículo sem dono. Para vincular um veículo já existente, usa-se
+> `POST /clientes/{clienteId}/veiculos/{veiculoId}`. A alternativa de reutilizar `POST /veiculos`
+> com `clienteId` no corpo criaria dois contratos diferentes para a mesma rota.
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfil: `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo da operação: `veiculos:escrever`.
-- A consulta prévia por CPF/CNPJ exige `clientes:ler`.
+
+> **Decisão de projeto.** A operação exige **apenas** `veiculos:escrever`. Não há validação
+> cruzada contra o contexto de Cliente: a permissão vem nos escopos do próprio JWT, e o token que
+> chega com `veiculos:escrever` está autorizado a criar o veículo e o vínculo na mesma operação.
+
+> **Decisão de projeto.** A persona é o **Mecânico**, que é quem recebe o carro no balcão. O
+> perfil `GESTOR` deixou de existir: os perfis do sistema são `MECANICO`, `CLIENTE` e `SERVICO`.
 
 **Entrada**
 
@@ -208,7 +214,7 @@ O identificador retornado nessa consulta é usado como `clienteId` na rota de ca
 | `403` | Usuário sem o escopo `veiculos:escrever`. |
 | `404` | Cliente não encontrado. |
 | `409` | Placa já cadastrada para outro veículo ativo. |
-| `422` | Cliente inativo ou ano fora das regras de negócio. |
+| `409` | Cliente inativo. |
 | `500` | Falha inesperada, sem persistência parcial do veículo ou vínculo. |
 
 **Dependências**
@@ -235,7 +241,7 @@ O identificador retornado nessa consulta é usado como `clienteId` na rota de ca
 - Requisição válida retorna `201` com veículo e `clienteId`.
 - Cliente inexistente retorna `404`.
 - Placa duplicada retorna `409`.
-- Dados inválidos retornam `400` ou `422`, conforme a regra.
+- Dados inválidos retornam `400`; cliente inativo retorna `409`.
 - Usuário sem autorização retorna `403`.
 - Veículo cadastrado aparece vinculado na consulta do cliente.
 - Falha de persistência não deixa veículo sem vínculo.
@@ -297,7 +303,7 @@ O identificador retornado nessa consulta é usado como `clienteId` na rota de ca
 
 **Testes de integração**
 
-- [ ] Respostas `201`, `400`, `401`, `403`, `404`, `409`, `422` e `500`
+- [ ] Respostas `201`, `400`, `401`, `403`, `404`, `409` e `500`
 - [ ] Veículo vinculado aparece na consulta do cliente
 - [ ] Ausência de persistência parcial diante de falha
 
