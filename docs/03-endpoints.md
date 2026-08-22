@@ -98,6 +98,10 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `GET` | `/estoque/insumos/{insumoId}` | Consulta um insumo específico e sua disponibilidade | `estoque:ler` | [consultar-insumos.md](pecas-e-insumos/consultar-insumos.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
+| `POST` | `/estoque/reservas` | Reserva peças disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-peca-para-os.md](pecas-e-insumos/reservar-peca-para-os.md) |
+| `POST` | `/estoque/reservas-insumos` | Reserva insumos disponíveis para uma Ordem de Serviço aprovada | `estoque:movimentar` | [reservar-insumo-para-os.md](pecas-e-insumos/reservar-insumo-para-os.md) |
+| `POST` | `/estoque/solicitacoes-compra-reserva` | Reserva peças disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-pecas-para-reserva-e-compra.md](pecas-e-insumos/processar-pecas-para-reserva-e-compra.md) |
+| `POST` | `/estoque/solicitacoes-compra-reserva-insumos` | Reserva insumos disponíveis e solicita compra do saldo faltante para uma OS | `estoque:movimentar` | [processar-insumos-para-reserva-e-compra.md](pecas-e-insumos/processar-insumos-para-reserva-e-compra.md) |
 | `POST` | `/estoque/entradas` | Registra o recebimento, efetiva as reservas do pedido e libera as OS sem itens pendentes | `estoque:movimentar` | [registrar-entrada-de-estoque.md](pecas-e-insumos/registrar-entrada-de-estoque.md) |
 | — | *(sem endpoint)* | Devolve peças e insumos ao estoque na recusa do orçamento; chamada em processo dentro de `RecusarOrcamento` | — | [retornar-peca-e-insumo-ao-estoque.md](pecas-e-insumos/retornar-peca-e-insumo-ao-estoque.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
@@ -114,8 +118,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 11 |
-| **Total** | **43** |
+| Peças & Insumos | 15 |
+| **Total** | **47** |
 
 ---
 
@@ -133,7 +137,6 @@ existir, é uma decisão que precisa ser registrada.
 | `GET /estoque/itens` | Consultar estoque | Peças & Insumos |
 | `GET /estoque/itens/faltantes` | Consultar peças faltantes | Peças & Insumos |
 | `POST /estoque/saidas` | Registrar consumo e saída | Peças & Insumos |
-| `POST /estoque/reservas` | Reservar peça para OS | Peças & Insumos |
 | `DELETE /estoque/reservas/ordens-servico/{osId}` | Reservar peça para OS (liberação) | Peças & Insumos |
 
 ---

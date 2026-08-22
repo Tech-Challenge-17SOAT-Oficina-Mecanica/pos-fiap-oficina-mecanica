@@ -1,8 +1,8 @@
 ---
 documento: Visão Geral do Projeto
 dono: José Lázaro
-versao: 0.1
-atualizado_em: 2026-08-18
+versao: 0.5
+atualizado_em: 2026-08-22
 status: em construcao
 ---
 
@@ -96,7 +96,7 @@ documentação e pela manutenção das regras.
 | Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 12 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
 | Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 14 tarefas refinadas |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 16 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
@@ -112,10 +112,14 @@ consumo e o ciclo de compras. Nove requisitos documentados:
 2. Atualizar Peça
 3. Atualizar Insumo
 4. Registrar Entrada de Estoque
-6. Registrar Consumo e Saída
-7. Consultar Peças Faltantes
-8. Solicitar Compra de Peças
-9. Solicitar Compra de Insumos
+5. Reservar Peça para Ordem de Serviço
+6. Reservar Insumo para Ordem de Serviço
+7. Processar Peças para Reserva e Compra
+8. Processar Insumos para Reserva e Compra
+9. Registrar Consumo e Saída
+10. Consultar Peças Faltantes
+11. Solicitar Compra de Peças
+12. Solicitar Compra de Insumos
 
 O conceito central é a separação de saldos: **saldo físico** (o que está na prateleira),
 **saldo reservado** (o que já tem dono, uma OS aprovada) e **saldo disponível** (a diferença
