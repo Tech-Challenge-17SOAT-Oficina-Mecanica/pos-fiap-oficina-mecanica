@@ -87,6 +87,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
+| `GET` | `/estoque/pecas` | Consulta peças com saldo físico, reservado e disponível | `estoque:ler` | [consultar-estoque.md](pecas-e-insumos/consultar-estoque.md) |
 | `POST` | `/estoque/pecas` | Cadastra uma nova peça no catálogo | `estoque:escrever` | [cadastrar-peca.md](pecas-e-insumos/cadastrar-peca.md) |
 | `PUT` | `/estoque/pecas/{pecaId}` | Atualiza os dados cadastrais da peça | `estoque:escrever` | [atualizar-peca.md](pecas-e-insumos/atualizar-peca.md) |
 | `DELETE` | `/estoque/pecas/{pecaId}` | Desativa a peça (exclusão lógica) | `estoque:escrever` | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) |

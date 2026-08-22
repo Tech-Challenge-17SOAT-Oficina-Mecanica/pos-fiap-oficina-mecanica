@@ -82,7 +82,7 @@ implementada em código.
 
 ## Peças & Insumos
 
-- [x] Consultar estoque — [consultar-estoque.md](docs/pecas-e-insumos/consultar-estoque.md)
+- [x] Consultar peças — [consultar-estoque.md](docs/pecas-e-insumos/consultar-estoque.md)
 - [x] Cadastrar peça — [cadastrar-peca.md](docs/pecas-e-insumos/cadastrar-peca.md)
 - [x] Atualizar peça — [atualizar-peca.md](docs/pecas-e-insumos/atualizar-peca.md)
 - [x] Deletar peça — [deletar-peca.md](docs/pecas-e-insumos/deletar-peca.md)
