@@ -1,21 +1,21 @@
 ---
 documento: Refinamento de Requisitos — Consultar Serviços
 dono: João Victor Silva de Oliveira
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-20
-status: rascunho
+status: em revisao
 ---
 
 # Refinamento de Requisitos — Consultar Serviços
 
 Este documento detalha a tarefa Consultar Serviços do contexto de Serviços.
 
-## 1 · Consultar Serviços
+## 2 · Consultar Serviços
 
-### 1.1 Refinamento de Produto
+### 2.1 Refinamento de Produto
 
 **Persona**
-Administrador/Gestor da oficina.
+Mecânico.
 
 **Objetivo**
 Consultar os serviços cadastrados no catálogo da oficina para utilização na gestão de Ordens de
@@ -36,22 +36,22 @@ de valores desatualizados.
 
 | ID | Requisito |
 |---|---|
-| RF-SRV-01 | Permitir listar os serviços cadastrados. |
-| RF-SRV-02 | Permitir consultar os dados de um serviço específico. |
-| RF-SRV-03 | Permitir identificar serviços ativos e inativos. |
-| RF-SRV-04 | Permitir filtrar ou pesquisar serviços por nome, caso aplicável. |
-| RF-SRV-05 | Permitir filtrar serviços por status. |
-| RF-SRV-06 | Apresentar os dados necessários para identificação do serviço e composição de orçamentos. |
+| RF-SRV-08 | Permitir listar os serviços cadastrados. |
+| RF-SRV-09 | Permitir consultar os dados de um serviço específico. |
+| RF-SRV-10 | Permitir identificar serviços ativos e inativos. |
+| RF-SRV-11 | Permitir filtrar ou pesquisar serviços por nome parcial. |
+| RF-SRV-12 | Ocultar serviços inativos por padrão e exibi-los com `incluirInativos=true`. |
+| RF-SRV-13 | Apresentar os dados necessários para identificação do serviço e composição de orçamentos. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-SRV-01 | A consulta deve apresentar informações consistentes com os dados persistidos. |
-| RNF-SRV-02 | A API deve retornar respostas padronizadas. |
-| RNF-SRV-03 | A consulta deve respeitar as regras de autenticação e autorização. |
-| RNF-SRV-04 | A operação não deve alterar os dados dos serviços. |
-| RNF-SRV-05 | A consulta deve possuir desempenho adequado para o volume esperado do MVP. |
+| RNF-SRV-06 | A consulta deve apresentar informações consistentes com os dados persistidos. |
+| RNF-SRV-07 | A API deve retornar respostas padronizadas. |
+| RNF-SRV-08 | A consulta deve respeitar as regras de autenticação e autorização. |
+| RNF-SRV-09 | A operação não deve alterar os dados dos serviços. |
+| RNF-SRV-10 | A consulta deve possuir desempenho adequado para o volume esperado do MVP. |
 
 **Fluxo Principal**
 
@@ -87,13 +87,13 @@ de valores desatualizados.
 
 ---
 
-### 1.2 Refinamento Técnico
+### 2.2 Refinamento Técnico
 
 **Endpoint**
 
 ```http
 GET /servicos
-GET /servicos/{id}
+GET /servicos/{servicoId}
 ```
 
 O primeiro endpoint lista os serviços cadastrados no catálogo da oficina. O segundo consulta os
@@ -107,35 +107,39 @@ dados de um serviço específico.
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfil esperado: `GESTOR`.
+- Perfil esperado: `MECANICO`.
 - Escopo: `servicos:ler`.
-- Caso clientes também possam consultar o catálogo, a autorização deve ser definida
-  separadamente.
+
+> **Decisão de projeto.** A consulta do catálogo é **restrita à oficina**, com perfil `MECANICO`.
+> O cliente não consulta o catálogo: ele vê os serviços pelo orçamento que recebe.
+
+> **Decisão de projeto.** O path param é `{servicoId}`, e não `{id}`, alinhado a `{clienteId}`,
+> `{veiculoId}` e `{pecaId}` dos demais contextos.
 
 **Entrada**
 
 | Local | Parâmetro | Tipo | Descrição |
 |---|---|---|---|
 | Query | `nome` | string | Filtro opcional por nome parcial do serviço. |
-| Query | `status` | enum | Filtro opcional por `ATIVO` ou `INATIVO`. |
-| Query | `page` | int | Página da listagem. Default `0`. |
-| Query | `size` | int | Tamanho da página. Default `20`. |
-| Path | `id` | UUID | Identificador do serviço, obrigatório na consulta individual. |
+| Query | `incluirInativos` | boolean | Opcional. Default `false`: serviços inativos ficam fora da listagem. |
+| Query | `pagina` | int | Página da listagem. Default `0`. |
+| Query | `tamanho` | int | Tamanho da página. Default `20`, máximo `50`. |
+| Path | `servicoId` | uuid | Identificador do serviço, obrigatório na consulta individual. |
 
 Exemplo:
 
 ```http
-GET /servicos?nome=oleo&status=ATIVO&page=0&size=20
+GET /servicos?nome=oleo&incluirInativos=false&pagina=0&tamanho=20
 ```
 
 A operação não recebe corpo.
 
 **Validações**
 
-- `id`, quando informado, deve possuir formato válido de UUID.
-- `status`, quando informado, deve ser `ATIVO` ou `INATIVO`.
-- `page` deve ser maior ou igual a zero.
-- `size` deve ser maior que zero e respeitar o limite máximo definido pelo projeto.
+- `servicoId`, quando informado, deve possuir formato válido de UUID.
+- `incluirInativos`, quando informado, deve ser booleano.
+- `pagina` deve ser maior ou igual a zero.
+- `tamanho` deve ser maior que zero e no máximo `50`; acima disso, `400`.
 - Para consulta por ID, o serviço deve existir.
 
 **Processamento**
@@ -143,9 +147,9 @@ A operação não recebe corpo.
 1. Receber os parâmetros da requisição.
 2. Identificar o usuário autenticado.
 3. Validar autorização.
-4. Validar formato do `id`, quando informado.
+4. Validar formato do `servicoId`, quando informado.
 5. Validar filtros e paginação.
-6. Aplicar os filtros informados.
+6. Aplicar os filtros informados, ocultando serviços inativos quando `incluirInativos` for `false`.
 7. Consultar o `ServicoRepository`.
 8. Mapear as entidades para DTOs.
 9. Montar a resposta.
@@ -163,46 +167,55 @@ Listagem:
 
 ```json
 {
-  "content": [
+  "data": [
     {
-      "id": "123",
+      "id": "4b8e2c17-95a3-4f60-b7d1-6e0c58a3f942",
       "codigo": "SER-000001",
       "nome": "Troca de óleo",
       "descricao": "Troca de óleo e filtro",
       "valor": 150.0,
       "tempoEstimadoMinutos": 60,
-      "status": "ATIVO"
+      "ativo": true
     },
     {
-      "id": "124",
+      "id": "e7c15d09-3a26-4b8f-90d4-51fa62e7c3b8",
       "codigo": "SER-000002",
       "nome": "Alinhamento",
       "descricao": "Alinhamento completo",
       "valor": 120.0,
       "tempoEstimadoMinutos": 90,
-      "status": "ATIVO"
+      "ativo": true
     }
   ],
-  "page": 0,
-  "size": 20,
-  "totalElements": 2,
-  "totalPages": 1
+  "pagina": 0,
+  "tamanho": 20,
+  "totalElementos": 2,
+  "totalPaginas": 1
 }
 ```
 
-Consulta por ID:
+Consulta por identificador:
 
 ```json
 {
-  "id": "123",
+  "id": "4b8e2c17-95a3-4f60-b7d1-6e0c58a3f942",
   "codigo": "SER-000001",
   "nome": "Troca de óleo",
   "descricao": "Troca de óleo e filtro",
   "valor": 150.0,
   "tempoEstimadoMinutos": 60,
-  "status": "ATIVO"
+  "ativo": true,
+  "version": 3
 }
 ```
+
+> **Decisão de projeto.** A listagem usa o envelope padrão do projeto — `data`, `pagina`,
+> `tamanho`, `totalElementos` e `totalPaginas` —, e o recurso único vai **direto, sem envelope**
+> (D-21). A consulta por identificador expõe `version`, que a atualização envia no `If-Match`.
+
+> **Decisão de projeto.** Serviços inativos ficam **fora da listagem por padrão** e aparecem com
+> `incluirInativos=true`, mesmo parâmetro já usado na consulta de peças. O teto de `tamanho` é
+> **50**.
 
 **Códigos HTTP / Erros**
 
@@ -212,7 +225,7 @@ Consulta por ID:
 | `400` | Filtro, paginação ou parâmetro inválido. |
 | `401` | Token ausente ou expirado. |
 | `403` | Usuário sem o escopo `servicos:ler`. |
-| `404` | Serviço não encontrado por ID. |
+| `404` | Serviço não encontrado. |
 | `500` | Falha inesperada. |
 
 **Dependências**
@@ -227,82 +240,88 @@ Consulta por ID:
 *Unitários*
 
 - Lista serviços cadastrados.
-- Consulta serviço por ID.
+- Consulta serviço por identificador.
 - Filtra serviços por nome.
-- Filtra serviços por status.
+- Oculta serviços inativos por padrão.
+- Inclui serviços inativos quando `incluirInativos=true`.
 - Respeita paginação.
 - Rejeita filtros inválidos.
-- Retorna erro para ID inexistente.
+- Rejeita `tamanho` acima de 50.
+- Retorna erro para identificador inexistente.
 - Garante que a consulta não altera os dados dos serviços.
 
 *Integração*
 
 - `GET /servicos` retorna `200` com listagem paginada.
-- `GET /servicos/{id}` retorna `200` com os dados do serviço.
+- `GET /servicos/{servicoId}` retorna `200` com o objeto direto, sem envelope.
 - Nome informado filtra os resultados.
-- Status informado filtra os resultados.
-- Paginação retorna `page`, `size`, `totalElements` e `totalPages`.
+- `incluirInativos=true` traz também os serviços inativos.
+- `tamanho` acima de 50 retorna `400`.
+- Paginação retorna `pagina`, `tamanho`, `totalElementos` e `totalPaginas`.
 - Serviço inexistente retorna `404`.
 - Requisição sem autenticação retorna `401`.
 - Usuário sem permissão retorna `403`.
 
 ---
 
-### 1.3 Checklist de Implementação
+### 2.3 Checklist de Implementação
 
 **Domínio**
 
-- [ ] Definir comportamento para serviços inativos na consulta
+- [ ] Ocultar serviços inativos por padrão na listagem
 - [ ] Garantir que a consulta não altera os dados dos serviços
 
 **Caso de uso**
 
 - [ ] Criar caso de uso `ConsultarServicos`
-- [ ] Criar consulta por ID
+- [ ] Criar consulta por identificador
 - [ ] Criar consulta de listagem
-- [ ] Permitir filtro por nome, caso necessário
-- [ ] Permitir filtro por status
-- [ ] Aplicar paginação, caso adotada
+- [ ] Permitir filtro por nome parcial
+- [ ] Permitir o filtro `incluirInativos`
+- [ ] Aplicar paginação com o envelope padrão do projeto
 
 **Repositório**
 
 - [ ] Criar método de consulta no `ServicoRepository`
-- [ ] Consultar serviço por ID
+- [ ] Consultar serviço por identificador
 - [ ] Consultar serviços por filtros e paginação
 
 **Handler HTTP**
 
 - [ ] Implementar `GET /servicos`
-- [ ] Implementar `GET /servicos/{id}`
-- [ ] Criar DTO/response
+- [ ] Implementar `GET /servicos/{servicoId}`
+- [ ] Criar DTO/response com o envelope `data`, `pagina`, `tamanho`, `totalElementos` e `totalPaginas` na listagem
+- [ ] Devolver o objeto direto, sem envelope, na consulta por identificador
+- [ ] Expor `version` na consulta por identificador
 - [ ] Aplicar autenticação JWT
 - [ ] Aplicar autorização para o escopo `servicos:ler`
 - [ ] Retornar `404` para serviço inexistente
 
 **Validações**
 
-- [ ] Validar formato do `id`, quando informado
+- [ ] Validar formato do `servicoId`, quando informado
 - [ ] Validar valores dos filtros
-- [ ] Validar paginação
+- [ ] Validar paginação e o teto de `tamanho` em 50
 - [ ] Retornar `400` para filtro ou parâmetro inválido
 - [ ] Retornar `401` quando não houver autenticação
 - [ ] Retornar `403` quando o usuário não tiver permissão
 
 **Testes unitários**
 
-- [ ] Consulta por ID
+- [ ] Consulta por identificador
 - [ ] Listagem de serviços
 - [ ] Filtro por nome
-- [ ] Filtro por status
+- [ ] Filtro `incluirInativos`
 - [ ] Serviço inexistente
 - [ ] Consulta sem alteração de dados
 
 **Testes de integração**
 
 - [ ] Endpoint de listagem retorna `200`
-- [ ] Endpoint de consulta por ID retorna `200`
+- [ ] Endpoint de consulta por identificador retorna `200` com o objeto direto
 - [ ] Endpoint respeita filtros
-- [ ] Endpoint respeita paginação
+- [ ] Endpoint respeita paginação e devolve o envelope padrão
+- [ ] Endpoint retorna `400` para `tamanho` acima de 50
 - [ ] Endpoint retorna `404` para serviço inexistente
 - [ ] Endpoint impede acesso de usuário sem permissão
 

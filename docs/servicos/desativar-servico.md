@@ -1,22 +1,23 @@
 ---
-documento: Refinamento de Requisitos — Desativar Serviço
+documento: Refinamento de Requisitos — Desativar e Reativar Serviço
 dono: A definir
-versao: 0.1
+versao: 0.2
 atualizado_em: 2026-08-19
-status: rascunho
+status: em revisao
 ---
 
-# Refinamento de Requisitos — Desativar Serviço
+# Refinamento de Requisitos — Desativar e Reativar Serviço
 
-Este documento detalha a tarefa Remover ou Desativar Serviço do contexto de Serviços.
+Este documento detalha a tarefa Desativar Serviço, e sua contrapartida Reativar Serviço, do
+contexto de Serviços.
 
-## 1 · Desativar Serviço
+## 4 · Desativar e Reativar Serviço
 
-### 1.1 Refinamento de Produto
+### 4.1 Refinamento de Produto
 
 **Persona**
 
-Gestor.
+Mecânico.
 
 **Objetivo**
 
@@ -26,8 +27,8 @@ existentes.
 **Problema**
 
 Um serviço pode deixar de ser oferecido pela oficina, mas sua remoção física comprometeria
-referências históricas em OS e orçamentos. Por isso a desativação é preferível quando o serviço já
-foi utilizado.
+referências históricas em OS e orçamentos. Por isso a exclusão é sempre lógica, e o serviço pode
+voltar ao catálogo por uma operação de reativação.
 
 **Pré-condições**
 
@@ -39,30 +40,30 @@ foi utilizado.
 
 | ID | Requisito |
 |---|---|
-| RF-SRV-01 | Permitir desativar um serviço. |
-| RF-SRV-02 | Verificar se o serviço possui vínculos históricos. |
-| RF-SRV-03 | Impedir a utilização de serviço desativado em novas operações. |
-| RF-SRV-04 | Preservar o serviço quando houver necessidade de manter histórico. |
-| RF-SRV-05 | Permitir identificar serviços ativos e inativos. |
-| RF-SRV-06 | Permitir remoção física somente quando não houver vínculos que comprometam a integridade dos dados. |
+| RF-SRV-20 | Permitir desativar um serviço. |
+| RF-SRV-21 | Verificar se o serviço possui vínculos históricos. |
+| RF-SRV-22 | Impedir a utilização de serviço desativado em novas operações. |
+| RF-SRV-23 | Preservar o serviço quando houver necessidade de manter histórico. |
+| RF-SRV-24 | Permitir identificar serviços ativos e inativos. |
+| RF-SRV-25 | Permitir reativar um serviço inativo. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-SRV-01 | A operação deve preservar a integridade referencial. |
-| RNF-SRV-02 | A desativação deve ser persistida de forma consistente. |
-| RNF-SRV-03 | O histórico de OS e orçamentos não deve ser perdido. |
-| RNF-SRV-04 | Somente usuário autorizado poderá realizar a operação. |
-| RNF-SRV-05 | A operação deve ser auditável. |
+| RNF-SRV-16 | A operação deve preservar a integridade referencial. |
+| RNF-SRV-17 | A desativação deve ser persistida de forma consistente. |
+| RNF-SRV-18 | O histórico de OS e orçamentos não deve ser perdido. |
+| RNF-SRV-19 | Somente usuário autorizado poderá realizar a operação. |
+| RNF-SRV-20 | A operação deve ser auditável. |
 
 **Fluxo Principal**
 
-1. O gestor consulta o catálogo de serviços.
-2. O gestor seleciona o serviço.
+1. O mecânico consulta o catálogo de serviços.
+2. O mecânico seleciona o serviço.
 3. O sistema verifica se o serviço existe.
 4. O sistema verifica se existem vínculos com Ordens de Serviço ou orçamentos.
-5. O gestor solicita a desativação.
+5. O mecânico solicita a desativação.
 6. O sistema altera a situação do serviço para inativa.
 7. O sistema impede que o serviço seja utilizado em novos registros.
 8. O sistema mantém os vínculos históricos existentes.
@@ -75,7 +76,8 @@ foi utilizado.
 | A1 | Serviço não encontrado | Informa que o serviço não existe. |
 | A2 | Serviço já inativo | Informa que o serviço já está desativado. |
 | A3 | Existem vínculos históricos | Realiza a desativação lógica, preservando os registros existentes. |
-| A4 | Tentativa de remoção física com vínculos | Impede a exclusão, para preservar a integridade e o histórico. |
+| A4 | Reativação de serviço já ativo | Informa que o serviço já está ativo e não altera nada. |
+| A6 | Reativação com nome já usado por outro serviço ativo | Impede a reativação, porque a unicidade do nome vale entre os ativos. |
 | A5 | Usuário sem autorização | Impede a operação. |
 
 **Saída**
@@ -91,24 +93,33 @@ foi utilizado.
 
 ---
 
-### 1.2 Refinamento Técnico
+### 4.2 Refinamento Técnico
 
 **Endpoint**
 
 ```http
-PATCH /servicos/{servicoId}/desativar
+DELETE /servicos/{servicoId}
+POST   /servicos/{servicoId}/reativacao
 ```
 
-> **Decisão de projeto.** A operação é uma transição de situação, não uma exclusão física, porque
-> o serviço já pode estar associado a Ordens de Serviço históricas. A rota usa o verbo de negócio
-> (`/desativar`) em vez de `DELETE /servicos/{servicoId}`, para deixar explícito que o registro
-> permanece. Nos contextos de Cliente, Veículo e Peças & Insumos a mesma transição foi modelada
-> como `DELETE` — os contextos precisam convergir (ver [`pontos-em-aberto.md`](pontos-em-aberto.md)).
+O `DELETE` inativa o serviço; o `POST /reativacao` traz o serviço de volta ao catálogo.
+
+> **Decisão de projeto.** A operação usa `DELETE`, e não `PATCH /servicos/{servicoId}/desativar`.
+> A exclusão continua sendo **lógica** — o registro permanece no banco, com `ativo = false` —, e o
+> verbo passa a ser o mesmo de Cliente, Veículo, Peças e Insumos (D-20). A documentação do
+> endpoint precisa deixar explícito que nada é removido fisicamente, já que o verbo, sozinho,
+> sugere o contrário.
+
+> **Decisão de projeto.** Existe **reativação**, espelhando o que Cliente e Veículo já fazem. Sem
+> ela, um serviço desativado por engano só voltaria pelo banco.
+
+> **Decisão de projeto.** A **remoção física foi retirada do MVP**. Ela não tinha endpoint nem
+> regra definida, e a exclusão lógica cobre o caso de uso da oficina.
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `GESTOR`.
+- Perfil: `MECANICO`.
 - Escopo: `servicos:escrever`.
 - O identificador do usuário responsável é obtido do token.
 
@@ -118,7 +129,7 @@ PATCH /servicos/{servicoId}/desativar
 |---|---|---|---|
 | Path | `servicoId` | uuid | Identificador do serviço. |
 
-Não há corpo na requisição.
+Não há corpo em nenhuma das duas requisições.
 
 **Validações**
 
@@ -126,17 +137,23 @@ Não há corpo na requisição.
 
 - `servicoId` em formato UUID válido.
 
-*Negócio*
+*Negócio — desativação*
 
 - O serviço deve existir.
 - O serviço deve estar ativo.
-- O serviço não deve ser excluído fisicamente quando houver vínculo histórico.
+- O registro nunca é removido fisicamente.
 - O histórico de OS deve permanecer preservado.
+
+*Negócio — reativação*
+
+- O serviço deve existir.
+- O serviço deve estar inativo.
+- Não pode existir outro serviço **ativo** com o mesmo nome normalizado.
 
 **Regra de domínio**
 
 ```
-ativo → desativar → inativo
+ativo → DELETE → inativo → POST /reativacao → ativo
 ```
 
 - Serviço inativo não pode ser utilizado em novas OS nem em novos orçamentos.
@@ -145,6 +162,8 @@ ativo → desativar → inativo
 
 **Processamento**
 
+*Desativação*
+
 1. Receber o identificador do serviço e identificar o usuário autenticado.
 2. Buscar o serviço e validar existência, autorização e situação atual.
 3. Executar `servico.desativar()`.
@@ -152,13 +171,29 @@ ativo → desativar → inativo
 5. Persistir a alteração.
 6. Retornar o serviço atualizado.
 
+*Reativação*
+
+1. Receber o identificador do serviço e identificar o usuário autenticado.
+2. Buscar o serviço e validar existência, autorização e situação atual.
+3. Verificar que nenhum outro serviço ativo usa o mesmo nome normalizado.
+4. Executar `servico.reativar()`.
+5. Limpar `data_desativacao` e `usuario_desativacao`.
+6. Persistir a alteração.
+7. Retornar o serviço atualizado.
+
 **Persistência**
 
 - Consulta: `servico`, vínculos com Ordens de Serviço e orçamentos.
-- Altera: `servico` (`ativo = false`, `data_desativacao`, `usuario_desativacao`).
-- O registro continua armazenado no banco.
+- Altera, na desativação: `servico` (`ativo = false`, `data_desativacao`, `usuario_desativacao`).
+- Altera, na reativação: `servico` (`ativo = true`, `data_desativacao` e `usuario_desativacao`
+  nulos).
+- O registro continua armazenado no banco nas duas operações.
+- O índice parcial `UNIQUE (nome_normalizado) WHERE ativo = true` é o que garante a unicidade
+  entre ativos, tanto no cadastro quanto na reativação.
 
 **Saída da API**
+
+`DELETE` — `200`:
 
 ```json
 {
@@ -171,15 +206,28 @@ ativo → desativar → inativo
 }
 ```
 
+`POST /reativacao` — `200`:
+
+```json
+{
+  "id": "4b8e2c17-95a3-4f60-b7d1-6e0c58a3f942",
+  "codigo": "SER-000001",
+  "nome": "Troca de óleo",
+  "ativo": true,
+  "dataDesativacao": null,
+  "usuarioDesativacao": null
+}
+```
+
 **Códigos HTTP / Erros**
 
 | Código | Situação |
 |---|---|
-| `200` | Serviço desativado, com o recurso atualizado no corpo. |
+| `200` | Serviço desativado ou reativado, com o recurso atualizado no corpo. |
 | `401` | Token ausente ou expirado. |
 | `403` | Perfil sem o escopo `servicos:escrever`. |
 | `404` | Serviço inexistente. |
-| `409` | Serviço já inativo, ou outra regra de domínio impede a operação. |
+| `409` | Serviço já inativo no `DELETE`, já ativo na reativação, ou nome já usado por outro serviço ativo. |
 
 **Dependências**
 
@@ -191,16 +239,22 @@ ativo → desativar → inativo
 
 *Unitários*
 
-- Desativa serviço ativo e a situação passa a inativa.
+- Desativa serviço ativo e `ativo` passa a `false`.
+- Reativa serviço inativo e `ativo` passa a `true`.
 - Rejeita serviço inexistente.
-- Rejeita serviço já inativo.
+- Rejeita desativação de serviço já inativo.
+- Rejeita reativação de serviço já ativo.
+- Rejeita reativação quando outro serviço ativo usa o mesmo nome normalizado.
 
 *Integração*
 
-- `PATCH` válido retorna `200` com o serviço atualizado.
+- `DELETE` válido retorna `200` com o serviço atualizado e `ativo` em `false`.
+- `POST /reativacao` válido retorna `200` com `ativo` em `true`.
 - O registro não é removido fisicamente do banco.
 - Serviço inativo não pode ser usado em nova OS ou orçamento.
-- Serviço inexistente retorna `404` e serviço já inativo retorna `409`.
+- Serviço inexistente retorna `404`; serviço já inativo no `DELETE` retorna `409`.
+- Reativação com nome já usado por outro serviço ativo retorna `409`.
+- Serviço reativado volta a aparecer na listagem padrão.
 - Perfil sem escopo retorna `403`.
 
 *Regressão*
@@ -209,12 +263,12 @@ ativo → desativar → inativo
 
 ---
 
-### 1.3 Checklist de Implementação
+### 4.3 Checklist de Implementação
 
 **Domínio**
 
 - [ ] Definir a desativação lógica em vez de exclusão física
-- [ ] Implementar o método de domínio `desativar()` em `Servico`
+- [ ] Implementar os métodos de domínio `desativar()` e `reativar()` em `Servico`
 - [ ] Registrar data, hora e usuário responsável pela desativação
 - [ ] Impedir a utilização de serviço inativo em novos orçamentos e Ordens de Serviço
 - [ ] Preservar o serviço utilizado em OS antigas
@@ -222,8 +276,10 @@ ativo → desativar → inativo
 **Caso de uso**
 
 - [ ] Implementar `DesativarServico`
+- [ ] Implementar `ReativarServico`
 - [ ] Validar a existência do serviço
-- [ ] Definir o comportamento ao desativar serviço já inativo
+- [ ] Retornar `409` ao desativar serviço já inativo e ao reativar serviço já ativo
+- [ ] Validar, na reativação, a unicidade do nome normalizado entre ativos
 - [ ] Verificar vínculos com Ordens de Serviço e orçamentos
 
 **Repositório**
@@ -233,7 +289,8 @@ ativo → desativar → inativo
 
 **Handler HTTP**
 
-- [ ] Implementar `PATCH /servicos/{servicoId}/desativar`
+- [ ] Implementar `DELETE /servicos/{servicoId}`
+- [ ] Implementar `POST /servicos/{servicoId}/reativacao`
 - [ ] Implementar a validação do path param `servicoId`
 - [ ] Criar DTO/response com o recurso atualizado
 - [ ] Aplicar autenticação JWT e autorização por escopo na rota
@@ -242,19 +299,24 @@ ativo → desativar → inativo
 **Testes unitários**
 
 - [ ] Desativação válida
+- [ ] Reativação válida
 - [ ] Serviço inexistente
-- [ ] Serviço já inativo
+- [ ] Serviço já inativo no `DELETE`
+- [ ] Serviço já ativo na reativação
+- [ ] Reativação com nome já usado por outro serviço ativo
 - [ ] Usuário sem autorização
 
 **Testes de integração**
 
-- [ ] `200` com a situação inativa persistida
+- [ ] `DELETE` retornando `200` com `ativo` em `false` persistido
+- [ ] `POST /reativacao` retornando `200` com `ativo` em `true` persistido
 - [ ] Registro não removido fisicamente
+- [ ] Serviço reativado voltando à listagem padrão
 - [ ] Preservação do histórico de OS e orçamentos
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI, explicando a desativação lógica
+- [ ] Documentar os dois endpoints no Swagger/OpenAPI, explicando que o `DELETE` é exclusão lógica
 
 **Review**
 
