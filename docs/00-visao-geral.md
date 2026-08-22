@@ -91,12 +91,12 @@ documentação e pela manutenção das regras.
 
 | Contexto | Agregados principais | Documento | Situação |
 |---|---|---|---|
-| Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
-| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 12 de 18 tarefas refinadas |
-| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
-| Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
-| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 16 tarefas refinadas |
+| Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas — ver [resumo](cliente/00-resumo.md) |
+| Veículo | `Veículo` | [`veiculo/`](veiculo/) | 5 tarefas — ver [resumo](veiculo/00-resumo.md) |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 13 de 15 tarefas — ver [resumo](ordem-de-servico/00-resumo.md) |
+| Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 4 de 8 tarefas — ver [resumo](orcamento/00-resumo.md) |
+| Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas — ver [resumo](servicos/00-resumo.md) |
+| Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 16 de 18 tarefas — ver [resumo](pecas-e-insumos/00-resumo.md) |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
 [`files/Designs – Software Architecture _ FIAP (1).pdf`](files/)). O board tem inconsistências
@@ -198,6 +198,8 @@ para cada uma.
 | [`pecas-e-insumos/`](pecas-e-insumos/) | Contexto de Peças & Insumos: um arquivo por tarefa, mais os pontos em aberto do contexto |
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
 | [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
+| `<contexto>/00-resumo.md` | O que o contexto cobre: tarefas, rotas, tipos e convenções em vigor |
+| `<contexto>/pontos-em-aberto.md` | Decisões pendentes e inconsistências a corrigir naquele contexto |
 | [`files/`](files/) | Material de apoio: enunciado do Tech Challenge, board de Event Storming, levantamento dos fluxos atuais |
 
 Cada contexto delimitado tem um arquivo próprio, nomeado como
