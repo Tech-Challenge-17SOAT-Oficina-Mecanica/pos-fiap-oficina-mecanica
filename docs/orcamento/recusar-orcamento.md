@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Recusar Orçamento
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -113,9 +113,24 @@ POST /orcamentos/{orcamentoId}/recusar
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Permitido apenas para o cliente vinculado à OS do orçamento.
-- Escopo: `orcamentos:recusar`.
+- Perfil: `CLIENTE`, apenas o cliente vinculado à OS do orçamento.
+- Escopo: `orcamentos:decidir`.
 - O cliente que recusa é identificado pelo usuário autenticado.
+
+> **Decisão de projeto.** Aprovar e recusar usam **um escopo só**, `orcamentos:decidir` (D-23).
+
+> **Decisão de projeto.** O cliente se autentica por **token de escopo reduzido**, emitido no envio
+> do orçamento e válido apenas para aquela OS.
+
+> **Decisão de projeto.** Recusar o **principal** cancela a OS. Recusar um **complementar** apenas
+> marca aquele orçamento como `RECUSADO` e devolve a OS para a fila: o serviço já aprovado
+> continua, e só os itens do complementar são descartados.
+
+> **Decisão de projeto.** Não existe **recusa parcial** no MVP: o cliente decide sobre o orçamento
+> inteiro. Se ele quiser aprovar parte, a oficina gera um novo orçamento com os itens aprovados.
+
+> **Decisão de projeto.** Não existe estado de **renegociação** no MVP: orçamento principal
+> recusado cancela a OS. Renegociar é abrir uma OS nova.
 
 **Entrada**
 
@@ -161,9 +176,11 @@ Exemplo:
 8. Caso seja complementar, validar o vínculo com o orçamento principal.
 9. Atualizar `statusOrcamento` para `RECUSADO`.
 10. Registrar o cliente, a data/hora e o motivo da recusa.
-11. Quando o orçamento for `PRINCIPAL`, atualizar a OS para `CANCELADA`.
+11. Quando o orçamento for `PRINCIPAL`, atualizar a OS para `CANCELADA` e chamar a devolução dos
+    itens ao estoque, na mesma transação.
 12. Quando o orçamento for `COMPLEMENTAR`, consultar o orçamento principal:
-    - se o principal estiver `APROVADO`, atualizar a OS para `AGUARDANDO_EXECUCAO`;
+    - se o principal estiver `APROVADO`, devolver a OS para a fila em `AGUARDANDO_EXECUCAO` e
+      devolver ao estoque apenas os itens daquele complementar;
     - caso contrário, manter a OS em `AGUARDANDO_APROVACAO`.
 13. Persistir as alterações em uma única transação.
 14. Registrar a operação em log, sem expor dados sensíveis.
@@ -183,7 +200,18 @@ Exemplo:
 - Quando o orçamento for complementar e o principal estiver aprovado: atualizar `status` para `AGUARDANDO_EXECUCAO`.
 - Quando o orçamento for complementar e o principal não estiver aprovado: manter `status` em `AGUARDANDO_APROVACAO`.
 
-As alterações no Orçamento e na Ordem de Serviço devem ocorrer na mesma transação.
+*Estoque*
+
+- Chamar `DevolverItensAoEstoque` para os itens do orçamento recusado, dentro da mesma transação:
+  libera as reservas ativas, devolve ao saldo físico o que já havia sido baixado e desvincula os
+  itens presos a pedido de compra ainda não recebido. O contrato está em
+  [../pecas/retornar-peca-ao-estoque.md](../pecas/retornar-peca-ao-estoque.md) e
+  [../insumos/retornar-insumo-ao-estoque.md](../insumos/retornar-insumo-ao-estoque.md).
+- Recusa do principal devolve todos os itens da OS; recusa de complementar devolve apenas os itens
+  daquele orçamento.
+
+As alterações no Orçamento, na Ordem de Serviço e no estoque devem ocorrer na mesma transação:
+qualquer falha na devolução desfaz a recusa por inteiro.
 
 **Saída da API**
 
@@ -228,7 +256,7 @@ Exemplo para orçamento complementar:
 | 403 Forbidden | Cliente sem permissão para recusar o orçamento. |
 | 404 Not Found | Orçamento não encontrado. |
 | 409 Conflict | Orçamento já aprovado, recusado ou OS fora de `AGUARDANDO_APROVACAO`. |
-| 422 Unprocessable Entity | Orçamento complementar sem vínculo válido com orçamento principal. |
+| 409 Conflict | Orçamento complementar sem vínculo válido com orçamento principal. |
 | 500 Internal Server Error | Erro inesperado. |
 
 **Dependências**
@@ -237,6 +265,7 @@ Exemplo para orçamento complementar:
 - Módulo de autorização.
 - `OrcamentoRepository`.
 - `OrdemDeServicoRepository`.
+- Serviço de domínio `DevolverItensAoEstoque`, de Peças e de Insumos.
 - Contexto do cliente autenticado.
 - Banco de dados.
 
@@ -251,6 +280,8 @@ Exemplo para orçamento complementar:
 - Deve atualizar a OS para `CANCELADA` quando o orçamento principal for recusado.
 - Não deve cancelar a OS quando o orçamento complementar for recusado.
 - Deve atualizar a OS para `AGUARDANDO_EXECUCAO` quando o complementar for recusado e o principal estiver aprovado.
+- Deve chamar a devolução ao estoque na recusa do principal, para todos os itens da OS.
+- Deve chamar a devolução ao estoque na recusa do complementar, apenas para os itens daquele orçamento.
 - Deve impedir recusa de orçamento já aprovado.
 - Deve impedir recusa de orçamento já recusado.
 - Deve impedir recusa de orçamento complementar sem principal vinculado.
@@ -262,8 +293,9 @@ Exemplo para orçamento complementar:
 - Deve retornar `403` para orçamento de outro cliente.
 - Deve retornar `404` para orçamento inexistente.
 - Deve retornar `409` quando a OS não estiver em estado compatível.
-- Deve retornar `422` para orçamento complementar sem vínculo válido com principal.
-- Deve garantir que recusa e atualização da OS ocorram na mesma transação.
+- Deve retornar `409` para orçamento complementar sem vínculo válido com principal.
+- Deve garantir que recusa, atualização da OS e devolução ao estoque ocorram na mesma transação.
+- Deve desfazer a recusa por inteiro quando a devolução ao estoque falhar.
 
 ---
 
@@ -288,22 +320,30 @@ Exemplo para orçamento complementar:
 - [ ] Atualizar `statusOrcamento` para `RECUSADO`.
 - [ ] Registrar o cliente, a data/hora e o motivo da recusa.
 - [ ] Atualizar a OS conforme o tipo do orçamento recusado.
+- [ ] Chamar `DevolverItensAoEstoque` na mesma transação, com o recorte de itens conforme o tipo.
 
 **Repositório**
 
 - [ ] Criar/ajustar `OrcamentoRepository`.
 - [ ] Criar/ajustar `OrdemDeServicoRepository`.
 
+**Integrações**
+
+- [ ] Integrar com o serviço de devolução ao estoque de Peças
+- [ ] Integrar com o serviço de devolução ao estoque de Insumos
+
 **Handler HTTP**
 
 - [ ] Criar handler para `POST /orcamentos/{orcamentoId}/recusar`.
 - [ ] Obter o cliente pelo JWT.
-- [ ] Aplicar autenticação e autorização na rota.
-- [ ] Retornar erros `400`, `401`, `403`, `404`, `409` e `422`.
+- [ ] Aplicar autenticação e autorização na rota, com o escopo `orcamentos:decidir`.
+- [ ] Aceitar o token de escopo reduzido emitido para a OS.
+- [ ] Retornar erros `400`, `401`, `403`, `404` e `409`.
 
 **Transação**
 
-- [ ] Garantir persistência transacional entre orçamento e OS.
+- [ ] Garantir persistência transacional entre orçamento, OS e estoque.
+- [ ] Desfazer a recusa por inteiro quando a devolução ao estoque falhar.
 
 **Testes unitários**
 

@@ -1,7 +1,7 @@
 ---
 documento: Refinamento de Requisitos — Calcular Orçamento
 dono: A definir
-versao: 0.2
+versao: 0.3
 atualizado_em: 2026-08-22
 status: rascunho
 ---
@@ -129,6 +129,21 @@ POST /orcamentos/{orcamentoId}/calcular
 ```
 
 O endpoint recalcula e atualiza um orçamento já existente; não cria um novo orçamento.
+
+> **Decisão de projeto — quando o cálculo é acionado.** Duas vezes, e sempre pela oficina, nunca
+> pelo cliente: **ao fim do diagnóstico**, depois de registrados os problemas, serviços, peças e
+> insumos, imediatamente antes de enviar o orçamento ao cliente; e **ao fechar cada complementar**,
+> depois de registrado o que foi encontrado durante a execução. Registrar item não recalcula
+> sozinho — o cálculo é um passo explícito, para o valor não mudar debaixo do cliente enquanto o
+> mecânico ainda está lançando itens.
+
+> **Decisão de projeto.** O `status` do **orçamento** é a fonte da verdade da decisão do cliente, e
+> o `status` da **OS** é a fonte da verdade da etapa do atendimento. Por isso o cálculo valida
+> `statusOrcamento = CRIADO` e não olha o status da OS.
+
+> **Decisão de projeto.** O complementar é um **orçamento separado**, com identificador próprio,
+> `tipoOrcamento` e `orcamentoOriginalId` apontando para o principal — e não uma adição dentro de
+> um orçamento único (D-17).
 
 **Autenticação / Autorização**
 
@@ -293,7 +308,7 @@ Exemplo de cálculo de orçamento complementar:
 | 403 Forbidden | Usuário sem permissão. |
 | 404 Not Found | Orçamento não encontrado. |
 | 409 Conflict | Orçamento não está em `CRIADO` ou não permite cálculo. |
-| 422 Unprocessable Entity | Itens ou dados insuficientes para cálculo. |
+| 409 Conflict | Itens ou dados insuficientes para cálculo. |
 | 500 Internal Server Error | Erro inesperado. |
 
 **Dependências**
@@ -332,7 +347,7 @@ Exemplo de cálculo de orçamento complementar:
 - Deve retornar `403` sem permissão.
 - Deve retornar `404` para orçamento inexistente.
 - Deve retornar `409` para orçamento aprovado ou recusado.
-- Deve retornar `422` para item inválido ou dados insuficientes para cálculo.
+- Deve retornar `409` para dados insuficientes para cálculo, e `400` para item inválido.
 
 ---
 
@@ -371,7 +386,7 @@ Exemplo de cálculo de orçamento complementar:
 - [ ] Criar handler para `POST /orcamentos/{orcamentoId}/calcular`.
 - [ ] Aplicar autenticação e autorização na rota.
 - [ ] Retornar somente `valorTotalGeral` no resultado do cálculo.
-- [ ] Retornar erros `400`, `401`, `403`, `404`, `409` e `422`.
+- [ ] Retornar erros `400`, `401`, `403`, `404` e `409`.
 
 **Testes unitários**
 

@@ -1,7 +1,7 @@
 ---
 documento: Resumo do Contexto — Orçamento
 dono: A definir
-versao: 0.1
+versao: 0.3
 atualizado_em: 2026-08-22
 status: em construcao
 ---
@@ -28,8 +28,8 @@ problema encontrado. Este contexto cuida do que acontece depois.
 |---|---|---|---|---|
 | 1 | Calcular Orçamento | `POST /orcamentos/{orcamentoId}/calcular` | `orcamentos:escrever` | [calcular-orcamento.md](calcular-orcamento.md) |
 | 2 | Consultar Orçamento | `GET /orcamentos` | `orcamentos:ler` | [consultar-orcamento.md](consultar-orcamento.md) |
-| 3 | Aprovar Orçamento | `POST /orcamentos/{orcamentoId}/aprovar` | `orcamentos:aprovar` | [aprovar-orcamento.md](aprovar-orcamento.md) |
-| 4 | Recusar Orçamento | `POST /orcamentos/{orcamentoId}/recusar` | `orcamentos:recusar` | [recusar-orcamento.md](recusar-orcamento.md) |
+| 3 | Aprovar Orçamento | `POST /orcamentos/{orcamentoId}/aprovar` | `orcamentos:decidir` | [aprovar-orcamento.md](aprovar-orcamento.md) |
+| 4 | Recusar Orçamento | `POST /orcamentos/{orcamentoId}/recusar` | `orcamentos:decidir` | [recusar-orcamento.md](recusar-orcamento.md) |
 
 ## Tipos do contexto
 
@@ -63,16 +63,33 @@ problema encontrado. Este contexto cuida do que acontece depois.
 
 - Rotas sem prefixo de versão; ações de decisão como sub-recurso com verbo: `/aprovar`, `/recusar`,
   `/calcular`.
-- O ator de aprovar, recusar e consultar é o **cliente**, não o funcionário da oficina.
+- O ator de aprovar, recusar e consultar é o **cliente**, não o funcionário da oficina. Ele se
+  autentica por **token de escopo reduzido**, emitido no envio do orçamento e válido apenas para
+  aquela OS.
+- Aprovar e recusar usam **um escopo só**: `orcamentos:decidir`.
+- O complementar é um **orçamento separado**, com identificador próprio, `tipo` e
+  `orcamentoOriginalId`. Aprovar e recusar cobrem os dois tipos: não há tarefa separada para o
+  complementar.
+- O `status` do orçamento é a fonte da verdade da decisão do cliente; o `status` da OS é a fonte da
+  verdade da etapa do atendimento.
+- O cálculo é acionado duas vezes: ao fim do diagnóstico, antes do envio, e ao fechar cada
+  complementar.
+- Listagem com envelope `data`, `pagina`, `tamanho`, `totalElementos` e `totalPaginas`.
 - O valor unitário é sempre copiado para o orçamento, para que alteração de preço no catálogo não
   mude orçamento já emitido.
-- Aprovar leva a OS para `AGUARDANDO_EXECUCAO`; recusar leva a OS para `CANCELADA`.
+- Aprovar dispara o processamento dos itens — reserva o disponível, compra o faltante — e leva a
+  OS para `AGUARDANDO_EXECUCAO` ou `AGUARDANDO_RECURSOS`.
+- Recusar o principal leva a OS para `CANCELADA` e devolve os itens ao estoque; recusar um
+  complementar marca só aquele orçamento como `RECUSADO` e devolve a OS para a fila.
 - Um orçamento só aceita decisão uma vez: `CRIADO` é o único status que aceita aprovação ou recusa.
 - Códigos de erro usados: `400`, `401`, `403`, `404` e `409`.
 
 ## O que este contexto não faz
 
-- Não cria o orçamento nem adiciona itens: isso acontece no contexto de Ordem de Serviço.
-- Não envia o orçamento ao cliente — a tarefa existia e foi removida para reescrita.
-- Não trata aprovação e recusa do orçamento **complementar** como tarefas próprias.
-- Não movimenta estoque: a reserva das peças é do contexto de Peças & Insumos.
+- Não cria o orçamento nem adiciona itens: isso acontece no contexto de Ordem de Serviço, que
+  também é quem abre o complementar.
+- Não faz **recusa parcial**: a decisão é sobre o orçamento inteiro. Aprovar parte é um orçamento
+  novo.
+- Não tem estado de **renegociação**: principal recusado cancela a OS.
+- Não movimenta estoque por conta própria: chama os casos de uso de Peças e de Insumos, que fazem
+  a reserva, a compra e a devolução.
