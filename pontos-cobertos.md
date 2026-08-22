@@ -1,8 +1,8 @@
 ---
 documento: Pontos Cobertos — Checklist de Refinamento
 dono: José Lázaro
-versao: 0.2
-atualizado_em: 2026-08-19
+versao: 0.6
+atualizado_em: 2026-08-22
 status: em andamento
 ---
 
@@ -17,12 +17,12 @@ implementada em código.
 | Contexto | Documentadas | Total |
 |---|---|---|
 | Cliente | 5 | 5 |
-| Veículo | 3 | 3 |
-| Ordem de Serviço | 6 | 18 |
-| Orçamento | 5 | 8 |
-| Serviços | 0 | 4 |
-| Peças & Insumos | 13 | 13 |
-| **Total** | **32** | **51** |
+| Veículo | 4 | 4 |
+| Ordem de Serviço | 11 | 18 |
+| Orçamento | 6 | 8 |
+| Serviços | 4 | 4 |
+| Peças & Insumos | 12 | 13 |
+| **Total** | **42** | **52** |
 
 ---
 
@@ -39,27 +39,28 @@ implementada em código.
 - [x] Consultar veículo — [consultar-veiculo.md](docs/veiculo/consultar-veiculo.md)
 - [x] Cadastrar veículo — [cadastrar-veiculo.md](docs/veiculo/cadastrar-veiculo.md)
 - [x] Deletar veículo — [deletar-veiculo.md](docs/veiculo/deletar-veiculo.md)
+- [x] Atualizar veículo — [atualizar-veiculo.md](docs/veiculo/atualizar-veiculo.md)
 
 ## Ordem de Serviço
 
 - [x] Criar ordem de serviço — [criar-ordem-de-servico.md](docs/ordem-de-servico/criar-ordem-de-servico.md)
-- [x] Iniciar diagnóstico — [iniciar-diagnostico.md](docs/ordem-de-servico/iniciar-diagnostico.md)
+- [x] Registrar problema relatado — [registrar-problema-relatado.md](docs/ordem-de-servico/registrar-problema-relatado.md), substitui a tarefa Iniciar diagnóstico
 - [x] Registrar serviços necessários — [registrar-servicos-necessarios.md](docs/ordem-de-servico/registrar-servicos-necessarios.md)
 - [x] Consultar fila de atendimentos — [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md)
 - [x] Iniciar execução — [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md)
 - [x] Monitorar tempo médio de execução — [monitorar-tempo-medio-de-execucao.md](docs/ordem-de-servico/monitorar-tempo-medio-de-execucao.md)
 - [ ] Registrar peças necessárias
 - [ ] Registrar insumos necessários
-- [ ] Registrar diagnóstico
-- [ ] Incluir OS na fila de atendimento
+- [x] Registrar problema encontrado — [registrar-problema-encontrado.md](docs/ordem-de-servico/registrar-problema-encontrado.md), antes chamada Registrar diagnóstico
+- [ ] Incluir OS na fila de atendimento — documento removido, o time vai reescrever
 - [ ] Selecionar próxima OS para execução
 - [ ] Registrar problema adicional
 - [ ] Registrar peças adicionais
 - [ ] Registrar insumos adicionais
-- [ ] Finalizar serviço
-- [ ] Registrar entrega do veículo
-- [ ] Consultar ordem de serviço
-- [ ] Listar ordens de serviço
+- [x] Finalizar serviço — [finalizar-servico.md](docs/ordem-de-servico/finalizar-servico.md)
+- [x] Registrar entrega do veículo — [registrar-entrega-de-veiculo.md](docs/ordem-de-servico/registrar-entrega-de-veiculo.md)
+- [x] Consultar ordem de serviço — [consultar-ordem-de-servico.md](docs/ordem-de-servico/consultar-ordem-de-servico.md)
+- [x] Listar ordens de serviço — [listar-ordens-de-servico.md](docs/ordem-de-servico/listar-ordens-de-servico.md)
 
 ## Orçamento
 
@@ -68,16 +69,16 @@ implementada em código.
 - [x] Aprovar orçamento — [aprovar-orcamento.md](docs/orcamento/aprovar-orcamento.md)
 - [x] Recusar orçamento — [recusar-orcamento.md](docs/orcamento/recusar-orcamento.md)
 - [x] Gerar orçamento complementar — [gerar-orcamento-complementar.md](docs/orcamento/gerar-orcamento-complementar.md)
-- [ ] Enviar orçamento
+- [x] Enviar orçamento — [enviar-orcamento.md](docs/orcamento/enviar-orcamento.md)
 - [ ] Aprovar orçamento complementar
 - [ ] Recusar orçamento complementar
 
 ## Serviços
 
-- [ ] Cadastrar serviço
-- [ ] Consultar serviços
-- [ ] Atualizar serviço
-- [ ] Remover ou desativar serviço
+- [x] Cadastrar serviço — [cadastrar-servico.md](docs/servicos/cadastrar-servico.md)
+- [x] Consultar serviços — [consultar-servicos.md](docs/servicos/consultar-servicos.md)
+- [x] Atualizar serviço — [atualizar-servico.md](docs/servicos/atualizar-servico.md)
+- [x] Remover ou desativar serviço — [desativar-servico.md](docs/servicos/desativar-servico.md)
 
 ## Peças & Insumos
 
@@ -89,7 +90,7 @@ implementada em código.
 - [x] Atualizar insumo — [atualizar-insumo.md](docs/pecas-e-insumos/atualizar-insumo.md)
 - [x] Deletar insumo — [deletar-insumo.md](docs/pecas-e-insumos/deletar-insumo.md)
 - [x] Registrar entrada de estoque — [registrar-entrada-de-estoque.md](docs/pecas-e-insumos/registrar-entrada-de-estoque.md)
-- [x] Reservar peças para OS — [reservar-peca-para-os.md](docs/pecas-e-insumos/reservar-peca-para-os.md)
+- [ ] Reservar peças para OS — documento removido, será reescrito
 - [x] Registrar consumo e saída — [registrar-consumo-e-saida.md](docs/pecas-e-insumos/registrar-consumo-e-saida.md)
 - [x] Consultar peças faltantes — [consultar-pecas-faltantes.md](docs/pecas-e-insumos/consultar-pecas-faltantes.md)
 - [x] Solicitar compra de peças — [solicitar-compra-de-pecas.md](docs/pecas-e-insumos/solicitar-compra-de-pecas.md)
@@ -104,18 +105,29 @@ implementada em código.
   para 50 tarefas distintas.
 - **Monitorar tempo médio de execução** não estava na lista original, mas foi refinada e entrou no
   checklist — é o indicador exigido pelo enunciado do Tech Challenge. Com ela, o total sobe para 51.
-- "Iniciar diagnóstico" e "registrar diagnóstico" seguem separados: o primeiro é a transição de
-  status da OS e já está documentado; o segundo é o registro do resultado do diagnóstico e
-  continua pendente. Se forem a mesma tarefa, vale unificar.
-- "Incluir OS na fila de atendimento" e "selecionar próxima OS para execução" continuam pendentes,
-  mas já aparecem como pré-condição e como fluxo em
-  [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md) e
-  [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md). Vale confirmar se são tarefas
-  próprias ou parte dessas duas.
+- **Iniciar diagnóstico deixou de existir como tarefa.** Registrar problema relatado a substitui:
+  o mesmo endpoint grava o relato do cliente, marca a data de início e muda a OS para
+  `EM_DIAGNOSTICO`. O documento antigo foi removido.
+- **Reservar peças para OS** também voltou a ficar pendente: a regra do documento antigo dizia que a
+  reserva nasce da aprovação do orçamento, enquanto os documentos novos de compra dizem que ela
+  nasce do pedido de compra. O arquivo foi removido e a tarefa será reescrita.
+- **Incluir OS na fila de atendimento** voltou a ficar pendente: existiam duas versões concorrentes
+  do documento e o time vai reescrever a tarefa. A regra em vigor está em
+  [consultar-fila-de-atendimento.md](docs/ordem-de-servico/consultar-fila-de-atendimento.md), que
+  define a fila como as OS em `AGUARDANDO_EXECUCAO` com data de entrada preenchida.
+- "Selecionar próxima OS para execução" continua pendente, mas já aparece como fluxo em
+  [iniciar-execucao.md](docs/ordem-de-servico/iniciar-execucao.md). Vale confirmar se é tarefa
+  própria.
 - Aprovar e recusar **orçamento complementar** ainda não têm documento próprio. Os documentos de
   aprovar e recusar cobrem só o orçamento principal, e o efeito da decisão sobre um complementar
   está registrado como ponto em aberto do contexto de Orçamento.
 - Todos os contextos documentados seguem a mesma estrutura: uma pasta por contexto, com um arquivo
   por tarefa e um `pontos-em-aberto.md`.
-- O maior bloco pendente é Ordem de Serviço, com 12 tarefas — a maior parte do fluxo de execução,
-  do registro do diagnóstico até a entrega do veículo.
+- **Reenvio concluído.** Os documentos que estavam fora do repositório voltaram pelo `origin`, com
+  as versões atualizadas do time. Não há mais nada aguardando reenvio.
+- **Calcular orçamento** substituiu Gerar orçamento, e **Atualizar veículo** entrou no contexto de
+  Veículo. Com as duas, o total passa de 51 para 52 tarefas.
+- O que falta refinar de fato: oito tarefas de Ordem de Serviço (registro do diagnóstico, peças e
+  insumos necessários e adicionais, problema adicional, fila e seleção da próxima OS), três de
+  Orçamento (enviar orçamento, aprovar e recusar complementar) e três de Serviços (cadastrar,
+  consultar e atualizar).

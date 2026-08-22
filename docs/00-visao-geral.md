@@ -93,9 +93,9 @@ documentação e pela manutenção das regras.
 |---|---|---|---|
 | Cliente | `Cliente` | [`cliente/`](cliente/) | 5 tarefas refinadas |
 | Veículo | `Veículo` | [`veiculo/`](veiculo/) | 4 tarefas refinadas |
-| Ordem de Serviço | `Ordem de Serviço` | [`ordem-de-servico/`](ordem-de-servico/) | 7 de 18 tarefas refinadas |
+| Ordem de Serviço | `Ordem de Serviço`, `Problema`, `Evento da OS` | [`ordem-de-servico/`](ordem-de-servico/) | 11 de 18 tarefas refinadas |
 | Orçamento | `Orçamento`, `Item de Orçamento` | [`orcamento/`](orcamento/) | 6 de 8 tarefas refinadas |
-| Serviços | `Serviço` | [`servicos/`](servicos/) | 3 requisitos refinados |
+| Serviços | `Serviço` | [`servicos/`](servicos/) | 4 tarefas refinadas |
 | Peças & Insumos | `Item de Estoque`, `Reserva`, `Movimentação`, `Pedido de Compra` | [`pecas-e-insumos/`](pecas-e-insumos/) | 13 tarefas refinadas |
 
 A divisão nasceu do Event Storming feito pelo grupo (board exportado em
@@ -112,7 +112,6 @@ consumo e o ciclo de compras. Nove requisitos documentados:
 2. Atualizar Peça
 3. Atualizar Insumo
 4. Registrar Entrada de Estoque
-5. Reservar Peça para OS
 6. Registrar Consumo e Saída
 7. Consultar Peças Faltantes
 8. Solicitar Compra de Peças

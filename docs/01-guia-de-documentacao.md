@@ -49,7 +49,7 @@ centraliza as pendências e referencia os arquivos afetados.
 ```text
 docs/
 └── ordem-de-servico/
-    ├── iniciar-diagnostico.md
+    ├── registrar-problema-relatado.md
     ├── registrar-servicos-necessarios.md
     └── pontos-em-aberto.md
 ```

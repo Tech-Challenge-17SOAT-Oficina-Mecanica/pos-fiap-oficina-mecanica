@@ -1,8 +1,8 @@
 ---
 documento: Pontos em Aberto — Contexto de Serviços
 dono: João Victor Silva de Oliveira
-versao: 0.1
-atualizado_em: 2026-08-20
+versao: 0.2
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -25,3 +25,7 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Serv
 | 11 | Definir se `PATCH /servicos/{id}` aceitará atualização parcial real ou payload completo dos campos editáveis. | [`atualizar-servico.md`](atualizar-servico.md) | — |
 | 12 | Confirmar quais campos são imutáveis na atualização, especialmente `codigo`, `status` e identificadores técnicos. | [`atualizar-servico.md`](atualizar-servico.md) | — |
 | 13 | Definir como os valores históricos de serviços em OS e orçamentos serão preservados: cópia do valor no momento do uso ou histórico versionado do serviço. | [`atualizar-servico.md`](atualizar-servico.md) | — |
+| 14 | Verbo da desativação: aqui é `PATCH /servicos/{servicoId}/desativar`, enquanto Cliente, Veículo e Peças & Insumos usam `DELETE` para a mesma transição lógica. Padronizar entre os contextos. | [`desativar-servico.md`](desativar-servico.md) | — |
+| 15 | Situação do serviço: o refinamento da desativação usava `status` com `ATIVO` e `INATIVO`. Foi padronizado como o booleano `ativo`, mais `dataDesativacao` e `usuarioDesativacao`, como nos demais contextos. Confirmar e alinhar com os documentos de cadastro, consulta e atualização. | [`desativar-servico.md`](desativar-servico.md) | — |
+| 16 | Remoção física quando não há vínculo (RF-SRV-06) não tem endpoint nem regra definida. Decidir se o MVP suporta os dois caminhos ou apenas a desativação lógica. | [`desativar-servico.md`](desativar-servico.md) | — |
+| 17 | Reativação de serviço inativo não está prevista, embora Cliente e Veículo tenham rota de reativação. Definir se entra no MVP. | [`desativar-servico.md`](desativar-servico.md) | — |
