@@ -1,7 +1,7 @@
 ---
 documento: Catálogo de Endpoints
 dono: José Lázaro
-versao: 0.3
+versao: 0.4
 atualizado_em: 2026-08-22
 status: em construcao
 ---
@@ -44,6 +44,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 |---|---|---|---|---|
 | `GET` | `/veiculos` | Consulta veículo pela placa | `veiculos:ler` | [consultar-veiculo.md](veiculo/consultar-veiculo.md) |
 | `POST` | `/veiculos` | Cadastra um novo veículo | `veiculos:escrever` | [cadastrar-veiculo.md](veiculo/cadastrar-veiculo.md) |
+| `PUT` | `/veiculos/{veiculoId}` | Atualiza os dados cadastrais do veículo | `veiculos:escrever` | [atualizar-veiculo.md](veiculo/atualizar-veiculo.md) |
 | `DELETE` | `/veiculos/{veiculoId}` | Inativa o veículo (exclusão lógica) | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 | `POST` | `/veiculos/{veiculoId}/reativacao` | Reativa um veículo inativado | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 
@@ -69,11 +70,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
-| — | *(sem endpoint)* | Gera o orçamento principal; disparado internamente ao fim do diagnóstico | — | [gerar-orcamento.md](orcamento/gerar-orcamento.md) |
+| `POST` | `/orcamentos/{orcamentoId}/calcular` | Calcula os itens, o valor total geral e a estimativa de entrega de um orçamento existente | `orcamentos:escrever` | [calcular-orcamento.md](orcamento/calcular-orcamento.md) |
 | `GET` | `/orcamentos` | Consulta orçamentos por identificador ou pelo documento do cliente | `orcamentos:ler` | [consultar-orcamento.md](orcamento/consultar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/aprovar` | Cliente aprova o orçamento e libera a OS para execução | `orcamentos:aprovar` | [aprovar-orcamento.md](orcamento/aprovar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/recusar` | Cliente recusa o orçamento e a OS é cancelada | `orcamentos:aprovar` | [recusar-orcamento.md](orcamento/recusar-orcamento.md) |
 | `POST` | `/ordens-servico/{osId}/orcamentos-complementares` | Gera orçamento complementar a partir dos itens adicionais da OS | `orcamentos:escrever` | [gerar-orcamento-complementar.md](orcamento/gerar-orcamento-complementar.md) |
+| — | *(sem endpoint)* | Envia o orçamento ao cliente; processamento interno após o cálculo | — | [enviar-orcamento.md](orcamento/enviar-orcamento.md) |
 
 ## Peças & Insumos
 
@@ -98,11 +100,11 @@ existe? quem é o dono dela? o caminho está no padrão?
 
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
+| `GET` | `/servicos` | Lista serviços cadastrados no catálogo, com filtros e paginação | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
+| `GET` | `/servicos/{id}` | Consulta os detalhes de um serviço específico | `servicos:ler` | [consultar-servicos.md](servicos/consultar-servicos.md) |
+| `POST` | `/servicos` | Cadastra um novo serviço no catálogo | `servicos:escrever` | [cadastrar-servico.md](servicos/cadastrar-servico.md) |
+| `PATCH` | `/servicos/{id}` | Atualiza os dados cadastrais de um serviço | `servicos:escrever` | [atualizar-servico.md](servicos/atualizar-servico.md) |
 | `PATCH` | `/servicos/{servicoId}/desativar` | Desativa o serviço no catálogo, preservando o histórico | `servicos:escrever` | [desativar-servico.md](servicos/desativar-servico.md) |
-
-Cadastrar, consultar e atualizar serviço ainda não foram refinados — ver
-[pontos-cobertos.md](../pontos-cobertos.md).
-
 ---
 
 ## Resumo
@@ -110,50 +112,12 @@ Cadastrar, consultar e atualizar serviço ainda não foram refinados — ver
 | Contexto | Endpoints |
 |---|---|
 | Cliente | 6 |
-| Veículo | 4 |
+| Veículo | 5 |
 | Ordem de Serviço | 12 |
-| Orçamento | 4 |
+| Orçamento | 5 |
 | Peças & Insumos | 14 |
-| Serviços | 1 |
-| **Total** | **41** |
-
----
-
-## Documentos aguardando reenvio
-
-As rotas abaixo continuam valendo como contrato, mas o documento de origem foi retirado do
-repositório e será reenviado em versão atualizada. Enquanto isso, os links dessas linhas da tabela
-não resolvem. Ao reenviar, conferir método, rota, escopo e atualizar as linhas correspondentes.
-
-**Orçamento** — a pasta inteira, incluindo o `pontos-em-aberto.md` do contexto:
-
-- `gerar-orcamento.md` (sem endpoint)
-- `consultar-orcamento.md` — `GET /orcamentos`
-- `aprovar-orcamento.md` — `POST /orcamentos/{orcamentoId}/aprovar`
-- `recusar-orcamento.md` — `POST /orcamentos/{orcamentoId}/recusar`
-- `gerar-orcamento-complementar.md` — `POST /ordens-servico/{osId}/orcamentos-complementares`
-
-**Ordem de Serviço** — restou apenas `monitorar-tempo-medio-de-execucao.md`; o `pontos-em-aberto.md`
-do contexto também saiu:
-
-- `criar-ordem-de-servico.md` — `POST /ordens-servico`
-- `iniciar-diagnostico.md` — `PATCH /ordens-servico/{osId}/diagnostico/iniciar`
-- `registrar-servicos-necessarios.md` — `POST /ordens-servico/{osId}/servicos`
-- `consultar-fila-de-atendimento.md` — `GET /fila-atendimento`
-- `iniciar-execucao.md` — `POST /ordens-servico/{osId}/execucao/iniciar`
-
-**Peças & Insumos** — os cadastros, atualizações e exclusões permaneceram:
-
-- `consultar-estoque.md` — `GET /estoque/itens`
-- `consultar-pecas-faltantes.md` — `GET /estoque/itens/faltantes`
-- `registrar-entrada-de-estoque.md` — `POST /estoque/entradas`
-- `reservar-peca-para-os.md` — `POST /estoque/reservas` e `DELETE /estoque/reservas/ordens-servico/{osId}`
-- `registrar-consumo-e-saida.md` — `POST /estoque/saidas`
-- `solicitar-compra-de-pecas.md` — `POST /compras/pedidos` e `DELETE /compras/pedidos/{pedidoId}`
-- `solicitar-compra-de-insumos.md` — `POST /compras/pedidos` e `GET /estoque/insumos/{insumoId}/sugestao-compra`
-
-Ao reenviar, verificar também: se a rota mudou de caminho, se o escopo mudou de nome, se apareceu
-rota nova (então entra na tabela) e se alguma rota deixou de existir (então sai).
+| Serviços | 5 |
+| **Total** | **47** |
 
 ---
 
@@ -179,6 +143,6 @@ rota nova (então entra na tabela) e se alguma rota deixou de existir (então sa
 | 5 | `GET /ordens-servico` serve a listagem e também a busca das OS de um cliente por CPF/CNPJ, enquanto `GET /ordens-servico/{osId}` faz o detalhamento. Confirmar essa divisão entre listar e consultar. | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) e [consultar-ordem-de-servico.md](ordem-de-servico/consultar-ordem-de-servico.md) |
 | 6 | A entrega do veículo depende da confirmação do pagamento, mas pagamento não é um contexto documentado nem tem rota. Definir se entra no MVP. | [registrar-entrega-de-veiculo.md](ordem-de-servico/registrar-entrega-de-veiculo.md) |
 | 7 | O path param da OS aparecia como `{id}`, `{ordemServicoId}` e `{osId}` nos refinamentos. Foi padronizado `{osId}` — alinhar os documentos que estão sendo reenviados. | Todas as rotas de `/ordens-servico` |
-| 8 | `PATCH /ordens-servico/{osId}/diagnostico/iniciar` deixou de existir: o início do diagnóstico virou consequência de `POST /ordens-servico/{osId}/problema-relatado`. Confirmar a retirada da rota antiga. | [registrar-problema-relatado.md](ordem-de-servico/registrar-problema-relatado.md) |
+| 8 | `PATCH /ordens-servico/{osId}/diagnostico/iniciar` saiu da tabela porque o início do diagnóstico virou consequência de `POST /ordens-servico/{osId}/problema-relatado`, mas o documento `iniciar-diagnostico.md` continua no repositório. Confirmar qual das duas tarefas vale e remover a outra. | [registrar-problema-relatado.md](ordem-de-servico/registrar-problema-relatado.md) e [iniciar-diagnostico.md](ordem-de-servico/iniciar-diagnostico.md) |
 | 9 | O documento de compra de peças propunha `POST /compras/pedidos/pecas`, enquanto o de insumos manteve a rota compartilhada `POST /compras/pedidos`. Ficou a rota compartilhada — confirmar. | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) |
 | 10 | `GET /estoque/insumos/{insumoId}/sugestao-compra` saiu do catálogo: a nova versão da compra de insumos tira o cálculo por estoque mínimo e consumo médio, e usa a necessidade apurada nas OS. Confirmar se a sugestão volta como tarefa própria. | [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
