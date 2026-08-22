@@ -2,7 +2,7 @@
 documento: Pontos em Aberto — Contexto de Peças & Insumos
 dono: José Lázaro
 versao: 0.1
-atualizado_em: 2026-08-19
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -42,3 +42,8 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Peç
 | 28 | A sugestão de compra por estoque mínimo e consumo médio saiu do refinamento de insumos. Definir se o cálculo vira tarefa própria ou se a reposição passa a depender só da necessidade das OS — o que deixa a consulta de itens faltantes sem destino para a origem `MINIMO`. | [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) e `consultar-pecas-faltantes.md` | — |
 | 29 | Os IDs de requisito das duas tarefas de compra foram recriados na sequência do contexto (`RF-EST-100` em diante); as faixas antigas (`RF-EST-45` a `RF-EST-56`) ficaram livres. Renumerar quando os documentos que faltam voltarem. | [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) | — |
 | 30 | O documento de Reservar Peça para OS foi removido: a regra dele conflitava com a reserva criada pelo pedido de compra. A tarefa será reescrita, e com ela voltam as rotas `POST /estoque/reservas` e `DELETE /estoque/reservas/ordens-servico/{osId}`, se continuarem existindo. | [`solicitar-compra-de-pecas.md`](solicitar-compra-de-pecas.md) e [`registrar-consumo-e-saida.md`](registrar-consumo-e-saida.md) | — |
+| 31 | Consultar Insumos exibe `saldoReservado`, mas o modelo anterior dizia que insumo não é reservado e o fluxo de compra mais recente passou a reservá-lo. Definir se o campo é sempre zero ou representa reservas de compra. | [`consultar-insumos.md`](consultar-insumos.md), [`solicitar-compra-de-insumos.md`](solicitar-compra-de-insumos.md) e `registrar-consumo-e-saida.md` | — |
+| 32 | `quantidadeDesejada` é uma única query, mas uma busca por descrição ou categoria pode retornar insumos com unidades diferentes. Definir se a quantidade só pode ser usada com código/ID ou se a API deve exigir uma unidade na entrada. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 33 | Confirmar se a listagem de insumos exige pelo menos um filtro ou permite navegar por todos os insumos ativos. O contrato atual exige código, descrição ou categoria. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 34 | Definir a divisão entre a consulta específica `GET /estoque/insumos` e a futura consulta geral `GET /estoque/itens`, que ainda está sem documento. | [`consultar-insumos.md`](consultar-insumos.md) | — |
+| 35 | Definir o dono do documento Consultar Insumos. | [`consultar-insumos.md`](consultar-insumos.md) | — |

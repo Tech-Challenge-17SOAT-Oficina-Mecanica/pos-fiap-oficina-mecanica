@@ -44,6 +44,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 |---|---|---|---|---|
 | `GET` | `/veiculos` | Consulta veículo pela placa | `veiculos:ler` | [consultar-veiculo.md](veiculo/consultar-veiculo.md) |
 | `POST` | `/veiculos` | Cadastra um novo veículo | `veiculos:escrever` | [cadastrar-veiculo.md](veiculo/cadastrar-veiculo.md) |
+| `POST` | `/clientes/{clienteId}/veiculos` | Cadastra um veículo e o vincula ao cliente na mesma operação | `veiculos:escrever` | [cadastrar-veiculo-e-vincular-ao-cliente.md](veiculo/cadastrar-veiculo-e-vincular-ao-cliente.md) |
 | `PUT` | `/veiculos/{veiculoId}` | Atualiza os dados cadastrais do veículo | `veiculos:escrever` | [atualizar-veiculo.md](veiculo/atualizar-veiculo.md) |
 | `DELETE` | `/veiculos/{veiculoId}` | Inativa o veículo (exclusão lógica) | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
 | `POST` | `/veiculos/{veiculoId}/reativacao` | Reativa um veículo inativado | `veiculos:escrever` | [deletar-veiculo.md](veiculo/deletar-veiculo.md) |
@@ -91,6 +92,8 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `PUT` | `/estoque/pecas/{pecaId}` | Atualiza os dados cadastrais da peça | `estoque:escrever` | [atualizar-peca.md](pecas-e-insumos/atualizar-peca.md) |
 | `DELETE` | `/estoque/pecas/{pecaId}` | Desativa a peça (exclusão lógica) | `estoque:escrever` | [deletar-peca.md](pecas-e-insumos/deletar-peca.md) |
 | `POST` | `/estoque/insumos` | Cadastra um novo insumo no catálogo | `estoque:escrever` | [cadastrar-insumo.md](pecas-e-insumos/cadastrar-insumo.md) |
+| `GET` | `/estoque/insumos` | Consulta insumos por filtros, quantidade desejada e disponibilidade | `estoque:ler` | [consultar-insumos.md](pecas-e-insumos/consultar-insumos.md) |
+| `GET` | `/estoque/insumos/{insumoId}` | Consulta um insumo específico e sua disponibilidade | `estoque:ler` | [consultar-insumos.md](pecas-e-insumos/consultar-insumos.md) |
 | `PUT` | `/estoque/insumos/{insumoId}` | Atualiza os dados cadastrais do insumo | `estoque:escrever` | [atualizar-insumo.md](pecas-e-insumos/atualizar-insumo.md) |
 | `DELETE` | `/estoque/insumos/{insumoId}` | Desativa o insumo (exclusão lógica) | `estoque:escrever` | [deletar-insumo.md](pecas-e-insumos/deletar-insumo.md) |
 | `POST` | `/compras/pedidos` | Cria pedido de compra de peças ou insumos, reserva os itens para as OS e as coloca em `AGUARDANDO_RECURSOS` | `compras:escrever` | [solicitar-compra-de-pecas.md](pecas-e-insumos/solicitar-compra-de-pecas.md) e [solicitar-compra-de-insumos.md](pecas-e-insumos/solicitar-compra-de-insumos.md) |
@@ -103,12 +106,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Contexto | Endpoints |
 |---|---|
 | Cliente | 6 |
-| Veículo | 5 |
+| Veículo | 6 |
 | Ordem de Serviço | 11 |
 | Orçamento | 4 |
 | Serviços | 5 |
-| Peças & Insumos | 8 |
-| **Total** | **39** |
+| Peças & Insumos | 10 |
+| **Total** | **42** |
 
 ---
 
@@ -129,7 +132,6 @@ existir, é uma decisão que precisa ser registrada.
 | `POST /estoque/saidas` | Registrar consumo e saída | Peças & Insumos |
 | `POST /estoque/reservas` | Reservar peça para OS | Peças & Insumos |
 | `DELETE /estoque/reservas/ordens-servico/{osId}` | Reservar peça para OS (liberação) | Peças & Insumos |
-| *(sem endpoint)* | Incluir OS na fila de atendimento | Ordem de Serviço |
 
 ---
 

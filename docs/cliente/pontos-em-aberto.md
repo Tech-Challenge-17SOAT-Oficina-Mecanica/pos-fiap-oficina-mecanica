@@ -2,7 +2,7 @@
 documento: Pontos em Aberto — Contexto de Cliente
 dono: A definir
 versao: 0.1
-atualizado_em: 2026-08-19
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -24,3 +24,4 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Clie
 | 10 | O refinamento de Deletar Cliente trazia a persona como Mecânico, o fluxo como Atendente e ao mesmo tempo dizia que o perfil `MECANICO` recebe `403`. Foi padronizado como persona Mecânico e perfis `MECANICO` e `GESTOR`, coerente com a decisão de que não existe perfil `ATENDENTE`. Confirmar. | [`deletar-cliente.md`](deletar-cliente.md) | — |
 | 11 | O refinamento de Deletar Cliente citava endpoints e regras de **anonimização** (`POST /clientes/{id}/anonimizacao`, método `anonimizar()`, restrição ao perfil `GESTOR`) que não têm refinamento de produto nem contrato próprio. Definir se a anonimização entra no MVP e, se sim, refiná-la como tarefa separada. | [`deletar-cliente.md`](deletar-cliente.md) | — |
 | 12 | A exclusão lógica depende de índice parcial `UNIQUE (cpf_cnpj) WHERE ativo = true` e da ausência de `ON DELETE CASCADE` nas foreign keys de OS. Confirmar com quem cuidar da migration. | [`deletar-cliente.md`](deletar-cliente.md) | — |
+| 13 | Com a nova rota `POST /clientes/{clienteId}/veiculos`, existem três operações: cadastrar veículo sem vínculo, cadastrar e vincular, e vincular veículo existente. Confirmar se as três permanecem no MVP. | [`../veiculo/cadastrar-veiculo.md`](../veiculo/cadastrar-veiculo.md), [`../veiculo/cadastrar-veiculo-e-vincular-ao-cliente.md`](../veiculo/cadastrar-veiculo-e-vincular-ao-cliente.md) e [`vincular-veiculo-ao-cliente.md`](vincular-veiculo-ao-cliente.md) | — |

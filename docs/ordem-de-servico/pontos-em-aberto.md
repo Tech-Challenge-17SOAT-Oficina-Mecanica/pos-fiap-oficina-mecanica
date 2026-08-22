@@ -1,8 +1,8 @@
 ---
 documento: Pontos em Aberto — Contexto de Ordem de Serviço
-dono: A definir
+dono: Helena Miranda
 versao: 0.1
-atualizado_em: 2026-08-19
+atualizado_em: 2026-08-22
 status: rascunho
 ---
 
@@ -35,4 +35,7 @@ Este documento centraliza as decisões pendentes das tarefas do contexto de Orde
 | 17 | A fila mudou de regra: antes as OS com mecânico responsável eram excluídas da consulta; agora elas permanecem e aparecem primeiro. Confirmar a nova regra com quem escreveu a versão anterior. | [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md) | — |
 | 18 | A OS passou a guardar peças e insumos necessários com quantidade reservada, atualizados pelo pedido de compra. Definir se esses itens vivem na OS, no orçamento ou nos dois, já que os serviços ficam no orçamento. | [`registrar-servicos-necessarios.md`](registrar-servicos-necessarios.md) e [`../pecas-e-insumos/solicitar-compra-de-pecas.md`](../pecas-e-insumos/solicitar-compra-de-pecas.md) | — |
 | 19 | Os IDs de requisito das tarefas reenviadas foram criados na sequência do contexto, e não reaproveitaram os IDs das versões anteriores. Renumerar tudo quando os documentos que faltam voltarem. | Todas as tarefas do contexto | — |
-| 20 | O documento de Incluir OS na Fila de Atendimento foi removido: existiam duas versões concorrentes e o time vai reescrever a tarefa. A regra em vigor está descrita em [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md), que define a fila como as OS em `AGUARDANDO_EXECUCAO` com `dataEntradaFila` preenchida. | — | — |
+| 20 | Decidido: Incluir OS na Fila de Atendimento foi reescrita. A fila não possui persistência própria; pertence à fila a OS em `AGUARDANDO_EXECUCAO` com `dataEntradaFila` preenchida, preservando o mecânico responsável. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`consultar-fila-de-atendimento.md`](consultar-fila-de-atendimento.md) | Helena Miranda |
+| 21 | Definir se a inclusão na fila ocorre na mesma transação da aprovação do orçamento ou por evento com consistência eventual e mecanismo de retentativa. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../orcamento/aprovar-orcamento.md`](../orcamento/aprovar-orcamento.md) | — |
+| 22 | A inclusão valida disponibilidade ou reserva de peças e insumos. Confirmar a regra aplicável ao insumo, que não possui reserva no modelo atual de estoque. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../pecas-e-insumos/registrar-consumo-e-saida.md`](../pecas-e-insumos/registrar-consumo-e-saida.md) | — |
+| 23 | Aprovar Orçamento altera diretamente a OS para `AGUARDANDO_EXECUCAO`. Confirmar se essa responsabilidade passa integralmente para `IncluirOSNaFilaAtendimento` para evitar duas implementações da mesma transição. | [`incluir-os-na-fila-de-atendimento.md`](incluir-os-na-fila-de-atendimento.md) e [`../orcamento/aprovar-orcamento.md`](../orcamento/aprovar-orcamento.md) | — |
