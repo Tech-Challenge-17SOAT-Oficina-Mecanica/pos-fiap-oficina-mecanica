@@ -166,12 +166,20 @@ A operação não recebe corpo.
 
 | Código | Situação |
 |---|---|
-| `200` | Vínculo realizado com sucesso. |
+| `201` | Vínculo criado com sucesso. |
 | `400` | `clienteId` ou `veiculoId` ausente ou inválido. |
 | `401` | Token ausente ou expirado. |
 | `403` | Usuário sem o escopo `clientes:escrever`. |
 | `404` | Cliente ou veículo não encontrado. |
 | `409` | Veículo já vinculado ao cliente. |
+
+> **Decisão de projeto.** O vínculo devolve `201`, e não `200`, porque a operação cria um recurso.
+> A repetição continua devolvendo `409`, o que permite ao consumidor distinguir vínculo criado agora
+> de vínculo que já existia.
+
+> **Decisão de projeto.** Não existe operação de desvincular no MVP.
+> `DELETE /clientes/{clienteId}/veiculos/{veiculoId}` fica para depois, junto com a regra de um
+> proprietário ativo por vez. Até lá, veículo que trocou de dono precisa ser corrigido pelo banco.
 
 **Dependências**
 
@@ -196,7 +204,7 @@ A operação não recebe corpo.
 
 *Integração*
 
-- `POST` válido retorna `200` e persiste o vínculo.
+- `POST` válido retorna `201` e persiste o vínculo.
 - Cliente inexistente retorna `404`.
 - Veículo inexistente retorna `404`.
 - `clienteId` ausente ou inválido retorna `400`.
@@ -254,7 +262,7 @@ A operação não recebe corpo.
 - [ ] Validar que `veiculoId` foi informado
 - [ ] Validar formato de `clienteId`
 - [ ] Validar formato de `veiculoId`
-- [ ] Retornar `200` quando o vínculo for realizado com sucesso
+- [ ] Retornar `201` quando o vínculo for criado
 - [ ] Retornar `400` para `clienteId` ou `veiculoId` ausente ou inválido
 - [ ] Retornar `404` quando o cliente não existir
 - [ ] Retornar `404` quando o veículo não existir
@@ -278,7 +286,7 @@ A operação não recebe corpo.
 
 **Testes de integração**
 
-- [ ] Endpoint vincula cliente e veículo e retorna `200`
+- [ ] Endpoint vincula cliente e veículo e retorna `201`
 - [ ] Vínculo é persistido no banco
 - [ ] Veículo vinculado aparece no cadastro do cliente
 - [ ] Vínculo pode ser usado na criação da Ordem de Serviço

@@ -97,9 +97,9 @@ podem gerar atendimento duplicado, vínculo errado com veículo e perda de rastr
 PUT /clientes/{clienteId}
 ```
 
-> **Decisão de projeto.** Foi adotada a rota plural com prefixo versionado
-> `PUT /clientes/{clienteId}`, alinhada ao padrão compartilhado do projeto. A alternativa
-> `PUT /clientes/{clienteId}` foi descartada por não usar o prefixo `/`.
+> **Decisão de projeto.** A rota segue o padrão compartilhado do projeto: recurso no plural,
+> em minúsculas e **sem prefixo de versão**. A alternativa com prefixo `/api/v1` foi descartada
+> para manter todas as rotas do sistema no mesmo formato.
 >
 > **Decisão de projeto.** O campo do documento foi padronizado como `documento`, o mesmo usado
 > nos requisitos de consulta e cadastro. A alternativa `cpfCnpj` foi descartada para evitar dois
@@ -115,18 +115,30 @@ PUT /clientes/{clienteId}
 
 | Local | Param | Tipo | Descrição |
 |---|---|---|---|
-| Path | `clienteId` | string | Identificador do cliente, obrigatório. |
+| Path | `clienteId` | uuid | Identificador do cliente, obrigatório. |
+| Header | `If-Match` | string | `version` atual do registro, obrigatório, para controle de concorrência. |
 | Body | `nome` | string | Nome do cliente, obrigatório. |
 | Body | `documento` | string | CPF ou CNPJ do cliente, obrigatório. |
 | Body | `tipoDocumento` | enum | `CPF` ou `CNPJ`, obrigatório. |
+| Body | `telefone` | string | Telefone do cliente, somente dígitos. Obrigatório se `email` não for informado. |
+| Body | `email` | string | E-mail do cliente. Obrigatório se `telefone` não for informado. |
 
 ```json
 {
   "nome": "Nome do Cliente",
   "documento": "00000000000",
-  "tipoDocumento": "CPF"
+  "tipoDocumento": "CPF",
+  "telefone": "11988887777",
+  "email": "cliente@exemplo.com"
 }
 ```
+
+> **Decisão de projeto.** A atualização usa controle otimista com `If-Match` e `version`, o mesmo
+> mecanismo já adotado em Peças e em Insumos. Sem ele, duas edições simultâneas do mesmo cliente se
+> sobrescrevem sem aviso.
+
+> **Decisão de projeto.** O cliente passa a ter contato, com **pelo menos um** entre `telefone` e
+> `email` obrigatório, para que a oficina consiga avisá-lo sobre orçamento e conclusão do serviço.
 
 **Validações**
 
@@ -138,25 +150,30 @@ PUT /clientes/{clienteId}
 - `tipoDocumento` deve ser `CPF` ou `CNPJ`.
 - `documento` deve possuir formato válido conforme o `tipoDocumento`.
 - O CPF/CNPJ informado não pode estar vinculado a outro cliente.
+- Pelo menos um entre `telefone` e `email` deve ser informado.
+- `telefone`, quando informado, deve ter 10 ou 11 dígitos.
+- `email`, quando informado, deve ter formato válido.
+- `If-Match` deve ser informado e bater com a `version` atual do registro.
 
 **Processamento**
 
 1. Receber o identificador do cliente.
 2. Receber os dados informados para atualização.
 3. Validar os campos obrigatórios.
-4. Consultar o cliente pelo identificador.
-5. Validar o CPF/CNPJ informado conforme o `tipoDocumento`.
-6. Verificar se o CPF/CNPJ já pertence a outro cliente.
-7. Atualizar os dados do cliente.
-8. Persistir as alterações.
-9. Retornar os dados atualizados.
+4. Consultar o cliente pelo identificador, com lock otimista.
+5. Comparar `If-Match` com a `version` atual — divergência retorna `412`, ausência retorna `428`.
+6. Validar o CPF/CNPJ informado conforme o `tipoDocumento`.
+7. Verificar se o CPF/CNPJ já pertence a outro cliente.
+8. Atualizar os dados do cliente.
+9. Persistir as alterações e incrementar `version`.
+10. Retornar os dados atualizados.
 
 **Persistência**
 
 - Consulta: agregado/dados de `Cliente`.
 - Consulta: `Cliente` por CPF/CNPJ para verificar duplicidade.
 - Altera: registro de `Cliente`.
-- Persiste: nome, CPF/CNPJ e tipo do documento.
+- Persiste: nome, CPF/CNPJ, tipo do documento, contato e `version` incrementada.
 - Não altera: vínculos com `Veículo` e Ordem de Serviço.
 
 **Saída da API**
@@ -166,7 +183,10 @@ PUT /clientes/{clienteId}
   "id": "uuid-do-cliente",
   "nome": "Nome do Cliente",
   "documento": "00000000000",
-  "tipoDocumento": "CPF"
+  "tipoDocumento": "CPF",
+  "telefone": "11988887777",
+  "email": "cliente@exemplo.com",
+  "version": 4
 }
 ```
 
@@ -175,11 +195,13 @@ PUT /clientes/{clienteId}
 | Código | Situação |
 |---|---|
 | `200` | Cliente atualizado com sucesso. |
-| `400` | Identificador ausente, dados obrigatórios ausentes ou CPF/CNPJ inválido. |
+| `400` | Identificador ausente, dados obrigatórios ausentes, CPF/CNPJ inválido, nenhum contato informado ou contato em formato inválido. |
 | `401` | Token ausente ou expirado. |
 | `403` | Usuário sem o escopo `clientes:escrever`. |
 | `404` | Cliente não encontrado. |
 | `409` | CPF/CNPJ já vinculado a outro cliente. |
+| `412` | `If-Match` divergente — o cliente foi alterado por outro usuário. |
+| `428` | `If-Match` não informado. |
 
 **Dependências**
 
@@ -201,6 +223,8 @@ PUT /clientes/{clienteId}
 - Rejeita atualização quando `tipoDocumento` não for informado.
 - Rejeita atualização quando CPF/CNPJ for inválido.
 - Rejeita atualização quando CPF/CNPJ pertencer a outro cliente.
+- Rejeita atualização quando nenhum contato for informado.
+- Rejeita atualização quando o `If-Match` divergir da `version` atual.
 - Preserva os vínculos com veículos e Ordens de Serviço.
 
 *Integração*
@@ -213,6 +237,9 @@ PUT /clientes/{clienteId}
 - Tipo de documento ausente retorna `400`.
 - CPF/CNPJ inválido retorna `400`.
 - CPF/CNPJ pertencente a outro cliente retorna `409`.
+- Atualização sem telefone e sem e-mail retorna `400`.
+- `PUT` com `If-Match` antigo retorna `412`.
+- `PUT` sem `If-Match` retorna `428`.
 - Requisição sem autenticação retorna `401`.
 - Usuário sem permissão retorna `403`.
 - Vínculos com veículos e Ordens de Serviço são preservados.
@@ -224,7 +251,8 @@ PUT /clientes/{clienteId}
 **Domínio**
 
 - [ ] Criar ou ajustar o modelo `Cliente`
-- [ ] Definir quais campos do cliente podem ser atualizados
+- [ ] Definir quais campos do cliente podem ser atualizados, incluindo `telefone` e `email`
+- [ ] Adicionar o campo `version` ao modelo `Cliente` para controle otimista
 - [ ] Garantir que o cliente possua CPF/CNPJ como identificador de negócio
 - [ ] Criar ou ajustar validação de CPF/CNPJ
 - [ ] Impedir duplicidade de CPF/CNPJ entre clientes
@@ -237,8 +265,9 @@ PUT /clientes/{clienteId}
 - [ ] Receber os dados atualizados do cliente
 - [ ] Consultar o cliente pelo identificador
 - [ ] Verificar se o CPF/CNPJ informado já pertence a outro cliente
+- [ ] Comparar `If-Match` com a `version` atual antes de aplicar as alterações
 - [ ] Atualizar os dados do cliente
-- [ ] Persistir as alterações no banco de dados
+- [ ] Persistir as alterações no banco de dados e incrementar `version`
 
 **Repositório**
 
@@ -254,6 +283,7 @@ PUT /clientes/{clienteId}
 - [ ] Criar DTO/response de saída com os dados atualizados do cliente
 - [ ] Implementar validação do parâmetro `clienteId`
 - [ ] Implementar validação do payload
+- [ ] Ler o header `If-Match` e devolver `428` quando ausente
 - [ ] Aplicar autenticação JWT na rota
 - [ ] Aplicar autorização para o escopo `clientes:escrever`
 - [ ] Mapear erros de domínio para os códigos HTTP documentados
@@ -266,10 +296,14 @@ PUT /clientes/{clienteId}
 - [ ] Validar que o CPF/CNPJ foi informado
 - [ ] Validar que `tipoDocumento` foi informado
 - [ ] Validar formato do CPF/CNPJ
+- [ ] Validar que ao menos um entre `telefone` e `email` foi informado
+- [ ] Validar o formato do telefone e do e-mail quando informados
 - [ ] Retornar `200` quando o cliente for atualizado com sucesso
 - [ ] Retornar `400` para identificador ausente, dados obrigatórios ausentes ou CPF/CNPJ inválido
 - [ ] Retornar `404` quando o cliente não for encontrado
 - [ ] Retornar `409` quando o CPF/CNPJ pertencer a outro cliente
+- [ ] Retornar `412` quando o `If-Match` divergir da `version` atual
+- [ ] Retornar `428` quando o `If-Match` não for informado
 - [ ] Retornar `401` quando não houver autenticação
 - [ ] Retornar `403` quando o usuário não tiver permissão
 
@@ -283,6 +317,8 @@ PUT /clientes/{clienteId}
 - [ ] `tipoDocumento` ausente
 - [ ] CPF/CNPJ inválido
 - [ ] CPF/CNPJ já vinculado a outro cliente
+- [ ] Atualização sem nenhum contato informado
+- [ ] `If-Match` divergente
 - [ ] Preservação dos vínculos com veículos e Ordens de Serviço
 
 **Testes de integração**
@@ -292,6 +328,8 @@ PUT /clientes/{clienteId}
 - [ ] Endpoint retorna `400` para identificador ausente, dados obrigatórios ausentes ou CPF/CNPJ inválido
 - [ ] Endpoint retorna `404` quando o cliente não existe
 - [ ] Endpoint retorna `409` quando CPF/CNPJ pertence a outro cliente
+- [ ] Endpoint retorna `412` com `If-Match` antigo
+- [ ] Endpoint retorna `428` sem `If-Match`
 - [ ] Endpoint retorna `401` sem autenticação
 - [ ] Endpoint retorna `403` sem permissão
 - [ ] Vínculos com veículos e Ordens de Serviço são preservados após a atualização
