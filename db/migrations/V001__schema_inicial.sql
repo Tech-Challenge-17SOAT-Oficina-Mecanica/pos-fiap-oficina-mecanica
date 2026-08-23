@@ -21,7 +21,6 @@ CREATE TABLE cliente (
     inativado_por UUID,
     version INTEGER NOT NULL DEFAULT 1,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_cliente_tipo_documento CHECK (tipo_documento IN ('CPF', 'CNPJ')),
     CONSTRAINT ck_cliente_contato CHECK (telefone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_cliente_version CHECK (version > 0)
 );
@@ -88,13 +87,7 @@ CREATE TABLE item_estoque (
     usuario_desativacao UUID,
     version INTEGER NOT NULL DEFAULT 1,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_item_tipo CHECK (tipo IN ('PECA', 'INSUMO')),
-    CONSTRAINT ck_item_unidade CHECK (unidade_medida IN ('UN', 'L', 'ML', 'KG', 'G', 'M')),
     CONSTRAINT ck_item_saldos CHECK (saldo_fisico >= 0 AND saldo_reservado >= 0 AND estoque_minimo >= 0),
-    CONSTRAINT ck_item_valores CHECK (
-        (tipo = 'PECA' AND fabricante IS NOT NULL AND preco_venda IS NOT NULL AND custo_unitario IS NULL)
-        OR (tipo = 'INSUMO' AND custo_unitario IS NOT NULL AND preco_venda IS NULL)
-    ),
     CONSTRAINT ck_item_version CHECK (version > 0)
 );
 
@@ -122,10 +115,6 @@ CREATE TABLE ordem_servico (
     cliente_retirada_id UUID REFERENCES cliente (id),
     responsavel_entrega_id UUID,
     observacoes_entrega TEXT,
-    CONSTRAINT ck_os_status CHECK (status IN (
-        'RECEBIDA', 'EM_DIAGNOSTICO', 'AGUARDANDO_APROVACAO', 'AGUARDANDO_EXECUCAO',
-        'AGUARDANDO_RECURSOS', 'EM_EXECUCAO', 'FINALIZADA', 'ENTREGUE', 'CANCELADA'
-    )),
     CONSTRAINT ck_os_custo CHECK (custo_total_materiais >= 0),
     CONSTRAINT ck_os_valor_final CHECK (valor_final IS NULL OR valor_final >= 0)
 );
@@ -150,8 +139,7 @@ CREATE TABLE ordem_servico_servico (
     descricao TEXT NOT NULL,
     valor_unitario NUMERIC(12, 2) NOT NULL,
     status VARCHAR(20) NOT NULL,
-    CONSTRAINT ck_os_servico_valor CHECK (valor_unitario >= 0),
-    CONSTRAINT ck_os_servico_status CHECK (status IN ('NECESSARIO', 'EM_EXECUCAO', 'CONCLUIDO'))
+    CONSTRAINT ck_os_servico_valor CHECK (valor_unitario >= 0)
 );
 
 CREATE INDEX ix_os_servico_ordem_servico_id ON ordem_servico_servico (ordem_servico_id);
@@ -185,13 +173,7 @@ CREATE TABLE orcamento (
     aprovado_em TIMESTAMPTZ,
     recusado_em TIMESTAMPTZ,
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_orcamento_tipo CHECK (tipo_orcamento IN ('PRINCIPAL', 'COMPLEMENTAR')),
-    CONSTRAINT ck_orcamento_status CHECK (status IN ('CRIADO', 'APROVADO', 'RECUSADO')),
-    CONSTRAINT ck_orcamento_estimativa CHECK (estimativa_entrega_dias IS NULL OR estimativa_entrega_dias >= 0),
-    CONSTRAINT ck_orcamento_origem CHECK (
-        (tipo_orcamento = 'PRINCIPAL' AND orcamento_original_id IS NULL)
-        OR (tipo_orcamento = 'COMPLEMENTAR' AND orcamento_original_id IS NOT NULL)
-    )
+    CONSTRAINT ck_orcamento_estimativa CHECK (estimativa_entrega_dias IS NULL OR estimativa_entrega_dias >= 0)
 );
 
 CREATE UNIQUE INDEX ux_orcamento_principal_por_os
@@ -208,11 +190,6 @@ CREATE TABLE orcamento_item (
     quantidade NUMERIC(14, 3) NOT NULL,
     valor_unitario NUMERIC(12, 2) NOT NULL,
     valor_total NUMERIC(12, 2) NOT NULL,
-    CONSTRAINT ck_orcamento_item_tipo CHECK (tipo_item IN ('SERVICO', 'PECA', 'INSUMO')),
-    CONSTRAINT ck_orcamento_item_origem CHECK (
-        (servico_id IS NOT NULL AND item_estoque_id IS NULL AND tipo_item = 'SERVICO')
-        OR (servico_id IS NULL AND item_estoque_id IS NOT NULL AND tipo_item IN ('PECA', 'INSUMO'))
-    ),
     CONSTRAINT ck_orcamento_item_valores CHECK (quantidade > 0 AND valor_unitario >= 0 AND valor_total >= 0)
 );
 
@@ -234,7 +211,6 @@ CREATE TABLE fornecedor (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     usuario_atualizacao UUID,
-    CONSTRAINT ck_fornecedor_tipo_documento CHECK (tipo_documento IN ('CPF', 'CNPJ')),
     CONSTRAINT ck_fornecedor_contato CHECK (telefone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_fornecedor_prazo CHECK (prazo_entrega_dias >= 0),
     CONSTRAINT ck_fornecedor_version CHECK (version > 0)
@@ -248,8 +224,7 @@ CREATE TABLE pedido_compra (
     numero VARCHAR(30) NOT NULL UNIQUE,
     status VARCHAR(10) NOT NULL,
     solicitado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    recebido_em TIMESTAMPTZ,
-    CONSTRAINT ck_pedido_status CHECK (status IN ('ABERTO', 'PARCIAL', 'CONCLUIDO', 'CANCELADO'))
+    recebido_em TIMESTAMPTZ
 );
 
 CREATE INDEX ix_pedido_compra_fornecedor_id ON pedido_compra (fornecedor_id);
@@ -291,8 +266,7 @@ CREATE TABLE reserva_estoque (
     status VARCHAR(10) NOT NULL,
     reservada_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     liberada_em TIMESTAMPTZ,
-    CONSTRAINT ck_reserva_quantidade CHECK (quantidade > 0),
-    CONSTRAINT ck_reserva_status CHECK (status IN ('ATIVA', 'CONSUMIDA', 'LIBERADA'))
+    CONSTRAINT ck_reserva_quantidade CHECK (quantidade > 0)
 );
 
 CREATE INDEX ix_reserva_os_item_id ON reserva_estoque (ordem_servico_item_id);
@@ -309,7 +283,6 @@ CREATE TABLE movimentacao_estoque (
     custo_unitario NUMERIC(12, 2),
     documento_origem VARCHAR(100),
     ocorrida_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_movimentacao_tipo CHECK (tipo IN ('ENTRADA', 'RESERVA', 'LIBERACAO_RESERVA', 'SAIDA', 'ENTRADA_RETORNO')),
     CONSTRAINT ck_movimentacao_quantidade CHECK (quantidade > 0),
     CONSTRAINT ck_movimentacao_custo CHECK (custo_unitario IS NULL OR custo_unitario >= 0)
 );

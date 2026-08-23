@@ -228,7 +228,8 @@ erDiagram
 ## Dicionario de dados
 
 `PK` identifica a chave primaria, `FK` a chave estrangeira e `UK` uma restricao de unicidade.
-`PECA` usa quantidade inteira; `INSUMO` admite fracao conforme a unidade de medida.
+Status, tipos e unidades sao persistidos como `string`; seus valores permitidos sao validados no
+dominio. `PECA` usa quantidade inteira; `INSUMO` admite fracao conforme a unidade de medida.
 
 ### Cliente e Veiculo
 
@@ -239,7 +240,7 @@ erDiagram
 | `id` | `uuid` | PK |
 | `nome` | `string` | Obrigatorio |
 | `documento` | `string` | CPF ou CNPJ; unico entre clientes ativos |
-| `tipo_documento` | `enum` | `CPF` ou `CNPJ` |
+| `tipo_documento` | `string` | `CPF` ou `CNPJ`, validado no dominio |
 | `telefone` | `string` | Obrigatorio quando `email` estiver ausente |
 | `email` | `string` | Obrigatorio quando `telefone` estiver ausente |
 | `ativo` | `boolean` | Exclusao logica |
@@ -278,7 +279,7 @@ proprietario atual; nao existe historico de proprietarios.
 | `cliente_id` | `uuid` | FK para `CLIENTE` |
 | `veiculo_id` | `uuid` | FK para `VEICULO` |
 | `placa_veiculo` | `string` | Fotografia da placa na abertura |
-| `status` | `enum` | Nove estados definidos para o fluxo |
+| `status` | `string` | Nove estados definidos para o fluxo, validados no dominio |
 | `custo_total_materiais` | `decimal` | Acumulado pelas saidas de estoque |
 | `valor_final` | `decimal` | Registrado na entrega |
 | `criada_em` | `datetime` | Abertura |
@@ -388,8 +389,8 @@ Relacionamento: 1:N com `ITEM_ESTOQUE`.
 | `id` | `uuid` | PK |
 | `ordem_servico_id` | `uuid` | FK para `ORDEM_SERVICO` |
 | `orcamento_original_id` | `uuid` | FK opcional para o principal |
-| `tipo_orcamento` | `enum` | `PRINCIPAL` ou `COMPLEMENTAR` |
-| `status` | `enum` | `CRIADO`, `APROVADO` ou `RECUSADO` |
+| `tipo_orcamento` | `string` | `PRINCIPAL` ou `COMPLEMENTAR`, validado no dominio |
+| `status` | `string` | `CRIADO`, `APROVADO` ou `RECUSADO`, validado no dominio |
 | `estimativa_entrega_dias` | `integer` | Calculada |
 | `criado_em` | `datetime` | — |
 | `aprovado_em` | `datetime` | Opcional |
@@ -407,7 +408,7 @@ Existe um unico orcamento principal por OS; complementar referencia o principal 
 | `orcamento_id` | `uuid` | FK para `ORCAMENTO` |
 | `servico_id` | `uuid` | FK opcional para `SERVICO` |
 | `item_estoque_id` | `uuid` | FK opcional para `ITEM_ESTOQUE` |
-| `tipo_item` | `enum` | `SERVICO`, `PECA` ou `INSUMO` |
+| `tipo_item` | `string` | `SERVICO`, `PECA` ou `INSUMO`, validado no dominio |
 | `descricao` | `string` | Fotografia do item |
 | `quantidade` | `decimal` | Maior que zero |
 | `valor_unitario` | `decimal` | Fotografia do valor |
@@ -423,13 +424,13 @@ Relacionamento: N:1 com orcamento; referencia exatamente um de `SERVICO` ou `ITE
 |---|---|---|
 | `id` | `uuid` | PK |
 | `categoria_id` | `uuid` | FK para `CATEGORIA` |
-| `tipo` | `enum` | `PECA` ou `INSUMO` |
+| `tipo` | `string` | `PECA` ou `INSUMO`, validado no dominio |
 | `codigo` | `string` | UK; `PEC-000001` ou `INS-000001` |
 | `nome` | `string` | Obrigatorio |
 | `descricao` | `string` | Obrigatoria |
 | `descricao_normalizada` | `string` | Regra de duplicidade por tipo |
 | `fabricante` | `string` | Aplicavel a peca |
-| `unidade_medida` | `enum` | Obrigatoria; permite fracao para insumo |
+| `unidade_medida` | `string` | Obrigatoria; validada no dominio; permite fracao para insumo |
 | `saldo_fisico` | `decimal` | Saldo em prateleira |
 | `saldo_reservado` | `decimal` | Saldo comprometido com OS |
 | `estoque_minimo` | `decimal` | Ponto de reposicao |
@@ -452,7 +453,7 @@ movimentacoes e itens de pedido. `saldo_disponivel` e derivado de `saldo_fisico 
 | `item_estoque_id` | `uuid` | FK para `ITEM_ESTOQUE` |
 | `pedido_compra_item_id` | `uuid` | FK opcional para `PEDIDO_COMPRA_ITEM` |
 | `quantidade` | `decimal` | Maior que zero |
-| `status` | `enum` | `ATIVA`, `CONSUMIDA` ou `LIBERADA` |
+| `status` | `string` | `ATIVA`, `CONSUMIDA` ou `LIBERADA`, validado no dominio |
 | `reservada_em` | `datetime` | — |
 | `liberada_em` | `datetime` | Opcional |
 
@@ -468,7 +469,7 @@ uma reserva vale tanto para peca quanto para insumo.
 | `ordem_servico_id` | `uuid` | FK opcional para `ORDEM_SERVICO` |
 | `reserva_estoque_id` | `uuid` | FK opcional para `RESERVA_ESTOQUE` |
 | `pedido_compra_id` | `uuid` | FK opcional para `PEDIDO_COMPRA` |
-| `tipo` | `enum` | Entrada, reserva, liberacao, saida ou retorno |
+| `tipo` | `string` | Entrada, reserva, liberacao, saida ou retorno, validado no dominio |
 | `quantidade` | `decimal` | Maior que zero |
 | `custo_unitario` | `decimal` | Custo da entrada ou saida |
 | `documento_origem` | `string` | UK quando aplicavel ao recebimento |
@@ -485,7 +486,7 @@ historico imutavel e a origem dos saldos correntes.
 | `razao_social` | `string` | Obrigatoria |
 | `nome_fantasia` | `string` | Opcional |
 | `documento` | `string` | CPF ou CNPJ; unico entre ativos e imutavel |
-| `tipo_documento` | `enum` | `CPF` ou `CNPJ` |
+| `tipo_documento` | `string` | `CPF` ou `CNPJ`, validado no dominio |
 | `telefone` | `string` | Obrigatorio quando `email` estiver ausente |
 | `email` | `string` | Obrigatorio quando `telefone` estiver ausente |
 | `prazo_entrega_dias` | `integer` | Padrao de sete dias quando ausente |
@@ -506,7 +507,7 @@ Relacionamento: 1:N com `PEDIDO_COMPRA`. Pertence a Peças e e referenciado por 
 | `id` | `uuid` | PK |
 | `fornecedor_id` | `uuid` | FK para `FORNECEDOR` |
 | `numero` | `string` | UK; sequencial funcional |
-| `status` | `enum` | `ABERTO`, `PARCIAL`, `CONCLUIDO` ou `CANCELADO` |
+| `status` | `string` | `ABERTO`, `PARCIAL`, `CONCLUIDO` ou `CANCELADO`, validado no dominio |
 | `solicitado_em` | `datetime` | — |
 | `recebido_em` | `datetime` | Opcional |
 
