@@ -21,6 +21,34 @@ docker compose up --build
 
 O Docker cria a imagem da API, inicia o PostgreSQL e aguarda o banco ficar saudavel antes de iniciar a aplicacao.
 
+## Banco com Make
+
+O `Makefile` organiza a criacao do schema e a carga dos dados iniciais. O Docker Compose nao
+executa a migration ou o seed automaticamente; use os alvos abaixo quando quiser popular o banco.
+
+```bash
+make db-init
+```
+
+`db-init` deve ser usado em um banco vazio. Para recriar o banco local e carregar novamente os
+dados de exemplo:
+
+```bash
+make db-reset
+```
+
+Outros comandos disponiveis:
+
+```bash
+make help
+make db-migrate
+make db-seed
+make db-verify
+make db-down
+```
+
+No Windows, instale GNU Make ou execute os comandos por Git Bash/WSL antes de usar o `Makefile`.
+
 ## Como testar a API
 
 Em outro terminal, execute:
