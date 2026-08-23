@@ -13,13 +13,14 @@ else
 DOCKER ?= docker
 endif
 
-.PHONY: help setup up restart db-up db-down db-reset db-migrate db-seed db-init db-verify
+.PHONY: help setup up restart test db-up db-down db-reset db-migrate db-seed db-init db-verify
 
 help: ## Lista os comandos disponiveis
 	@echo "Uso: make <alvo>"
 	@echo "  setup          Prepara e sobe todo o projeto apos o primeiro clone"
 	@echo "  up             Sobe os containers para o uso diario"
 	@echo "  restart        Reconstroi e reinicia somente a API"
+	@echo "  test           Executa testes e exibe a cobertura"
 	@echo "  db-up          Inicia o PostgreSQL local"
 	@echo "  db-down        Para os containers sem remover os dados"
 	@echo "  db-reset       Remove o banco local, cria o schema e carrega o seed"
@@ -36,6 +37,9 @@ up: ## Sobe os containers para o uso diario
 
 restart: ## Reconstroi e reinicia somente a API
 	$(DOCKER) compose up -d --build app
+
+test: ## Executa testes e exibe a cobertura
+	$(DOCKER) compose run --rm test
 
 db-up: ## Inicia o PostgreSQL local
 	$(DOCKER) compose up -d --wait $(POSTGRES_SERVICE)
