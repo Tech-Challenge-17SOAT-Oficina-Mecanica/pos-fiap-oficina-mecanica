@@ -14,6 +14,7 @@ var (
 
 type Repository interface {
 	CadastrarParaCliente(context.Context, string, domain.Cadastro) (domain.Veiculo, error)
+	ConsultarPorPlaca(context.Context, string, bool) (domain.Veiculo, error)
 }
 type Cadastrar struct{ repository Repository }
 

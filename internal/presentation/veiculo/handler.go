@@ -18,6 +18,32 @@ type request struct {
 	Ano    int    `json:"ano"`
 }
 
+func NewConsultaHandler(useCase application.Consultar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		pl, err := domain.NormalizarPlaca(r.URL.Query().Get("placa"))
+		if err != nil {
+			writeProblem(w, 400, "Dados inválidos", err.Error(), "placa")
+			return
+		}
+		incluir := r.URL.Query().Get("incluirInativos")
+		if incluir != "true" && incluir != "false" {
+			writeProblem(w, 400, "Dados inválidos", "incluirInativos inválido", "incluirInativos")
+			return
+		}
+		v, err := useCase.Execute(r.Context(), pl, incluir == "true")
+		if err != nil {
+			if errors.Is(err, application.ErrVeiculoNaoEncontrado) {
+				writeProblem(w, 404, titleFor(404), err.Error(), "")
+				return
+			}
+			writeProblem(w, 500, titleFor(500), "falha ao consultar veículo", "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(v)
+	}
+}
+
 func NewHandler(useCase application.Cadastrar) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clienteID := r.PathValue("clienteId")

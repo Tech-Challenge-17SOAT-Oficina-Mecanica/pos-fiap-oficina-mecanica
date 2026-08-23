@@ -43,3 +43,17 @@ func (repository PostgresRepository) CadastrarParaCliente(ctx context.Context, c
 	}
 	return veiculo, nil
 }
+
+func (repository PostgresRepository) ConsultarPorPlaca(ctx context.Context, placa string, incluirInativos bool) (domain.Veiculo, error) {
+	query := `SELECT v.id, v.cliente_id, v.placa, v.marca, v.modelo, v.ano, v.ativo, v.version, c.id, c.nome, c.documento FROM veiculo v JOIN cliente c ON c.id = v.cliente_id WHERE v.placa = $1`
+	if !incluirInativos {
+		query += ` AND v.ativo = TRUE`
+	}
+	query += ` ORDER BY v.ativo DESC, v.criado_em DESC LIMIT 1`
+	var v domain.Veiculo
+	err := repository.db.QueryRowContext(ctx, query, placa).Scan(&v.ID, &v.ClienteID, &v.Placa, &v.Marca, &v.Modelo, &v.Ano, &v.Ativo, &v.Version, &v.Cliente.ID, &v.Cliente.Nome, &v.Cliente.Documento)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Veiculo{}, application.ErrVeiculoNaoEncontrado
+	}
+	return v, err
+}

@@ -108,6 +108,7 @@ Consulta por placa via query param.
 | Local | Param | Tipo | Descrição |
 |---|---|---|---|
 | Query | `placa` | string | Placa do veículo, obrigatória. |
+| Query | `incluirInativos` | boolean | Obrigatório: inclui ou oculta veículos inativos. |
 
 **Validações**
 

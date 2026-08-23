@@ -10,20 +10,40 @@ import (
 var placa = regexp.MustCompile(`^(?:[A-Z]{3}[0-9]{4}|[A-Z]{3}[0-9][A-Z][0-9]{2})$`)
 
 type Cadastro struct {
-	Placa, Marca, Modelo string
-	Ano                  int
+	Placa  string `json:"placa"`
+	Marca  string `json:"marca"`
+	Modelo string `json:"modelo"`
+	Ano    int    `json:"ano"`
 }
+
 type Veiculo struct {
-	ID, ClienteID string
+	ID, ClienteID string `json:"-"`
 	Cadastro
-	Ativo bool
+	Ativo   bool    `json:"ativo"`
+	Version int     `json:"version"`
+	Cliente Cliente `json:"cliente"`
+}
+
+type Cliente struct {
+	ID        string `json:"id"`
+	Nome      string `json:"nome"`
+	Documento string `json:"documento"`
+}
+
+func NormalizarPlaca(valor string) (string, error) {
+	normalizada := strings.ToUpper(strings.NewReplacer("-", "", " ", "").Replace(strings.TrimSpace(valor)))
+	if !placa.MatchString(normalizada) {
+		return "", errors.New("placa inválida")
+	}
+	return normalizada, nil
 }
 
 func NovoCadastro(placaVeiculo, marca, modelo string, ano int) (Cadastro, error) {
-	cadastro := Cadastro{strings.ToUpper(strings.NewReplacer("-", "", " ", "").Replace(strings.TrimSpace(placaVeiculo))), strings.TrimSpace(marca), strings.TrimSpace(modelo), ano}
-	if !placa.MatchString(cadastro.Placa) {
-		return Cadastro{}, errors.New("placa inválida")
+	pl, err := NormalizarPlaca(placaVeiculo)
+	if err != nil {
+		return Cadastro{}, err
 	}
+	cadastro := Cadastro{pl, strings.TrimSpace(marca), strings.TrimSpace(modelo), ano}
 	if cadastro.Marca == "" || cadastro.Modelo == "" {
 		return Cadastro{}, errors.New("marca e modelo são obrigatórios")
 	}
