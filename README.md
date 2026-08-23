@@ -29,6 +29,7 @@ e os dados iniciais são carregados pelos scripts de seed em `db/seeds`.
 | Recurso | URL |
 | --- | --- |
 | 💚 Health check | <http://localhost:8080/health> |
+| 📖 Swagger UI | <http://localhost:8081> |
 
 ## 🚀 Primeiros passos
 
