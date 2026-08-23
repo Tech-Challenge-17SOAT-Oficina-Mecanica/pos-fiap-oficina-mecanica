@@ -2,9 +2,29 @@ openapi: 3.0.3
 info:
   title: Oficina Mecânica API
   version: 0.1.0
+tags:
+  - name: Veículos
 paths:
+  /veiculos:
+    get:
+      tags: [Veículos]
+      summary: Consulta um veículo pela placa
+      parameters:
+        - name: placa
+          in: query
+          required: true
+          schema: { type: string, example: ABC1D23 }
+        - name: incluirInativos
+          in: query
+          required: true
+          schema: { type: boolean }
+      responses:
+        '200': { description: Veículo encontrado }
+        '400': { description: Parâmetros inválidos }
+        '404': { description: Veículo não encontrado }
   /clientes/{clienteId}/veiculos:
     post:
+      tags: [Veículos]
       summary: Cadastra um veículo e o vincula ao cliente
       parameters:
         - name: clienteId
