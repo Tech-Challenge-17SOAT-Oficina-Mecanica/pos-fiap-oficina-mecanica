@@ -21,7 +21,6 @@ CREATE TABLE cliente (
     inativado_por UUID,
     version INTEGER NOT NULL DEFAULT 1,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_cliente_contato CHECK (telefone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_cliente_version CHECK (version > 0)
 );
 
@@ -40,7 +39,6 @@ CREATE TABLE veiculo (
     motivo_inativacao VARCHAR(200),
     version INTEGER NOT NULL DEFAULT 1,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_veiculo_ano CHECK (ano >= 1900),
     CONSTRAINT ck_veiculo_version CHECK (version > 0)
 );
 
@@ -211,7 +209,6 @@ CREATE TABLE fornecedor (
     criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     usuario_atualizacao UUID,
-    CONSTRAINT ck_fornecedor_contato CHECK (telefone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_fornecedor_prazo CHECK (prazo_entrega_dias >= 0),
     CONSTRAINT ck_fornecedor_version CHECK (version > 0)
 );
@@ -240,7 +237,7 @@ CREATE TABLE pedido_compra_item (
     quantidade_recebida NUMERIC(14, 3) NOT NULL DEFAULT 0,
     custo_unitario NUMERIC(12, 2),
     CONSTRAINT ck_pedido_item_quantidades CHECK (
-        quantidade_necessaria > 0 AND quantidade_pedida >= quantidade_necessaria
+        quantidade_necessaria > 0 AND quantidade_pedida > 0
         AND quantidade_reservada >= 0 AND quantidade_recebida >= 0
     ),
     CONSTRAINT ck_pedido_item_custo CHECK (custo_unitario IS NULL OR custo_unitario >= 0),

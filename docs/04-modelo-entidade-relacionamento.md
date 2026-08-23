@@ -241,8 +241,8 @@ dominio. `PECA` usa quantidade inteira; `INSUMO` admite fracao conforme a unidad
 | `nome` | `string` | Obrigatorio |
 | `documento` | `string` | CPF ou CNPJ; unico entre clientes ativos |
 | `tipo_documento` | `string` | `CPF` ou `CNPJ`, validado no dominio |
-| `telefone` | `string` | Obrigatorio quando `email` estiver ausente |
-| `email` | `string` | Obrigatorio quando `telefone` estiver ausente |
+| `telefone` | `string` | Ao menos telefone ou e-mail, validado no dominio |
+| `email` | `string` | Ao menos telefone ou e-mail, validado no dominio |
 | `ativo` | `boolean` | Exclusao logica |
 | `inativado_em` | `datetime` | Nulo enquanto ativo |
 | `inativado_por` | `uuid` | Usuario responsavel |
@@ -259,7 +259,7 @@ Relacionamentos: 1:N com `VEICULO` e 1:N com `ORDEM_SERVICO`.
 | `placa` | `string` | Normalizada; unica entre veiculos ativos |
 | `marca` | `string` | Obrigatoria |
 | `modelo` | `string` | Obrigatorio |
-| `ano` | `integer` | De 1900 ate o proximo ano |
+| `ano` | `integer` | Faixa valida, incluindo limite dinamico do proximo ano, validada no dominio |
 | `ativo` | `boolean` | Exclusao logica |
 | `inativado_em` | `datetime` | Nulo enquanto ativo |
 | `inativado_por` | `uuid` | Usuario responsavel |
@@ -487,8 +487,8 @@ historico imutavel e a origem dos saldos correntes.
 | `nome_fantasia` | `string` | Opcional |
 | `documento` | `string` | CPF ou CNPJ; unico entre ativos e imutavel |
 | `tipo_documento` | `string` | `CPF` ou `CNPJ`, validado no dominio |
-| `telefone` | `string` | Obrigatorio quando `email` estiver ausente |
-| `email` | `string` | Obrigatorio quando `telefone` estiver ausente |
+| `telefone` | `string` | Ao menos telefone ou e-mail, validado no dominio |
+| `email` | `string` | Ao menos telefone ou e-mail, validado no dominio |
 | `prazo_entrega_dias` | `integer` | Padrao de sete dias quando ausente |
 | `ativo` | `boolean` | Exclusao logica |
 | `inativado_em` | `datetime` | Nulo enquanto ativo |
@@ -522,7 +522,7 @@ O pedido pode conter pecas e insumos.
 | `pedido_compra_id` | `uuid` | FK para `PEDIDO_COMPRA` |
 | `item_estoque_id` | `uuid` | FK para `ITEM_ESTOQUE` |
 | `quantidade_necessaria` | `decimal` | Demanda apurada nas OS |
-| `quantidade_pedida` | `decimal` | Maior ou igual a necessaria |
+| `quantidade_pedida` | `decimal` | Deve cobrir a demanda necessaria, validado no dominio |
 | `quantidade_reservada` | `decimal` | Parcela comprometida com as OS |
 | `quantidade_recebida` | `decimal` | Acumulada nos recebimentos |
 | `custo_unitario` | `decimal` | Ultimo custo recebido |
