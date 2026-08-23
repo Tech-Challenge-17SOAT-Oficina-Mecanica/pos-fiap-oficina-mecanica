@@ -16,7 +16,7 @@ func TestNovoCadastro(t *testing.T) {
 	}
 	for _, cadastro := range []struct {
 		marca, modelo string
-		ano          int
+		ano           int
 	}{
 		{"", "Corolla", 2024},
 		{"Toyota", "", 2024},
@@ -26,5 +26,14 @@ func TestNovoCadastro(t *testing.T) {
 		if _, err := NovoCadastro("ABC1D23", cadastro.marca, cadastro.modelo, cadastro.ano); err == nil {
 			t.Fatalf("cadastro inválido aceito: %+v", cadastro)
 		}
+	}
+}
+
+func TestNormalizarPlaca(t *testing.T) {
+	if placa, err := NormalizarPlaca(" abc-1d23 "); err != nil || placa != "ABC1D23" {
+		t.Fatalf("placa = %q, err = %v", placa, err)
+	}
+	if _, err := NormalizarPlaca(""); err == nil {
+		t.Fatal("placa vazia aceita")
 	}
 }
