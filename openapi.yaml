@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Oficina Mecanica API
+  description: API do sistema de gestao de oficina mecanica.
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /health:
+    get:
+      summary: Verifica a disponibilidade da API
+      responses:
+        '200':
+          description: API disponivel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /fornecedores:
+    post:
+      summary: Cadastra um fornecedor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CadastrarFornecedor'
+      responses:
+        '201':
+          description: Fornecedor cadastrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fornecedor'
+        '400':
+          description: Dados invalidos
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: Documento duplicado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    CadastrarFornecedor:
+      type: object
+      required: [razaoSocial, documento, tipoDocumento]
+      properties:
+        razaoSocial:
+          type: string
+          minLength: 3
+          maxLength: 120
+          example: Auto Pecas Bandeirantes Ltda
+        nomeFantasia:
+          type: string
+          maxLength: 120
+        documento:
+          type: string
+          description: CPF ou CNPJ, com ou sem mascara.
+          example: 04252011000110
+        tipoDocumento:
+          type: string
+          enum: [CPF, CNPJ]
+          example: CNPJ
+        telefone:
+          type: string
+          example: 11999990000
+        email:
+          type: string
+          format: email
+        prazoEntregaDias:
+          type: integer
+          minimum: 1
+          maximum: 365
+          default: 7
+    Fornecedor:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo, version, dataCriacao]
+          properties:
+            id:
+              type: string
+              format: uuid
+            ativo:
+              type: boolean
+            version:
+              type: integer
+            dataCriacao:
+              type: string
+              format: date-time
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
