@@ -11,6 +11,7 @@ services:
       DB_NAME: oficina
       DB_USER: oficina
       DB_PASSWORD: oficina
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
     depends_on:
       postgres:
         condition: service_healthy
@@ -27,6 +28,20 @@ services:
     depends_on:
       app:
         condition: service_started
+
+  test:
+    build:
+      context: .
+      target: build
+    environment:
+      DATABASE_URL: postgres://oficina:oficina@postgres:5432/oficina?sslmode=disable
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "go test -cover ./..."
 
   postgres:
     image: postgres:16-alpine

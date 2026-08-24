@@ -2,7 +2,7 @@ package integration_test
 
 import (
 	"bytes"
-	"database/sql"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
 func TestCadastrarFornecedor(t *testing.T) {
@@ -22,7 +22,8 @@ func TestCadastrarFornecedor(t *testing.T) {
 		t.Skip("DATABASE_URL nao configurada")
 	}
 
-	db, err := sql.Open("pgx", url)
+	ctx := context.Background()
+	db, err := database.Open(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +46,7 @@ func TestCadastrarFornecedor(t *testing.T) {
 		t.Fatalf("status=%d body=%s", firstResponse.Code, firstResponse.Body.String())
 	}
 	t.Cleanup(func() {
-		_, _ = db.Exec("DELETE FROM fornecedor WHERE documento = $1", documento)
+		_, _ = db.Exec(ctx, "DELETE FROM fornecedor WHERE documento = $1", documento)
 	})
 	if duplicateResponse := request(); duplicateResponse.Code != http.StatusConflict {
 		t.Fatalf("status duplicado=%d body=%s", duplicateResponse.Code, duplicateResponse.Body.String())

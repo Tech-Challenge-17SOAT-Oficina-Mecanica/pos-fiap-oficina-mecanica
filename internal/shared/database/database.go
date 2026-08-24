@@ -1,25 +1,24 @@
 package database
 
 import (
-	"database/sql"
+	"context"
+	"fmt"
 	"os"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Open() (*sql.DB, error) {
-	url := os.Getenv("DATABASE_URL")
-	if url == "" {
-		url = "postgres://" + os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASSWORD") + "@" + os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + "/" + os.Getenv("DB_NAME") + "?sslmode=disable"
+func Open(ctx context.Context) (*pgxpool.Pool, error) {
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", env("DB_USER", "oficina"), env("DB_PASSWORD", "oficina"), env("DB_HOST", "localhost"), env("DB_PORT", "5432"), env("DB_NAME", "oficina"))
 	}
+	return pgxpool.New(ctx, dsn)
+}
 
-	db, err := sql.Open("pgx", url)
-	if err != nil {
-		return nil, err
+func env(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
-	if err := db.Ping(); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	return db, nil
+	return fallback
 }

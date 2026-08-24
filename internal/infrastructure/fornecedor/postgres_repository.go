@@ -2,25 +2,25 @@ package fornecedor
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
 )
 
 type PostgresRepository struct {
-	db *sql.DB
+	db *pgxpool.Pool
 }
 
-func NewPostgresRepository(db *sql.DB) PostgresRepository {
+func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository {
 	return PostgresRepository{db: db}
 }
 
 func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro domain.Cadastro) (domain.Fornecedor, error) {
 	fornecedor := domain.Fornecedor{Cadastro: cadastro}
-	err := repository.db.QueryRowContext(ctx, `
+	err := repository.db.QueryRow(ctx, `
 		INSERT INTO fornecedor (
 			razao_social, nome_fantasia, documento, tipo_documento, telefone, email, prazo_entrega_dias
 		) VALUES ($1, $2, $3, $4, $5, $6, $7)
