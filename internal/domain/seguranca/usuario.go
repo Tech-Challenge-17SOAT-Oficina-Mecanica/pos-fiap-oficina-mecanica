@@ -7,3 +7,8 @@ type Usuario struct {
 	Ativo     bool
 	Escopos   []string
 }
+
+type Claims struct {
+	UsuarioID string
+	Escopos   []string
+}
