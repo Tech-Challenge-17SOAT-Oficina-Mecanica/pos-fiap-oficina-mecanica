@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Oficina Mecânica API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /autenticacao/login:
+    post:
+      tags: [Segurança]
+      summary: Autentica um mecânico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email:
+                  type: string
+                  format: email
+                senha:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string, example: Bearer }
+                  expiresIn: { type: integer, example: 3600 }
+        '400': { description: Dados inválidos }
+        '401': { description: Credenciais inválidas }
