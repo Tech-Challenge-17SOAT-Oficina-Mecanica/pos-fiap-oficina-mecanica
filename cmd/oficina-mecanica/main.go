@@ -8,9 +8,9 @@ import (
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
-	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	veiculoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
@@ -24,6 +24,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
+	clienteDB, err := database.OpenPool()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer clienteDB.Close()
 	jwt, err := segurancaInfrastructure.NewJWT(os.Getenv("JWT_SECRET"))
 	if err != nil {
 		log.Fatal(err)
@@ -31,9 +36,7 @@ func main() {
 
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
-	
-	
-	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
+	clienteRepository := clienteInfrastructure.NewPostgresRepository(clienteDB)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
 	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
@@ -56,7 +59,7 @@ func main() {
 	}
 
 	log.Println("API iniciada na porta 8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(server.ListenAndServe())
 }
 
 func healthHandler(writer http.ResponseWriter, _ *http.Request) {

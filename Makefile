@@ -13,12 +13,13 @@ else
 DOCKER ?= docker
 endif
 
-.PHONY: help setup up db-up db-down db-reset db-migrate db-seed db-init db-verify test
+.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test
 
 help: ## Lista os comandos disponiveis
 	@echo "Uso: make <alvo>"
 	@echo "  setup          Prepara e sobe todo o projeto apos o primeiro clone"
 	@echo "  up             Sobe os containers para o uso diario"
+	@echo "  recreate       Recria app e banco, aplica migrations e carrega o seed"
 	@echo "  db-up          Inicia o PostgreSQL local"
 	@echo "  db-down        Para os containers sem remover os dados"
 	@echo "  db-reset       Remove o banco local, cria o schema e carrega o seed"
@@ -33,6 +34,9 @@ setup: db-init ## Prepara e sobe todo o projeto apos o primeiro clone
 up: ## Sobe os containers para o uso diario
 	$(DOCKER) compose up -d
 
+recreate: db-reset ## Recria app e banco, aplica migrations e carrega o seed
+	$(DOCKER) compose up -d --build
+
 db-up: ## Inicia o PostgreSQL local
 	$(DOCKER) compose up -d --wait $(POSTGRES_SERVICE)
 
@@ -41,7 +45,7 @@ db-down: ## Para os containers sem remover os dados
 
 db-reset: ## Remove o banco local, cria o schema e carrega o seed
 	$(DOCKER) compose down -v
-	$(MAKE) db-init
+	"$(MAKE)" db-init
 
 db-migrate: db-up ## Aplica as migrations no banco vazio
 	@for migration in $(MIGRATIONS); do $(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $$migration || exit $$?; done

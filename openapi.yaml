@@ -17,6 +17,18 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '201': { description: Veículo cadastrado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente inativo ou placa já cadastrada }
   /clientes:
     get:
       tags: [Cliente]
@@ -69,16 +81,6 @@ paths:
         required: true
         content:
           application/json:
-<<<<<<< HEAD
-            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
-      responses:
-        '201': { description: Veículo cadastrado }
-        '400': { description: Dados inválidos }
-        '401': { description: Token ausente, inválido ou expirado }
-        '403': { description: Usuário sem o escopo veiculos:escrever }
-        '404': { description: Cliente não encontrado }
-        '409': { description: Cliente inativo ou placa já cadastrada }
-=======
             schema:
               type: object
               required: [nome, documento, tipoDocumento]
@@ -279,7 +281,6 @@ paths:
         '403': { description: Usuário sem o escopo clientes:escrever }
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
->>>>>>> main
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -319,7 +320,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-<<<<<<< HEAD
   schemas:
     CadastrarVeiculo:
       type: object
@@ -329,5 +329,3 @@ components:
         marca: { type: string, example: Toyota }
         modelo: { type: string, example: Corolla }
         ano: { type: integer, example: 2024 }
-=======
->>>>>>> main
