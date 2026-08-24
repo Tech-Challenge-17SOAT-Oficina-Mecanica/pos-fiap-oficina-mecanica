@@ -20,6 +20,14 @@ func (fake *repositoryFake) ExisteAtivoPorDocumento(context.Context, string) (bo
 	return fake.exists, fake.existsErr
 }
 
+func (fake *repositoryFake) ExisteAtivoPorDocumentoExcetoID(context.Context, string, string) (bool, error) {
+	return fake.exists, fake.existsErr
+}
+
+func (fake *repositoryFake) BuscarPorID(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake *repositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
 	return domain.Cliente{}, ErrClienteNaoEncontrado
 }
@@ -29,6 +37,10 @@ func (fake *repositoryFake) Salvar(_ context.Context, cliente domain.Cliente) (d
 	fake.saved = cliente
 	cliente.ID = "id"
 	return cliente, fake.saveErr
+}
+
+func (fake *repositoryFake) Atualizar(context.Context, domain.Cliente, int) (domain.Cliente, error) {
+	return domain.Cliente{}, nil
 }
 
 func TestCadastrarCliente(t *testing.T) {

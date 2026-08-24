@@ -10,12 +10,16 @@ import (
 var (
 	ErrClienteDuplicado     = errors.New("cliente já cadastrado com o CPF/CNPJ informado")
 	ErrClienteNaoEncontrado = errors.New("cliente não encontrado")
+	ErrVersaoDivergente     = errors.New("If-Match divergente")
 )
 
 type Repository interface {
 	ExisteAtivoPorDocumento(context.Context, string) (bool, error)
+	ExisteAtivoPorDocumentoExcetoID(context.Context, string, string) (bool, error)
+	BuscarPorID(context.Context, string) (cliente.Cliente, error)
 	BuscarPorDocumento(context.Context, string) (cliente.Cliente, error)
 	Salvar(context.Context, cliente.Cliente) (cliente.Cliente, error)
+	Atualizar(context.Context, cliente.Cliente, int) (cliente.Cliente, error)
 }
 
 type Cadastrar struct {

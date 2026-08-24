@@ -68,3 +68,18 @@ func TestDocumentoParaConsulta(t *testing.T) {
 		})
 	}
 }
+
+func TestAtualizarCliente(t *testing.T) {
+	atual := Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 2, Veiculos: []Veiculo{{ID: "v1"}}}
+	got, err := atual.Atualizar(AtualizarClienteInput{Nome: " Maria ", Documento: "11222333000181", TipoDocumento: TipoDocumentoCNPJ, Email: "maria@example.com"})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if got.ID != atual.ID || got.Version != atual.Version || len(got.Veiculos) != 1 || got.Nome != "Maria" || got.Telefone != "" {
+		t.Fatalf("cliente: %#v", got)
+	}
+	_, err = atual.Atualizar(AtualizarClienteInput{})
+	if !errors.Is(err, ErrNomeObrigatorio) {
+		t.Fatalf("erro: %v", err)
+	}
+}

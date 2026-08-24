@@ -57,9 +57,37 @@ func TestExisteAtivoPorDocumento(t *testing.T) {
 	}
 }
 
+func TestExisteAtivoPorDocumentoExcetoID(t *testing.T) {
+	repository := PostgresRepository{db: fakeDB{row: fakeRow{exists: true}}}
+	exists, err := repository.ExisteAtivoPorDocumentoExcetoID(context.Background(), "05712705402", "id")
+	if err != nil || !exists {
+		t.Fatalf("exists: %v, erro: %v", exists, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).ExisteAtivoPorDocumentoExcetoID(context.Background(), "05712705402", "id")
+	if err == nil {
+		t.Fatalf("erro: %v", err)
+	}
+}
+
 func TestNewPostgresRepository(t *testing.T) {
 	if NewPostgresRepository(&pgxpool.Pool{}).db == nil {
 		t.Fatal("db obrigatório")
+	}
+}
+
+func TestBuscarPorID(t *testing.T) {
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 2}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente}}}).BuscarPorID(context.Background(), cliente.ID)
+	if err != nil || got.ID != "id" {
+		t.Fatalf("cliente: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).BuscarPorID(context.Background(), cliente.ID)
+	if !errors.Is(err, application.ErrClienteNaoEncontrado) {
+		t.Fatalf("erro nao encontrado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).BuscarPorID(context.Background(), cliente.ID)
+	if err == nil {
+		t.Fatal("esperava erro")
 	}
 }
 
@@ -99,6 +127,26 @@ func TestSalvar(t *testing.T) {
 	}
 	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Salvar(context.Background(), domain.Cliente{})
 	if err == nil || errors.Is(err, application.ErrClienteDuplicado) {
+		t.Fatalf("erro interno: %v", err)
+	}
+}
+
+func TestAtualizar(t *testing.T) {
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 3}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente}}}).Atualizar(context.Background(), cliente, 2)
+	if err != nil || got.Version != 3 {
+		t.Fatalf("cliente: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: &pgconn.PgError{Code: "23505"}}}}).Atualizar(context.Background(), cliente, 2)
+	if !errors.Is(err, application.ErrClienteDuplicado) {
+		t.Fatalf("erro duplicado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).Atualizar(context.Background(), cliente, 2)
+	if !errors.Is(err, application.ErrVersaoDivergente) {
+		t.Fatalf("erro versao: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Atualizar(context.Background(), cliente, 2)
+	if err == nil || errors.Is(err, application.ErrClienteDuplicado) || errors.Is(err, application.ErrVersaoDivergente) {
 		t.Fatalf("erro interno: %v", err)
 	}
 }

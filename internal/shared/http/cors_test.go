@@ -21,4 +21,7 @@ func TestCORS(t *testing.T) {
 	if preflight.Code != http.StatusNoContent {
 		t.Fatalf("preflight status %d", preflight.Code)
 	}
+	if preflight.Header().Get("Access-Control-Allow-Headers") != "Authorization, Content-Type, If-Match" {
+		t.Fatalf("headers %#v", preflight.Header())
+	}
 }

@@ -35,11 +35,13 @@ func main() {
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
 	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
+	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
+	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
 
 	server := &http.Server{
 		Addr:    ":8080",
