@@ -20,6 +20,10 @@ func (fake *repositoryFake) ExisteAtivoPorDocumento(context.Context, string) (bo
 	return fake.exists, fake.existsErr
 }
 
+func (fake *repositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake *repositoryFake) Salvar(_ context.Context, cliente domain.Cliente) (domain.Cliente, error) {
 	fake.salvarCalls++
 	fake.saved = cliente

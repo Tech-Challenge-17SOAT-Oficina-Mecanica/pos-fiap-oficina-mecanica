@@ -31,6 +31,15 @@ type Cliente struct {
 	Email         string
 	Ativo         bool
 	Version       int
+	Veiculos      []Veiculo
+}
+
+type Veiculo struct {
+	ID     string `json:"id"`
+	Placa  string `json:"placa"`
+	Marca  string `json:"marca"`
+	Modelo string `json:"modelo"`
+	Ano    int    `json:"ano"`
 }
 
 type NovoClienteInput struct {
@@ -76,6 +85,17 @@ func Novo(input NovoClienteInput) (Cliente, error) {
 		return Cliente{}, ErrEmailInvalido
 	}
 	return cliente, nil
+}
+
+func DocumentoParaConsulta(documento string) (string, error) {
+	documento = strings.TrimSpace(documento)
+	if documento == "" {
+		return "", ErrDocumentoObrigatorio
+	}
+	if !somenteDigitos(documento) || (!cpfValido(documento) && !cnpjValido(documento)) {
+		return "", ErrDocumentoInvalido
+	}
+	return documento, nil
 }
 
 func somenteDigitos(value string) bool {

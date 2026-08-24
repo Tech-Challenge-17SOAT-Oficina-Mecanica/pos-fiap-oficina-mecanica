@@ -17,9 +17,10 @@ type fakeDB struct{ row fakeRow }
 func (fake fakeDB) QueryRow(context.Context, string, ...any) pgx.Row { return fake.row }
 
 type fakeRow struct {
-	exists  bool
-	cliente domain.Cliente
-	err     error
+	exists      bool
+	cliente     domain.Cliente
+	veiculosRaw []byte
+	err         error
 }
 
 func (row fakeRow) Scan(dest ...any) error {
@@ -38,6 +39,9 @@ func (row fakeRow) Scan(dest ...any) error {
 	*(dest[5].(*string)) = row.cliente.Email
 	*(dest[6].(*bool)) = row.cliente.Ativo
 	*(dest[7].(*int)) = row.cliente.Version
+	if len(dest) == 9 {
+		*(dest[8].(*[]byte)) = row.veiculosRaw
+	}
 	return nil
 }
 
@@ -56,6 +60,30 @@ func TestExisteAtivoPorDocumento(t *testing.T) {
 func TestNewPostgresRepository(t *testing.T) {
 	if NewPostgresRepository(&pgxpool.Pool{}).db == nil {
 		t.Fatal("db obrigatório")
+	}
+}
+
+func TestBuscarPorDocumento(t *testing.T) {
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 2}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`[{"id":"v1","placa":"ABC1D23","marca":"Toyota","modelo":"Corolla","ano":2020}]`)}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
+	if err != nil || got.ID != "id" || len(got.Veiculos) != 1 {
+		t.Fatalf("cliente: %#v, erro: %v", got, err)
+	}
+	got, err = (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`[]`)}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
+	if err != nil || len(got.Veiculos) != 0 {
+		t.Fatalf("cliente sem veiculo: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
+	if !errors.Is(err, application.ErrClienteNaoEncontrado) {
+		t.Fatalf("erro nao encontrado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`{`)}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
+	if err == nil {
+		t.Fatal("esperava erro de json")
 	}
 }
 

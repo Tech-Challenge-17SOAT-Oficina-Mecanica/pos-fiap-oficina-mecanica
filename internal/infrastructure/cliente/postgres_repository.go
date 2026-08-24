@@ -2,6 +2,7 @@ package cliente
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -23,6 +24,28 @@ func (repository PostgresRepository) ExisteAtivoPorDocumento(ctx context.Context
 	var exists bool
 	err := repository.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM cliente WHERE documento = $1 AND ativo)`, documento).Scan(&exists)
 	return exists, err
+}
+
+func (repository PostgresRepository) BuscarPorDocumento(ctx context.Context, documento string) (cliente.Cliente, error) {
+	const query = `SELECT c.id, c.nome, c.documento, c.tipo_documento, COALESCE(c.telefone, ''), COALESCE(c.email, ''), c.ativo, c.version,
+		COALESCE(jsonb_agg(jsonb_build_object('id', v.id, 'placa', v.placa, 'marca', v.marca, 'modelo', v.modelo, 'ano', v.ano) ORDER BY v.placa)
+			FILTER (WHERE v.id IS NOT NULL), '[]'::jsonb)
+		FROM cliente c
+		LEFT JOIN veiculo v ON v.cliente_id = c.id AND v.ativo
+		WHERE c.documento = $1 AND c.ativo
+		GROUP BY c.id`
+	var cliente cliente.Cliente
+	var veiculos []byte
+	err := repository.db.QueryRow(ctx, query, documento).
+		Scan(&cliente.ID, &cliente.Nome, &cliente.Documento, &cliente.TipoDocumento, &cliente.Telefone, &cliente.Email, &cliente.Ativo, &cliente.Version, &veiculos)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return cliente, application.ErrClienteNaoEncontrado
+	}
+	if err != nil {
+		return cliente, err
+	}
+	err = json.Unmarshal(veiculos, &cliente.Veiculos)
+	return cliente, err
 }
 
 func (repository PostgresRepository) Salvar(ctx context.Context, cliente cliente.Cliente) (cliente.Cliente, error) {

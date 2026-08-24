@@ -7,10 +7,14 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/cliente"
 )
 
-var ErrClienteDuplicado = errors.New("cliente já cadastrado com o CPF/CNPJ informado")
+var (
+	ErrClienteDuplicado     = errors.New("cliente já cadastrado com o CPF/CNPJ informado")
+	ErrClienteNaoEncontrado = errors.New("cliente não encontrado")
+)
 
 type Repository interface {
 	ExisteAtivoPorDocumento(context.Context, string) (bool, error)
+	BuscarPorDocumento(context.Context, string) (cliente.Cliente, error)
 	Salvar(context.Context, cliente.Cliente) (cliente.Cliente, error)
 }
 
