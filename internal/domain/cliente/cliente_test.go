@@ -83,3 +83,14 @@ func TestAtualizarCliente(t *testing.T) {
 		t.Fatalf("erro: %v", err)
 	}
 }
+
+func TestMotivoParaInativacao(t *testing.T) {
+	got, err := MotivoParaInativacao(" Cadastro duplicado ")
+	if err != nil || got != "Cadastro duplicado" {
+		t.Fatalf("motivo %q, erro: %v", got, err)
+	}
+	_, err = MotivoParaInativacao(strings.Repeat("a", 201))
+	if !errors.Is(err, ErrMotivoInvalido) {
+		t.Fatalf("erro: %v", err)
+	}
+}

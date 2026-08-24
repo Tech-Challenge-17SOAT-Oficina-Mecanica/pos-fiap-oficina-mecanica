@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -19,7 +20,9 @@ func (fake fakeDB) QueryRow(context.Context, string, ...any) pgx.Row { return fa
 type fakeRow struct {
 	exists      bool
 	cliente     domain.Cliente
+	raw         []byte
 	veiculosRaw []byte
+	reativadoEm time.Time
 	err         error
 }
 
@@ -31,6 +34,10 @@ func (row fakeRow) Scan(dest ...any) error {
 		*target = row.exists
 		return nil
 	}
+	if len(dest) == 1 {
+		*(dest[0].(*[]byte)) = row.raw
+		return nil
+	}
 	*(dest[0].(*string)) = row.cliente.ID
 	*(dest[1].(*string)) = row.cliente.Nome
 	*(dest[2].(*string)) = row.cliente.Documento
@@ -38,9 +45,27 @@ func (row fakeRow) Scan(dest ...any) error {
 	*(dest[4].(*string)) = row.cliente.Telefone
 	*(dest[5].(*string)) = row.cliente.Email
 	*(dest[6].(*bool)) = row.cliente.Ativo
-	*(dest[7].(*int)) = row.cliente.Version
+	if target, ok := dest[7].(*int); ok {
+		*target = row.cliente.Version
+	}
+	if target, ok := dest[7].(**time.Time); ok {
+		*target = row.cliente.InativadoEm
+	}
+	if len(dest) >= 11 {
+		*(dest[8].(*string)) = row.cliente.InativadoPor
+		*(dest[9].(*string)) = row.cliente.Motivo
+		*(dest[10].(*int)) = row.cliente.Version
+	}
 	if len(dest) == 9 {
-		*(dest[8].(*[]byte)) = row.veiculosRaw
+		if target, ok := dest[8].(*[]byte); ok {
+			*target = row.veiculosRaw
+		}
+		if target, ok := dest[8].(*time.Time); ok {
+			*target = row.reativadoEm
+		}
+	}
+	if len(dest) == 12 {
+		*(dest[11].(*[]byte)) = row.veiculosRaw
 	}
 	return nil
 }
@@ -91,6 +116,23 @@ func TestBuscarPorID(t *testing.T) {
 	}
 }
 
+func TestBuscarPorIDIncluindoInativo(t *testing.T) {
+	now := time.Now()
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: false, InativadoEm: &now, InativadoPor: "usuario", Motivo: "duplicado", Version: 2}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente}}}).BuscarPorIDIncluindoInativo(context.Background(), cliente.ID)
+	if err != nil || got.ID != "id" || got.InativadoEm == nil || got.Motivo != "duplicado" {
+		t.Fatalf("cliente: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).BuscarPorIDIncluindoInativo(context.Background(), cliente.ID)
+	if !errors.Is(err, application.ErrClienteNaoEncontrado) {
+		t.Fatalf("erro nao encontrado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).BuscarPorIDIncluindoInativo(context.Background(), cliente.ID)
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+}
+
 func TestBuscarPorDocumento(t *testing.T) {
 	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 2}
 	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`[{"id":"v1","placa":"ABC1D23","marca":"Toyota","modelo":"Corolla","ano":2020}]`)}}}).BuscarPorDocumento(context.Background(), cliente.Documento)
@@ -115,6 +157,21 @@ func TestBuscarPorDocumento(t *testing.T) {
 	}
 }
 
+func TestBuscarOSAbertas(t *testing.T) {
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{raw: []byte(`[{"ordemServicoId":"os1","status":"EM_EXECUCAO"}]`)}}}).BuscarOSAbertas(context.Background(), "id")
+	if err != nil || len(got) != 1 || got[0].ID != "os1" {
+		t.Fatalf("ordens: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).BuscarOSAbertas(context.Background(), "id")
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{raw: []byte(`{`)}}}).BuscarOSAbertas(context.Background(), "id")
+	if err == nil {
+		t.Fatal("esperava erro de json")
+	}
+}
+
 func TestSalvar(t *testing.T) {
 	saved := domain.Cliente{ID: "id", Nome: "Teste Cliente", Documento: "52998224725", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 1}
 	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: saved}}}).Salvar(context.Background(), domain.Cliente{})
@@ -128,6 +185,27 @@ func TestSalvar(t *testing.T) {
 	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Salvar(context.Background(), domain.Cliente{})
 	if err == nil || errors.Is(err, application.ErrClienteDuplicado) {
 		t.Fatalf("erro interno: %v", err)
+	}
+}
+
+func TestInativar(t *testing.T) {
+	now := time.Now()
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: false, InativadoEm: &now, InativadoPor: "usuario", Motivo: "duplicado", Version: 2}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`[{"id":"v1","placa":"ABC1D23"}]`)}}}).Inativar(context.Background(), application.InativarRepositoryInput{ClienteID: "id", InativadoPor: "usuario", Motivo: "duplicado"})
+	if err != nil || got.Cliente.Ativo || len(got.VeiculosInativados) != 1 || !got.DocumentoLiberado {
+		t.Fatalf("inativacao: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).Inativar(context.Background(), application.InativarRepositoryInput{})
+	if !errors.Is(err, application.ErrClienteJaInativo) {
+		t.Fatalf("erro inativo: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Inativar(context.Background(), application.InativarRepositoryInput{})
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, veiculosRaw: []byte(`{`)}}}).Inativar(context.Background(), application.InativarRepositoryInput{})
+	if err == nil {
+		t.Fatal("esperava erro de json")
 	}
 }
 
@@ -147,6 +225,26 @@ func TestAtualizar(t *testing.T) {
 	}
 	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Atualizar(context.Background(), cliente, 2)
 	if err == nil || errors.Is(err, application.ErrClienteDuplicado) || errors.Is(err, application.ErrVersaoDivergente) {
+		t.Fatalf("erro interno: %v", err)
+	}
+}
+
+func TestReativar(t *testing.T) {
+	cliente := domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 3}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{cliente: cliente, reativadoEm: time.Now()}}}).Reativar(context.Background(), application.ReativarRepositoryInput{ClienteID: "id", ReativadoPor: "usuario"})
+	if err != nil || !got.Cliente.Ativo || got.ReativadoEm.IsZero() {
+		t.Fatalf("reativacao: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: &pgconn.PgError{Code: "23505"}}}}).Reativar(context.Background(), application.ReativarRepositoryInput{})
+	if !errors.Is(err, application.ErrClienteDuplicado) {
+		t.Fatalf("erro duplicado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).Reativar(context.Background(), application.ReativarRepositoryInput{})
+	if !errors.Is(err, application.ErrClienteJaAtivo) {
+		t.Fatalf("erro ativo: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).Reativar(context.Background(), application.ReativarRepositoryInput{})
+	if err == nil || errors.Is(err, application.ErrClienteDuplicado) || errors.Is(err, application.ErrClienteJaAtivo) {
 		t.Fatalf("erro interno: %v", err)
 	}
 }

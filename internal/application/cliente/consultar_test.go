@@ -25,8 +25,16 @@ func (fake consultarRepositoryFake) BuscarPorID(context.Context, string) (domain
 	return domain.Cliente{}, ErrClienteNaoEncontrado
 }
 
+func (fake consultarRepositoryFake) BuscarPorIDIncluindoInativo(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake consultarRepositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
 	return fake.cliente, fake.err
+}
+
+func (fake consultarRepositoryFake) BuscarOSAbertas(context.Context, string) ([]OrdemServicoAberta, error) {
+	return nil, nil
 }
 
 func (fake consultarRepositoryFake) Salvar(context.Context, domain.Cliente) (domain.Cliente, error) {
@@ -35,6 +43,14 @@ func (fake consultarRepositoryFake) Salvar(context.Context, domain.Cliente) (dom
 
 func (fake consultarRepositoryFake) Atualizar(context.Context, domain.Cliente, int) (domain.Cliente, error) {
 	return domain.Cliente{}, nil
+}
+
+func (fake consultarRepositoryFake) Inativar(context.Context, InativarRepositoryInput) (Inativacao, error) {
+	return Inativacao{}, nil
+}
+
+func (fake consultarRepositoryFake) Reativar(context.Context, ReativarRepositoryInput) (Reativacao, error) {
+	return Reativacao{}, nil
 }
 
 func TestConsultarCliente(t *testing.T) {
