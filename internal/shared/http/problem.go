@@ -5,17 +5,12 @@ import (
 	stdhttp "net/http"
 )
 
-type FieldError struct {
-	Campo    string `json:"campo"`
-	Mensagem string `json:"mensagem"`
-}
-
 type Problem struct {
-	Type   string       `json:"type"`
-	Title  string       `json:"title"`
-	Status int          `json:"status"`
-	Detail string       `json:"detail"`
-	Erros  []FieldError `json:"erros,omitempty"`
+	Type   string `json:"type"`
+	Title  string `json:"title"`
+	Status int    `json:"status"`
+	Detail string `json:"detail"`
+	Erros  any    `json:"erros,omitempty"`
 }
 
 func WriteProblem(writer stdhttp.ResponseWriter, problem Problem) {
