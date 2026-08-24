@@ -262,6 +262,7 @@ documentos: `Ordem de Serviço`, nunca "chamado", "ticket" ou "pedido".
 
 | Escopo | O que autoriza |
 |---|---|
+| `mecanicos:escrever` | Cadastrar mecânicos e definir seus escopos |
 | `clientes:ler` | Consultar cliente e seus veículos |
 | `clientes:escrever` | Cadastrar, atualizar, inativar e reativar cliente, e vincular veículo |
 | `veiculos:ler` | Consultar veículo |
