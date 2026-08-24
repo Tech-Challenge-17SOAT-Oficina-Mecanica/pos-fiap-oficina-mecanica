@@ -31,6 +31,15 @@ func (fake consultarFake) Execute(context.Context, string) (domain.Cliente, erro
 	return fake.cliente, fake.err
 }
 
+type atualizarFake struct {
+	cliente domain.Cliente
+	err     error
+}
+
+func (fake atualizarFake) Execute(context.Context, application.AtualizarInput) (domain.Cliente, error) {
+	return fake.cliente, fake.err
+}
+
 type tokenFake struct {
 	claims seguranca.Claims
 	err    error
@@ -107,6 +116,55 @@ func TestConsultarHandler(t *testing.T) {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
 			if test.body != "" && !strings.Contains(response.Body.String(), test.body) {
+				t.Fatalf("body: %s", response.Body.String())
+			}
+		})
+	}
+}
+
+func TestAtualizarHandler(t *testing.T) {
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoCadastrarCliente}}}
+	validUseCase := atualizarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 3}}
+	validBody := `{"nome":"Ana","documento":"39053344705","tipoDocumento":"CPF","telefone":"11988887777"}`
+	cases := []struct {
+		name    string
+		body    string
+		auth    string
+		ifMatch string
+		useCase atualizarFake
+		token   tokenFake
+		status  int
+		bodyOut string
+	}{
+		{"sem token", validBody, "", "2", validUseCase, validToken, http.StatusUnauthorized, ""},
+		{"token invalido", validBody, "Bearer invalido", "2", validUseCase, tokenFake{err: errors.New("jwt")}, http.StatusUnauthorized, ""},
+		{"sem escopo", validBody, "Bearer jwt", "2", validUseCase, tokenFake{claims: seguranca.Claims{Escopos: []string{"clientes:ler"}}}, http.StatusForbidden, ""},
+		{"sem if match", validBody, "Bearer jwt", "", validUseCase, validToken, http.StatusPreconditionRequired, ""},
+		{"if match invalido", validBody, "Bearer jwt", "abc", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"json invalido", `{`, "Bearer jwt", "2", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"dominio invalido", validBody, "Bearer jwt", "2", atualizarFake{err: domain.ErrNomeObrigatorio}, validToken, http.StatusBadRequest, ""},
+		{"nao encontrado", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
+		{"duplicado", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrClienteDuplicado}, validToken, http.StatusConflict, ""},
+		{"versao divergente", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrVersaoDivergente}, validToken, http.StatusPreconditionFailed, ""},
+		{"erro interno", validBody, "Bearer jwt", "2", atualizarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
+		{"sucesso", validBody, "Bearer jwt", "2", validUseCase, validToken, http.StatusOK, `"ativo":true`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPut, "/clientes/id", strings.NewReader(test.body))
+			request.SetPathValue("clienteId", "id")
+			if test.auth != "" {
+				request.Header.Set("Authorization", test.auth)
+			}
+			if test.ifMatch != "" {
+				request.Header.Set("If-Match", test.ifMatch)
+			}
+			response := httptest.NewRecorder()
+			NewAtualizarHandler(test.useCase, test.token)(response, request)
+			if response.Code != test.status {
+				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+			if test.bodyOut != "" && !strings.Contains(response.Body.String(), test.bodyOut) {
 				t.Fatalf("body: %s", response.Body.String())
 			}
 		})

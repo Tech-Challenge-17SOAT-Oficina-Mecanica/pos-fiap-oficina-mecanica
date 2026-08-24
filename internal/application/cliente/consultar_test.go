@@ -17,11 +17,23 @@ func (fake consultarRepositoryFake) ExisteAtivoPorDocumento(context.Context, str
 	return false, nil
 }
 
+func (fake consultarRepositoryFake) ExisteAtivoPorDocumentoExcetoID(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+
+func (fake consultarRepositoryFake) BuscarPorID(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake consultarRepositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
 	return fake.cliente, fake.err
 }
 
 func (fake consultarRepositoryFake) Salvar(context.Context, domain.Cliente) (domain.Cliente, error) {
+	return domain.Cliente{}, nil
+}
+
+func (fake consultarRepositoryFake) Atualizar(context.Context, domain.Cliente, int) (domain.Cliente, error) {
 	return domain.Cliente{}, nil
 }
 

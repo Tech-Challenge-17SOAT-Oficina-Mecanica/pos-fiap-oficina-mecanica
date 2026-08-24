@@ -20,6 +20,7 @@ var (
 	ErrContatoObrigatorio       = errors.New("telefone ou email é obrigatório")
 	ErrTelefoneInvalido         = errors.New("telefone deve ter 10 ou 11 dígitos")
 	ErrEmailInvalido            = errors.New("email inválido")
+	ErrClienteIDObrigatorio     = errors.New("clienteId é obrigatório")
 )
 
 type Cliente struct {
@@ -50,6 +51,14 @@ type NovoClienteInput struct {
 	Email         string
 }
 
+type AtualizarClienteInput struct {
+	Nome          string
+	Documento     string
+	TipoDocumento string
+	Telefone      string
+	Email         string
+}
+
 func Novo(input NovoClienteInput) (Cliente, error) {
 	cliente := Cliente{
 		Nome:          strings.TrimSpace(input.Nome),
@@ -60,31 +69,50 @@ func Novo(input NovoClienteInput) (Cliente, error) {
 		Ativo:         true,
 		Version:       1,
 	}
-	if cliente.Nome == "" {
-		return Cliente{}, ErrNomeObrigatorio
-	}
-	if cliente.Documento == "" {
-		return Cliente{}, ErrDocumentoObrigatorio
-	}
-	if cliente.TipoDocumento == "" {
-		return Cliente{}, ErrTipoDocumentoObrigatorio
-	}
-	if cliente.TipoDocumento != TipoDocumentoCPF && cliente.TipoDocumento != TipoDocumentoCNPJ {
-		return Cliente{}, ErrTipoDocumentoInvalido
-	}
-	if !somenteDigitos(cliente.Documento) || !documentoValido(cliente.Documento, cliente.TipoDocumento) {
-		return Cliente{}, ErrDocumentoInvalido
-	}
-	if cliente.Telefone == "" && cliente.Email == "" {
-		return Cliente{}, ErrContatoObrigatorio
-	}
-	if cliente.Telefone != "" && (!somenteDigitos(cliente.Telefone) || len(cliente.Telefone) < 10 || len(cliente.Telefone) > 11) {
-		return Cliente{}, ErrTelefoneInvalido
-	}
-	if cliente.Email != "" && !emailValido(cliente.Email) {
-		return Cliente{}, ErrEmailInvalido
+	if err := cliente.validarCadastro(); err != nil {
+		return Cliente{}, err
 	}
 	return cliente, nil
+}
+
+func (cliente Cliente) Atualizar(input AtualizarClienteInput) (Cliente, error) {
+	cliente.Nome = strings.TrimSpace(input.Nome)
+	cliente.Documento = strings.TrimSpace(input.Documento)
+	cliente.TipoDocumento = strings.TrimSpace(input.TipoDocumento)
+	cliente.Telefone = strings.TrimSpace(input.Telefone)
+	cliente.Email = strings.TrimSpace(input.Email)
+	if err := cliente.validarCadastro(); err != nil {
+		return Cliente{}, err
+	}
+	return cliente, nil
+}
+
+func (cliente Cliente) validarCadastro() error {
+	if cliente.Nome == "" {
+		return ErrNomeObrigatorio
+	}
+	if cliente.Documento == "" {
+		return ErrDocumentoObrigatorio
+	}
+	if cliente.TipoDocumento == "" {
+		return ErrTipoDocumentoObrigatorio
+	}
+	if cliente.TipoDocumento != TipoDocumentoCPF && cliente.TipoDocumento != TipoDocumentoCNPJ {
+		return ErrTipoDocumentoInvalido
+	}
+	if !somenteDigitos(cliente.Documento) || !documentoValido(cliente.Documento, cliente.TipoDocumento) {
+		return ErrDocumentoInvalido
+	}
+	if cliente.Telefone == "" && cliente.Email == "" {
+		return ErrContatoObrigatorio
+	}
+	if cliente.Telefone != "" && (!somenteDigitos(cliente.Telefone) || len(cliente.Telefone) < 10 || len(cliente.Telefone) > 11) {
+		return ErrTelefoneInvalido
+	}
+	if cliente.Email != "" && !emailValido(cliente.Email) {
+		return ErrEmailInvalido
+	}
+	return nil
 }
 
 func DocumentoParaConsulta(documento string) (string, error) {
