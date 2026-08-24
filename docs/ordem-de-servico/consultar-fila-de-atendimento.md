@@ -116,7 +116,7 @@ GET /fila-atendimento
 
 | Param | Tipo | Descrição |
 |---|---|---|
-| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 100. |
+| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 50. |
 
 **Validações**
 
