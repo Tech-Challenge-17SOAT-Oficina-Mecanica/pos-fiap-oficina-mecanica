@@ -30,12 +30,20 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /fornecedores", fornecedorPresentation.NewCadastrarHandler(
-		fornecedorApplication.NewCadastrar(fornecedorInfrastructure.NewPostgresRepository(db)),
+		fornecedorApplication.NewCadastrar(fornecedorRepository),
 	))
+	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewListarHandler(
+		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
+	)))
+	mux.Handle("GET /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewBuscarPorIDHandler(
+		fornecedorApplication.NewConsultarFornecedorPorID(fornecedorRepository),
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 
 	server := &http.Server{
@@ -54,7 +62,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 			writer.Header().Set("Access-Control-Allow-Origin", origin)
 			writer.Header().Set("Vary", "Origin")
 			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept")
+			writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
 		}
 		if request.Method == http.MethodOptions {
 			writer.WriteHeader(http.StatusNoContent)

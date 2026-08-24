@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
@@ -38,6 +39,82 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro dom
 		if errors.As(err, &postgresError) && postgresError.Code == "23505" {
 			return domain.Fornecedor{}, application.ErrDocumentoDuplicado
 		}
+		return domain.Fornecedor{}, err
+	}
+	return fornecedor, nil
+}
+
+func (repository PostgresRepository) Listar(ctx context.Context, filtros application.FiltrosConsulta) ([]domain.Fornecedor, int, error) {
+	const countQuery = `
+		SELECT COUNT(*)
+		FROM fornecedor
+		WHERE ($1 = '' OR razao_social ILIKE '%' || $1 || '%' OR COALESCE(nome_fantasia, '') ILIKE '%' || $1 || '%')
+		AND ($2 = '' OR documento = $2)
+		AND ($3 OR ativo)`
+	const listQuery = `
+		SELECT id, razao_social, COALESCE(nome_fantasia, ''), documento, tipo_documento, COALESCE(telefone, ''), COALESCE(email, ''), prazo_entrega_dias, ativo, version, criado_em
+		FROM fornecedor
+		WHERE ($1 = '' OR razao_social ILIKE '%' || $1 || '%' OR COALESCE(nome_fantasia, '') ILIKE '%' || $1 || '%')
+		AND ($2 = '' OR documento = $2)
+		AND ($3 OR ativo)
+		ORDER BY razao_social ASC, id ASC
+		LIMIT $4 OFFSET $5`
+
+	var total int
+	if err := repository.db.QueryRow(ctx, countQuery, filtros.Nome, filtros.Documento, filtros.IncluirInativos).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := repository.db.Query(ctx, listQuery, filtros.Nome, filtros.Documento, filtros.IncluirInativos, filtros.Tamanho, filtros.Pagina*filtros.Tamanho)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	fornecedores := make([]domain.Fornecedor, 0)
+	for rows.Next() {
+		fornecedor, err := scanFornecedor(rows.Scan)
+		if err != nil {
+			return nil, 0, err
+		}
+		fornecedores = append(fornecedores, fornecedor)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return fornecedores, total, nil
+}
+
+func (repository PostgresRepository) BuscarPorID(ctx context.Context, fornecedorID string) (domain.Fornecedor, error) {
+	const query = `
+		SELECT id, razao_social, COALESCE(nome_fantasia, ''), documento, tipo_documento, COALESCE(telefone, ''), COALESCE(email, ''), prazo_entrega_dias, ativo, version, criado_em
+		FROM fornecedor
+		WHERE id = $1`
+	fornecedor, err := scanFornecedor(repository.db.QueryRow(ctx, query, fornecedorID).Scan)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Fornecedor{}, application.ErrFornecedorNaoEncontrado
+		}
+		return domain.Fornecedor{}, err
+	}
+	return fornecedor, nil
+}
+
+func scanFornecedor(scan func(dest ...any) error) (domain.Fornecedor, error) {
+	var fornecedor domain.Fornecedor
+	err := scan(
+		&fornecedor.ID,
+		&fornecedor.RazaoSocial,
+		&fornecedor.NomeFantasia,
+		&fornecedor.Documento,
+		&fornecedor.TipoDocumento,
+		&fornecedor.Telefone,
+		&fornecedor.Email,
+		&fornecedor.PrazoEntregaDias,
+		&fornecedor.Ativo,
+		&fornecedor.Version,
+		&fornecedor.CriadoEm,
+	)
+	if err != nil {
 		return domain.Fornecedor{}, err
 	}
 	return fornecedor, nil

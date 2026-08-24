@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
-  title: Oficina Mecânica API
-  description: API do sistema de gestão de oficina mecânica.
-  version: 1.0.0
+  title: Oficina Mecanica API
+  description: API do sistema de gestao de oficina mecanica.
+  version: 0.1.0
 servers:
   - url: http://localhost:8080
 paths:
@@ -11,7 +11,7 @@ paths:
       summary: Verifica a disponibilidade da API
       responses:
         '200':
-          description: API disponível
+          description: API disponivel
           content:
             application/json:
               schema:
@@ -21,6 +21,57 @@ paths:
                     type: string
                     example: ok
   /fornecedores:
+    get:
+      tags: [Fornecedores]
+      summary: Lista fornecedores cadastrados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nome
+          in: query
+          schema:
+            type: string
+          description: Filtro parcial por razao social ou nome fantasia.
+        - name: documento
+          in: query
+          schema:
+            type: string
+          description: Filtro exato por documento, somente digitos.
+        - name: incluirInativos
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: pagina
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: tamanho
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Consulta realizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FornecedoresPage'
+        '400':
+          description: Filtro ou paginacao invalidos
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Token ausente ou expirado
+        '403':
+          description: Escopo insuficiente
     post:
       tags: [Fornecedores]
       summary: Cadastra um fornecedor
@@ -38,7 +89,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Fornecedor'
         '400':
-          description: Dados inválidos
+          description: Dados invalidos
           content:
             application/problem+json:
               schema:
@@ -49,10 +100,42 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+  /fornecedores/{fornecedorId}:
+    get:
+      tags: [Fornecedores]
+      summary: Consulta um fornecedor pelo identificador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fornecedor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fornecedor'
+        '400':
+          description: Identificador invalido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Token ausente ou expirado
+        '403':
+          description: Escopo insuficiente
+        '404':
+          description: Fornecedor nao encontrado
   /autenticacao/login:
     post:
-      tags: [Segurança]
-      summary: Autentica um mecânico
+      tags: [Seguranca]
+      summary: Autentica um mecanico
       requestBody:
         required: true
         content:
@@ -75,12 +158,24 @@ paths:
               schema:
                 type: object
                 properties:
-                  accessToken: { type: string }
-                  tokenType: { type: string, example: Bearer }
-                  expiresIn: { type: integer, example: 3600 }
-        '400': { description: Dados inválidos }
-        '401': { description: Credenciais inválidas }
+                  accessToken:
+                    type: string
+                  tokenType:
+                    type: string
+                    example: Bearer
+                  expiresIn:
+                    type: integer
+                    example: 3600
+        '400':
+          description: Dados invalidos
+        '401':
+          description: Credenciais invalidas
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     CadastrarFornecedor:
       type: object
@@ -90,13 +185,13 @@ components:
           type: string
           minLength: 3
           maxLength: 120
-          example: Auto Peças Bandeirantes Ltda
+          example: Auto Pecas Bandeirantes Ltda
         nomeFantasia:
           type: string
           maxLength: 120
         documento:
           type: string
-          description: CPF ou CNPJ, com ou sem máscara.
+          description: CPF ou CNPJ, com ou sem mascara.
           example: 04252011000110
         tipoDocumento:
           type: string
@@ -129,6 +224,37 @@ components:
             dataCriacao:
               type: string
               format: date-time
+    FornecedorResumo:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo]
+          properties:
+            id:
+              type: string
+              format: uuid
+            ativo:
+              type: boolean
+    FornecedoresPage:
+      type: object
+      required: [data, pagina, tamanho, totalElementos, totalPaginas]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FornecedorResumo'
+        pagina:
+          type: integer
+          example: 0
+        tamanho:
+          type: integer
+          example: 20
+        totalElementos:
+          type: integer
+          example: 1
+        totalPaginas:
+          type: integer
+          example: 1
     FieldError:
       type: object
       properties:
