@@ -17,7 +17,8 @@ type Cadastro struct {
 }
 
 type Veiculo struct {
-	ID, ClienteID string `json:"-"`
+	ID        string `json:"id"`
+	ClienteID string `json:"-"`
 	Cadastro
 	Ativo   bool    `json:"ativo"`
 	Version int     `json:"version"`

@@ -57,3 +57,30 @@ func (repository PostgresRepository) ConsultarPorPlaca(ctx context.Context, plac
 	}
 	return v, err
 }
+
+func (repository PostgresRepository) Atualizar(ctx context.Context, id string, version int, cadastro domain.Cadastro) (domain.Veiculo, error) {
+	var v domain.Veiculo
+	err := repository.db.QueryRowContext(ctx, `WITH atualizado AS (
+		UPDATE veiculo SET placa=$1,marca=$2,modelo=$3,ano=$4,version=version+1
+		WHERE id=$5 AND version=$6
+		RETURNING id,cliente_id,placa,marca,modelo,ano,ativo,version
+	) SELECT a.id,a.cliente_id,a.placa,a.marca,a.modelo,a.ano,a.ativo,a.version,c.id,c.nome,c.documento
+	FROM atualizado a JOIN cliente c ON c.id=a.cliente_id`, cadastro.Placa, cadastro.Marca, cadastro.Modelo, cadastro.Ano, id, version).Scan(&v.ID, &v.ClienteID, &v.Placa, &v.Marca, &v.Modelo, &v.Ano, &v.Ativo, &v.Version, &v.Cliente.ID, &v.Cliente.Nome, &v.Cliente.Documento)
+	if errors.Is(err, sql.ErrNoRows) {
+		var exists bool
+		if err = repository.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM veiculo WHERE id=$1)", id).Scan(&exists); err != nil {
+			return v, err
+		}
+		if !exists {
+			return v, application.ErrVeiculoNaoEncontrado
+		}
+		return v, application.ErrVersaoDivergente
+	}
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return v, application.ErrPlacaDuplicada
+		}
+	}
+	return v, err
+}

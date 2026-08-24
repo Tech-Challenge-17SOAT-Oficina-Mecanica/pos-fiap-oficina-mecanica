@@ -22,10 +22,12 @@ func main() {
 
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
+	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /clientes/{clienteId}/veiculos", veiculoPresentation.NewHandler(cadastrar))
 	mux.Handle("GET /veiculos", veiculoPresentation.NewConsultaHandler(consultar))
+	mux.Handle("PUT /veiculos/{veiculoId}", veiculoPresentation.NewAtualizarHandler(atualizar))
 	log.Println("API iniciada na porta 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }
