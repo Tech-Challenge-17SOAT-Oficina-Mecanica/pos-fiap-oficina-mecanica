@@ -29,7 +29,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
-	mux.Handle("POST /clientes/{clienteId}/veiculos", veiculoPresentation.NewHandler(cadastrar))
+	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	log.Println("API iniciada na porta 8080")
 	log.Fatal(http.ListenAndServe(":8080", mux))
 }

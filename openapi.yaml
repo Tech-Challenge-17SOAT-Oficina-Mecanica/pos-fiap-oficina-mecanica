@@ -9,6 +9,9 @@ paths:
     post:
       tags: [Veículos]
       summary: Cadastra um veículo e o vincula ao cliente
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
       parameters:
         - name: clienteId
           in: path
@@ -22,6 +25,8 @@ paths:
       responses:
         '201': { description: Veículo cadastrado }
         '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente inativo ou placa já cadastrada }
   /autenticacao/login:
@@ -56,6 +61,11 @@ paths:
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     CadastrarVeiculo:
       type: object
