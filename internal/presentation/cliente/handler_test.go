@@ -22,6 +22,15 @@ func (fake cadastrarFake) Execute(context.Context, domain.NovoClienteInput) (dom
 	return fake.cliente, fake.err
 }
 
+type consultarFake struct {
+	cliente domain.Cliente
+	err     error
+}
+
+func (fake consultarFake) Execute(context.Context, string) (domain.Cliente, error) {
+	return fake.cliente, fake.err
+}
+
 type tokenFake struct {
 	claims seguranca.Claims
 	err    error
@@ -61,6 +70,44 @@ func TestCadastrarHandler(t *testing.T) {
 			NewCadastrarHandler(test.useCase, test.token)(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestConsultarHandler(t *testing.T) {
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoConsultarCliente}}}
+	validUseCase := consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Version: 4, Veiculos: []domain.Veiculo{{ID: "v1", Placa: "ABC1D23", Marca: "Toyota", Modelo: "Corolla", Ano: 2020}}}}
+	cases := []struct {
+		name    string
+		auth    string
+		useCase consultarFake
+		token   tokenFake
+		status  int
+		body    string
+	}{
+		{"sem token", "", validUseCase, validToken, http.StatusUnauthorized, ""},
+		{"token invalido", "Bearer invalido", validUseCase, tokenFake{err: errors.New("jwt")}, http.StatusUnauthorized, ""},
+		{"sem escopo", "Bearer jwt", validUseCase, tokenFake{claims: seguranca.Claims{Escopos: []string{"clientes:escrever"}}}, http.StatusForbidden, ""},
+		{"dominio invalido", "Bearer jwt", consultarFake{err: domain.ErrDocumentoInvalido}, validToken, http.StatusBadRequest, ""},
+		{"nao encontrado", "Bearer jwt", consultarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
+		{"erro interno", "Bearer jwt", consultarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
+		{"sucesso", "Bearer jwt", validUseCase, validToken, http.StatusOK, `"veiculos":[{`},
+		{"sem veiculo", "Bearer jwt", consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Version: 1}}, validToken, http.StatusOK, `"veiculos":[]`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodGet, "/clientes?documento=39053344705", nil)
+			if test.auth != "" {
+				request.Header.Set("Authorization", test.auth)
+			}
+			response := httptest.NewRecorder()
+			NewConsultarHandler(test.useCase, test.token)(response, request)
+			if response.Code != test.status {
+				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+			if test.body != "" && !strings.Contains(response.Body.String(), test.body) {
+				t.Fatalf("body: %s", response.Body.String())
 			}
 		})
 	}

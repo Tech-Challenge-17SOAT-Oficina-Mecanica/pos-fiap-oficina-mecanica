@@ -6,6 +6,47 @@ servers:
   - url: http://localhost:8080
 paths:
   /clientes:
+    get:
+      tags: [Cliente]
+      summary: Consulta cliente por CPF/CNPJ
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: documento
+          required: true
+          schema:
+            type: string
+            example: '39053344705'
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+                  version: { type: integer }
+                  veiculos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        placa: { type: string }
+                        marca: { type: string }
+                        modelo: { type: string }
+                        ano: { type: integer }
+        '400': { description: CPF/CNPJ ausente ou inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:ler }
+        '404': { description: Cliente não encontrado }
     post:
       tags: [Cliente]
       summary: Cadastra um cliente

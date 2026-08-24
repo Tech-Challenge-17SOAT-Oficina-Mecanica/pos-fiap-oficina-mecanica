@@ -44,3 +44,27 @@ func TestDigitoCNPJComRestoMenorQueDois(t *testing.T) {
 		t.Fatalf("digito: %d", got)
 	}
 }
+
+func TestDocumentoParaConsulta(t *testing.T) {
+	cases := []struct {
+		name, documento string
+		want            error
+	}{
+		{"cpf valido", " 39053344705 ", nil},
+		{"cnpj valido", "11222333000181", nil},
+		{"ausente", "", ErrDocumentoObrigatorio},
+		{"letra", "3905334470A", ErrDocumentoInvalido},
+		{"invalido", "11111111111", ErrDocumentoInvalido},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := DocumentoParaConsulta(test.documento)
+			if !errors.Is(err, test.want) {
+				t.Fatalf("erro: %v", err)
+			}
+			if test.want == nil && got != strings.TrimSpace(test.documento) {
+				t.Fatalf("documento: %q", got)
+			}
+		})
+	}
+}

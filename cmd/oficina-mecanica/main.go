@@ -32,10 +32,13 @@ func main() {
 		log.Fatal(err)
 	}
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
-	cadastrarCliente := clienteApplication.NewCadastrar(clienteInfrastructure.NewPostgresRepository(db))
+	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
+	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
+	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
+	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
 
 	server := &http.Server{
