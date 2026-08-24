@@ -32,6 +32,7 @@ paths:
                   tipoDocumento: { type: string, enum: [CPF, CNPJ] }
                   telefone: { type: string }
                   email: { type: string, format: email }
+                  ativo: { type: boolean }
                   version: { type: integer }
                   veiculos:
                     type: array

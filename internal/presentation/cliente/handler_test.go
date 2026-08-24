@@ -77,7 +77,7 @@ func TestCadastrarHandler(t *testing.T) {
 
 func TestConsultarHandler(t *testing.T) {
 	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoConsultarCliente}}}
-	validUseCase := consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Version: 4, Veiculos: []domain.Veiculo{{ID: "v1", Placa: "ABC1D23", Marca: "Toyota", Modelo: "Corolla", Ano: 2020}}}}
+	validUseCase := consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 4, Veiculos: []domain.Veiculo{{ID: "v1", Placa: "ABC1D23", Marca: "Toyota", Modelo: "Corolla", Ano: 2020}}}}
 	cases := []struct {
 		name    string
 		auth    string
@@ -92,7 +92,7 @@ func TestConsultarHandler(t *testing.T) {
 		{"dominio invalido", "Bearer jwt", consultarFake{err: domain.ErrDocumentoInvalido}, validToken, http.StatusBadRequest, ""},
 		{"nao encontrado", "Bearer jwt", consultarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
 		{"erro interno", "Bearer jwt", consultarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
-		{"sucesso", "Bearer jwt", validUseCase, validToken, http.StatusOK, `"veiculos":[{`},
+		{"sucesso", "Bearer jwt", validUseCase, validToken, http.StatusOK, `"ativo":true`},
 		{"sem veiculo", "Bearer jwt", consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Version: 1}}, validToken, http.StatusOK, `"veiculos":[]`},
 	}
 	for _, test := range cases {

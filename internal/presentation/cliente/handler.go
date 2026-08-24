@@ -52,6 +52,7 @@ type consultaClienteResponse struct {
 	TipoDocumento string            `json:"tipoDocumento"`
 	Telefone      string            `json:"telefone,omitempty"`
 	Email         string            `json:"email,omitempty"`
+	Ativo         bool              `json:"ativo"`
 	Version       int               `json:"version"`
 	Veiculos      []veiculoResponse `json:"veiculos"`
 }
@@ -172,6 +173,7 @@ func toConsultaResponse(cliente domain.Cliente) consultaClienteResponse {
 		TipoDocumento: cliente.TipoDocumento,
 		Telefone:      cliente.Telefone,
 		Email:         cliente.Email,
+		Ativo:         cliente.Ativo,
 		Version:       cliente.Version,
 		Veiculos:      make([]veiculoResponse, 0, len(cliente.Veiculos)),
 	}
