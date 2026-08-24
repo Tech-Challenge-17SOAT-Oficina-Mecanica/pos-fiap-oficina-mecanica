@@ -124,7 +124,7 @@ func TestConsultarHandler(t *testing.T) {
 
 func TestAtualizarHandler(t *testing.T) {
 	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoCadastrarCliente}}}
-	validUseCase := atualizarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Version: 3}}
+	validUseCase := atualizarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 3}}
 	validBody := `{"nome":"Ana","documento":"39053344705","tipoDocumento":"CPF","telefone":"11988887777"}`
 	cases := []struct {
 		name    string
@@ -147,7 +147,7 @@ func TestAtualizarHandler(t *testing.T) {
 		{"duplicado", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrClienteDuplicado}, validToken, http.StatusConflict, ""},
 		{"versao divergente", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrVersaoDivergente}, validToken, http.StatusPreconditionFailed, ""},
 		{"erro interno", validBody, "Bearer jwt", "2", atualizarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
-		{"sucesso", validBody, "Bearer jwt", "2", validUseCase, validToken, http.StatusOK, `"version":3`},
+		{"sucesso", validBody, "Bearer jwt", "2", validUseCase, validToken, http.StatusOK, `"ativo":true`},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {

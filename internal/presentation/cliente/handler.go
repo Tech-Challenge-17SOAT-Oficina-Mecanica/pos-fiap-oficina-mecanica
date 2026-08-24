@@ -57,6 +57,7 @@ type atualizarClienteResponse struct {
 	TipoDocumento string `json:"tipoDocumento"`
 	Telefone      string `json:"telefone,omitempty"`
 	Email         string `json:"email,omitempty"`
+	Ativo         bool   `json:"ativo"`
 	Version       int    `json:"version"`
 }
 
@@ -172,6 +173,7 @@ func NewAtualizarHandler(useCase AtualizarUseCase, token TokenValidator) http.Ha
 			TipoDocumento: cliente.TipoDocumento,
 			Telefone:      cliente.Telefone,
 			Email:         cliente.Email,
+			Ativo:         cliente.Ativo,
 			Version:       cliente.Version,
 		})
 	}

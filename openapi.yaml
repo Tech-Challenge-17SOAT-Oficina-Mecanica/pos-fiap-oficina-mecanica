@@ -151,6 +151,7 @@ paths:
                   tipoDocumento: { type: string, enum: [CPF, CNPJ] }
                   telefone: { type: string }
                   email: { type: string, format: email }
+                  ativo: { type: boolean }
                   version: { type: integer }
         '400': { description: Identificador, dados ou If-Match inválidos }
         '401': { description: Token ausente ou expirado }
