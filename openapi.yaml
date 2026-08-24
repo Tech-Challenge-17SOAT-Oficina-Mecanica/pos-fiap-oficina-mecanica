@@ -2,6 +2,8 @@ openapi: 3.0.3
 info:
   title: Oficina Mecânica API
   version: 0.1.0
+servers:
+  - url: http://localhost:8080
 tags:
   - name: Veículos
 paths:
@@ -50,6 +52,31 @@ paths:
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente inativo ou placa já cadastrada }
         '500': { description: Falha inesperada }
+  /veiculos/{veiculoId}:
+    put:
+      tags: [Veículos]
+      summary: Atualiza os dados de um veículo
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '200': { description: Veículo atualizado }
+        '400': { description: Dados inválidos }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Placa já cadastrada }
+        '412': { description: Versão divergente }
+        '428': { description: If-Match ausente }
 components:
   schemas:
     CadastrarVeiculo:
