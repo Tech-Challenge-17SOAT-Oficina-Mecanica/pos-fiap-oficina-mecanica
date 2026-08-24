@@ -99,6 +99,55 @@ func (repository PostgresRepository) BuscarPorID(ctx context.Context, fornecedor
 	return fornecedor, nil
 }
 
+func (repository PostgresRepository) Atualizar(ctx context.Context, fornecedorID string, atualizacao domain.Atualizacao, version int, usuarioID string) (domain.Fornecedor, error) {
+	const updateQuery = `
+		UPDATE fornecedor
+		SET razao_social = $2,
+			nome_fantasia = $3,
+			telefone = $4,
+			email = $5,
+			prazo_entrega_dias = COALESCE($6, prazo_entrega_dias),
+			data_atualizacao = CURRENT_TIMESTAMP,
+			usuario_atualizacao = NULLIF($7, '')::uuid,
+			version = version + 1
+		WHERE id = $1 AND ativo AND version = $8
+		RETURNING id, razao_social, COALESCE(nome_fantasia, ''), documento, tipo_documento, COALESCE(telefone, ''), COALESCE(email, ''), prazo_entrega_dias, ativo, version, criado_em, data_atualizacao`
+
+	fornecedor, err := scanFornecedorAtualizado(repository.db.QueryRow(ctx, updateQuery,
+		fornecedorID,
+		atualizacao.RazaoSocial,
+		nullIfEmpty(atualizacao.NomeFantasia),
+		nullIfEmpty(atualizacao.Telefone),
+		nullIfEmpty(atualizacao.Email),
+		atualizacao.PrazoEntregaDias,
+		usuarioID,
+		version,
+	).Scan)
+	if err == nil {
+		return fornecedor, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return domain.Fornecedor{}, err
+	}
+
+	var ativo bool
+	var versionAtual int
+	err = repository.db.QueryRow(ctx, `SELECT ativo, version FROM fornecedor WHERE id = $1`, fornecedorID).Scan(&ativo, &versionAtual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Fornecedor{}, application.ErrFornecedorNaoEncontrado
+	}
+	if err != nil {
+		return domain.Fornecedor{}, err
+	}
+	if !ativo {
+		return domain.Fornecedor{}, application.ErrFornecedorInativo
+	}
+	if versionAtual != version {
+		return domain.Fornecedor{}, application.ErrVersaoDivergente
+	}
+	return domain.Fornecedor{}, application.ErrAtualizacaoInvalida
+}
+
 func scanFornecedor(scan func(dest ...any) error) (domain.Fornecedor, error) {
 	var fornecedor domain.Fornecedor
 	err := scan(
@@ -113,6 +162,28 @@ func scanFornecedor(scan func(dest ...any) error) (domain.Fornecedor, error) {
 		&fornecedor.Ativo,
 		&fornecedor.Version,
 		&fornecedor.CriadoEm,
+	)
+	if err != nil {
+		return domain.Fornecedor{}, err
+	}
+	return fornecedor, nil
+}
+
+func scanFornecedorAtualizado(scan func(dest ...any) error) (domain.Fornecedor, error) {
+	var fornecedor domain.Fornecedor
+	err := scan(
+		&fornecedor.ID,
+		&fornecedor.RazaoSocial,
+		&fornecedor.NomeFantasia,
+		&fornecedor.Documento,
+		&fornecedor.TipoDocumento,
+		&fornecedor.Telefone,
+		&fornecedor.Email,
+		&fornecedor.PrazoEntregaDias,
+		&fornecedor.Ativo,
+		&fornecedor.Version,
+		&fornecedor.CriadoEm,
+		&fornecedor.AtualizadoEm,
 	)
 	if err != nil {
 		return domain.Fornecedor{}, err

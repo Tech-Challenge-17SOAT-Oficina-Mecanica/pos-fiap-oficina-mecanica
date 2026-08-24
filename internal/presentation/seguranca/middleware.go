@@ -1,12 +1,15 @@
 package seguranca
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
+
+type claimsContextKey struct{}
 
 type TokenValidator interface {
 	Validar(string) (segurancaInfrastructure.Claims, error)
@@ -28,8 +31,14 @@ func RequireScope(tokenValidator TokenValidator, escopo string, next http.Handle
 			sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autorizacao", Title: "Acesso negado", Status: http.StatusForbidden, Detail: "escopo insuficiente"})
 			return
 		}
+		request = request.WithContext(context.WithValue(request.Context(), claimsContextKey{}, claims))
 		next.ServeHTTP(writer, request)
 	})
+}
+
+func ClaimsFromContext(ctx context.Context) (segurancaInfrastructure.Claims, bool) {
+	claims, ok := ctx.Value(claimsContextKey{}).(segurancaInfrastructure.Claims)
+	return claims, ok
 }
 
 func temEscopo(escopos []string, esperado string) bool {

@@ -11,7 +11,8 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'mecanicos:escrever'),
-    ('90000000-0000-0000-0000-000000000001', 'compras:ler')
+    ('90000000-0000-0000-0000-000000000001', 'compras:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'compras:escrever')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categoria (id, nome, ativa) VALUES

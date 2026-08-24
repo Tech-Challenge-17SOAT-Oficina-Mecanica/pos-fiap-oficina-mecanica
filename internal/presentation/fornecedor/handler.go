@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
@@ -20,6 +22,14 @@ type cadastrarRequest struct {
 	NomeFantasia     string `json:"nomeFantasia"`
 	Documento        string `json:"documento"`
 	TipoDocumento    string `json:"tipoDocumento"`
+	Telefone         string `json:"telefone"`
+	Email            string `json:"email"`
+	PrazoEntregaDias *int   `json:"prazoEntregaDias"`
+}
+
+type atualizarRequest struct {
+	RazaoSocial      string `json:"razaoSocial"`
+	NomeFantasia     string `json:"nomeFantasia"`
 	Telefone         string `json:"telefone"`
 	Email            string `json:"email"`
 	PrazoEntregaDias *int   `json:"prazoEntregaDias"`
@@ -37,6 +47,20 @@ type fornecedorResponse struct {
 	Ativo            bool   `json:"ativo"`
 	Version          int    `json:"version"`
 	DataCriacao      string `json:"dataCriacao"`
+}
+
+type fornecedorAtualizadoResponse struct {
+	ID               string `json:"id"`
+	RazaoSocial      string `json:"razaoSocial"`
+	NomeFantasia     string `json:"nomeFantasia,omitempty"`
+	Documento        string `json:"documento"`
+	TipoDocumento    string `json:"tipoDocumento"`
+	Telefone         string `json:"telefone,omitempty"`
+	Email            string `json:"email,omitempty"`
+	PrazoEntregaDias int    `json:"prazoEntregaDias"`
+	Ativo            bool   `json:"ativo"`
+	Version          int    `json:"version"`
+	DataAtualizacao  string `json:"dataAtualizacao"`
 }
 
 type fornecedorResumoResponse struct {
@@ -166,6 +190,97 @@ func NewBuscarPorIDHandler(useCase application.ConsultarFornecedorPorID) http.Ha
 	}
 }
 
+func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fornecedorID := request.PathValue("fornecedorId")
+		if !uuidRegex.MatchString(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+			return
+		}
+		version, ok, err := ifMatchVersion(request.Header.Get("If-Match"))
+		if !ok {
+			writeProblem(writer, http.StatusPreconditionRequired, "Pre-condicao obrigatoria", "If-Match obrigatorio", "If-Match")
+			return
+		}
+		if err != nil {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "If-Match invalido", "If-Match")
+			return
+		}
+
+		input, err := decodeAtualizarRequest(request)
+		if err != nil {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+			return
+		}
+		atualizacao, err := domain.NovaAtualizacao(input.RazaoSocial, input.NomeFantasia, input.Telefone, input.Email, input.PrazoEntregaDias)
+		if err != nil {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+			return
+		}
+		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, atualizacao, version, claims.Subject)
+		if err != nil {
+			if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
+				writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")
+				return
+			}
+			if errors.Is(err, application.ErrFornecedorInativo) {
+				writeProblem(writer, http.StatusConflict, "Fornecedor inativo", err.Error(), "fornecedorId")
+				return
+			}
+			if errors.Is(err, application.ErrVersaoDivergente) {
+				writeProblem(writer, http.StatusPreconditionFailed, "Versao divergente", err.Error(), "If-Match")
+				return
+			}
+			if errors.Is(err, application.ErrAtualizacaoInvalida) {
+				writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+				return
+			}
+			writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao atualizar fornecedor", "")
+			return
+		}
+
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(newFornecedorAtualizadoResponse(fornecedor))
+	}
+}
+
+func decodeAtualizarRequest(request *http.Request) (atualizarRequest, error) {
+	var raw map[string]json.RawMessage
+	decoder := json.NewDecoder(request.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&raw); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+		return atualizarRequest{}, errors.New("corpo da requisicao invalido")
+	}
+	allowed := map[string]bool{"razaoSocial": true, "nomeFantasia": true, "telefone": true, "email": true, "prazoEntregaDias": true}
+	for field := range raw {
+		if field == "documento" || field == "ativo" {
+			return atualizarRequest{}, errors.New(field + " nao pode ser alterado")
+		}
+		if !allowed[field] {
+			return atualizarRequest{}, errors.New("campo desconhecido: " + field)
+		}
+	}
+	var input atualizarRequest
+	encoded, err := json.Marshal(raw)
+	if err != nil {
+		return atualizarRequest{}, err
+	}
+	if err := json.Unmarshal(encoded, &input); err != nil {
+		return atualizarRequest{}, errors.New("corpo da requisicao invalido")
+	}
+	return input, nil
+}
+
+func ifMatchVersion(value string) (int, bool, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, false, nil
+	}
+	version, err := strconv.Atoi(strings.Trim(value, `"`))
+	return version, true, err
+}
+
 func intQuery(request *http.Request, name string, fallback int) (int, error) {
 	value := request.URL.Query().Get(name)
 	if value == "" {
@@ -213,6 +328,22 @@ func newFornecedorResponse(fornecedor domain.Fornecedor) fornecedorResponse {
 		Ativo:            fornecedor.Ativo,
 		Version:          fornecedor.Version,
 		DataCriacao:      fornecedor.CriadoEm.Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+func newFornecedorAtualizadoResponse(fornecedor domain.Fornecedor) fornecedorAtualizadoResponse {
+	return fornecedorAtualizadoResponse{
+		ID:               fornecedor.ID,
+		RazaoSocial:      fornecedor.RazaoSocial,
+		NomeFantasia:     fornecedor.NomeFantasia,
+		Documento:        fornecedor.Documento,
+		TipoDocumento:    fornecedor.TipoDocumento,
+		Telefone:         fornecedor.Telefone,
+		Email:            fornecedor.Email,
+		PrazoEntregaDias: fornecedor.PrazoEntregaDias,
+		Ativo:            fornecedor.Ativo,
+		Version:          fornecedor.Version,
+		DataAtualizacao:  fornecedor.AtualizadoEm.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
 

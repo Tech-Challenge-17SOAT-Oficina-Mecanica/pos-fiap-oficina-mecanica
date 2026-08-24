@@ -44,6 +44,9 @@ func main() {
 	mux.Handle("GET /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewBuscarPorIDHandler(
 		fornecedorApplication.NewConsultarFornecedorPorID(fornecedorRepository),
 	)))
+	mux.Handle("PUT /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewAtualizarHandler(
+		fornecedorApplication.NewAtualizarFornecedor(fornecedorRepository),
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 
 	server := &http.Server{
@@ -61,8 +64,8 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if origin == "http://localhost:8081" || origin == "http://127.0.0.1:8081" {
 			writer.Header().Set("Access-Control-Allow-Origin", origin)
 			writer.Header().Set("Vary", "Origin")
-			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization")
+			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, If-Match")
 		}
 		if request.Method == http.MethodOptions {
 			writer.WriteHeader(http.StatusNoContent)

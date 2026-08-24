@@ -132,6 +132,55 @@ paths:
           description: Escopo insuficiente
         '404':
           description: Fornecedor nao encontrado
+    put:
+      tags: [Fornecedores]
+      summary: Atualiza um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Version atual do fornecedor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AtualizarFornecedor'
+      responses:
+        '200':
+          description: Fornecedor atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FornecedorAtualizado'
+        '400':
+          description: Dados invalidos ou campo imutavel enviado
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Token ausente ou expirado
+        '403':
+          description: Escopo insuficiente
+        '404':
+          description: Fornecedor nao encontrado
+        '409':
+          description: Fornecedor inativo
+        '412':
+          description: If-Match divergente
+        '428':
+          description: If-Match nao informado
   /autenticacao/login:
     post:
       tags: [Seguranca]
@@ -208,6 +257,31 @@ components:
           minimum: 1
           maximum: 365
           default: 7
+    AtualizarFornecedor:
+      type: object
+      required: [razaoSocial]
+      properties:
+        razaoSocial:
+          type: string
+          minLength: 3
+          maxLength: 120
+          example: Auto Pecas Bandeirantes Ltda
+        nomeFantasia:
+          type: string
+          maxLength: 120
+          example: Bandeirantes Autopecas
+        telefone:
+          type: string
+          example: 1133224466
+        email:
+          type: string
+          format: email
+          example: compras@bandeirantes.com.br
+        prazoEntregaDias:
+          type: integer
+          minimum: 1
+          maximum: 365
+          example: 10
     Fornecedor:
       allOf:
         - $ref: '#/components/schemas/CadastrarFornecedor'
@@ -222,6 +296,22 @@ components:
             version:
               type: integer
             dataCriacao:
+              type: string
+              format: date-time
+    FornecedorAtualizado:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo, version, dataAtualizacao]
+          properties:
+            id:
+              type: string
+              format: uuid
+            ativo:
+              type: boolean
+            version:
+              type: integer
+            dataAtualizacao:
               type: string
               format: date-time
     FornecedorResumo:
