@@ -4,7 +4,7 @@ POSTGRES_SERVICE := postgres
 POSTGRES_CONTAINER := oficina-postgres
 POSTGRES_USER := oficina
 POSTGRES_DB := oficina
-MIGRATION := db/migrations/V001__schema_inicial.sql
+MIGRATIONS := $(sort $(wildcard db/migrations/*.sql))
 SEED := db/seeds/V900__dados_iniciais.sql
 
 ifeq ($(OS),Windows_NT)
@@ -51,8 +51,11 @@ db-reset: ## Remove o banco local, cria o schema e carrega o seed
 	$(DOCKER) compose down -v
 	$(MAKE) db-init
 
-db-migrate: db-up ## Aplica a migration no banco vazio
-	$(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $(MIGRATION)
+db-migrate: db-up ## Aplica as migrations no banco vazio
+	@for migration in $(MIGRATIONS); do $(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $$migration || exit $$?; done
+
+test: ## Executa testes com cobertura no container Go
+	$(DOCKER) compose run --rm --build test
 
 db-seed: db-up ## Carrega os dados iniciais apos aplicar a migration
 	$(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $(SEED)
