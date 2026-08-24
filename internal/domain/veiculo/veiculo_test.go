@@ -16,7 +16,7 @@ func TestNovoCadastro(t *testing.T) {
 	}
 	for _, cadastro := range []struct {
 		marca, modelo string
-		ano          int
+		ano           int
 	}{
 		{"", "Corolla", 2024},
 		{"Toyota", "", 2024},

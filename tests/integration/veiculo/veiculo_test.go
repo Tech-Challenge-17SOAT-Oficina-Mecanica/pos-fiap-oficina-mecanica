@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func TestCadastrarVeiculo(t *testing.T) {

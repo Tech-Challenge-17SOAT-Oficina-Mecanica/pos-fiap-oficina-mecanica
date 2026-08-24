@@ -16,10 +16,14 @@ import (
 
 func main() {
 	db, err := database.Open()
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer db.Close()
 	jwt, err := segurancaInfrastructure.NewJWT(os.Getenv("JWT_SECRET"))
-	if err != nil { log.Fatal(err) }
+	if err != nil {
+		log.Fatal(err)
+	}
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	mux := http.NewServeMux()
