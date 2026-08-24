@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/cliente"
@@ -38,6 +39,24 @@ type atualizarFake struct {
 
 func (fake atualizarFake) Execute(context.Context, application.AtualizarInput) (domain.Cliente, error) {
 	return fake.cliente, fake.err
+}
+
+type inativarFake struct {
+	result application.Inativacao
+	err    error
+}
+
+func (fake inativarFake) Execute(context.Context, application.InativarInput) (application.Inativacao, error) {
+	return fake.result, fake.err
+}
+
+type reativarFake struct {
+	result application.Reativacao
+	err    error
+}
+
+func (fake reativarFake) Execute(context.Context, application.ReativarInput) (application.Reativacao, error) {
+	return fake.result, fake.err
 }
 
 type tokenFake struct {
@@ -165,6 +184,94 @@ func TestAtualizarHandler(t *testing.T) {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
 			if test.bodyOut != "" && !strings.Contains(response.Body.String(), test.bodyOut) {
+				t.Fatalf("body: %s", response.Body.String())
+			}
+		})
+	}
+}
+
+func TestInativarHandler(t *testing.T) {
+	now := time.Now()
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{escopoCadastrarCliente}}}
+	validUseCase := inativarFake{result: application.Inativacao{
+		Cliente:            domain.Cliente{ID: "00000000-0000-0000-0000-000000000002", Nome: "Ana", Ativo: false, InativadoEm: &now, InativadoPor: "00000000-0000-0000-0000-000000000001", Motivo: "duplicado"},
+		VeiculosInativados: []domain.VeiculoInativado{{ID: "v1", Placa: "ABC1D23"}},
+		DocumentoLiberado:  true,
+	}}
+	cases := []struct {
+		name    string
+		auth    string
+		id      string
+		useCase inativarFake
+		token   tokenFake
+		status  int
+		body    string
+	}{
+		{"sem token", "", "00000000-0000-0000-0000-000000000002", validUseCase, validToken, http.StatusUnauthorized, ""},
+		{"token invalido", "Bearer invalido", "00000000-0000-0000-0000-000000000002", validUseCase, tokenFake{err: errors.New("jwt")}, http.StatusUnauthorized, ""},
+		{"sem escopo", "Bearer jwt", "00000000-0000-0000-0000-000000000002", validUseCase, tokenFake{claims: seguranca.Claims{Escopos: []string{"clientes:ler"}}}, http.StatusForbidden, ""},
+		{"uuid invalido", "Bearer jwt", "id", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"motivo invalido", "Bearer jwt", "00000000-0000-0000-0000-000000000002", inativarFake{err: domain.ErrMotivoInvalido}, validToken, http.StatusBadRequest, ""},
+		{"nao encontrado", "Bearer jwt", "00000000-0000-0000-0000-000000000002", inativarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
+		{"ja inativo", "Bearer jwt", "00000000-0000-0000-0000-000000000002", inativarFake{err: application.ErrClienteJaInativo}, validToken, http.StatusNoContent, ""},
+		{"os aberta", "Bearer jwt", "00000000-0000-0000-0000-000000000002", inativarFake{err: application.OSAbertaError{Ordens: []application.OrdemServicoAberta{{ID: "os", Status: "EM_EXECUCAO"}}}}, validToken, http.StatusConflict, `"ordemServicoId":"os"`},
+		{"erro interno", "Bearer jwt", "00000000-0000-0000-0000-000000000002", inativarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
+		{"sucesso", "Bearer jwt", "00000000-0000-0000-0000-000000000002", validUseCase, validToken, http.StatusOK, `"veiculosInativados":[{`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/clientes/"+test.id+"?motivo=duplicado", nil)
+			request.SetPathValue("clienteId", test.id)
+			if test.auth != "" {
+				request.Header.Set("Authorization", test.auth)
+			}
+			response := httptest.NewRecorder()
+			NewInativarHandler(test.useCase, test.token)(response, request)
+			if response.Code != test.status {
+				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+			if test.body != "" && !strings.Contains(response.Body.String(), test.body) {
+				t.Fatalf("body: %s", response.Body.String())
+			}
+		})
+	}
+}
+
+func TestReativarHandler(t *testing.T) {
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{escopoCadastrarCliente}}}
+	validUseCase := reativarFake{result: application.Reativacao{Cliente: domain.Cliente{ID: "00000000-0000-0000-0000-000000000002", Nome: "Ana", Ativo: true}, ReativadoEm: time.Now()}}
+	cases := []struct {
+		name    string
+		auth    string
+		id      string
+		useCase reativarFake
+		token   tokenFake
+		status  int
+		body    string
+	}{
+		{"sem token", "", "00000000-0000-0000-0000-000000000002", validUseCase, validToken, http.StatusUnauthorized, ""},
+		{"token invalido", "Bearer invalido", "00000000-0000-0000-0000-000000000002", validUseCase, tokenFake{err: errors.New("jwt")}, http.StatusUnauthorized, ""},
+		{"sem escopo", "Bearer jwt", "00000000-0000-0000-0000-000000000002", validUseCase, tokenFake{claims: seguranca.Claims{Escopos: []string{"clientes:ler"}}}, http.StatusForbidden, ""},
+		{"uuid invalido", "Bearer jwt", "id", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"nao encontrado", "Bearer jwt", "00000000-0000-0000-0000-000000000002", reativarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
+		{"duplicado", "Bearer jwt", "00000000-0000-0000-0000-000000000002", reativarFake{err: application.ErrClienteDuplicado}, validToken, http.StatusConflict, ""},
+		{"ja ativo", "Bearer jwt", "00000000-0000-0000-0000-000000000002", reativarFake{err: application.ErrClienteJaAtivo}, validToken, http.StatusConflict, ""},
+		{"erro interno", "Bearer jwt", "00000000-0000-0000-0000-000000000002", reativarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError, ""},
+		{"sucesso", "Bearer jwt", "00000000-0000-0000-0000-000000000002", validUseCase, validToken, http.StatusOK, `"veiculosReativados":0`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/clientes/"+test.id+"/reativacao", nil)
+			request.SetPathValue("clienteId", test.id)
+			if test.auth != "" {
+				request.Header.Set("Authorization", test.auth)
+			}
+			response := httptest.NewRecorder()
+			NewReativarHandler(test.useCase, test.token)(response, request)
+			if response.Code != test.status {
+				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			}
+			if test.body != "" && !strings.Contains(response.Body.String(), test.body) {
 				t.Fatalf("body: %s", response.Body.String())
 			}
 		})

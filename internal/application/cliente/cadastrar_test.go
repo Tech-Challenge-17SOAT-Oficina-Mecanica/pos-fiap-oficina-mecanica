@@ -28,8 +28,16 @@ func (fake *repositoryFake) BuscarPorID(context.Context, string) (domain.Cliente
 	return domain.Cliente{}, ErrClienteNaoEncontrado
 }
 
+func (fake *repositoryFake) BuscarPorIDIncluindoInativo(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake *repositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
 	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
+func (fake *repositoryFake) BuscarOSAbertas(context.Context, string) ([]OrdemServicoAberta, error) {
+	return nil, nil
 }
 
 func (fake *repositoryFake) Salvar(_ context.Context, cliente domain.Cliente) (domain.Cliente, error) {
@@ -41,6 +49,14 @@ func (fake *repositoryFake) Salvar(_ context.Context, cliente domain.Cliente) (d
 
 func (fake *repositoryFake) Atualizar(context.Context, domain.Cliente, int) (domain.Cliente, error) {
 	return domain.Cliente{}, nil
+}
+
+func (fake *repositoryFake) Inativar(context.Context, InativarRepositoryInput) (Inativacao, error) {
+	return Inativacao{}, nil
+}
+
+func (fake *repositoryFake) Reativar(context.Context, ReativarRepositoryInput) (Reativacao, error) {
+	return Reativacao{}, nil
 }
 
 func TestCadastrarCliente(t *testing.T) {

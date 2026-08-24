@@ -36,12 +36,16 @@ func main() {
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
 	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
+	inativarCliente := clienteApplication.NewInativar(clienteRepository)
+	reativarCliente := clienteApplication.NewReativar(clienteRepository)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
 	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
+	mux.Handle("DELETE /clientes/{clienteId}", clientePresentation.NewInativarHandler(inativarCliente, jwt))
+	mux.Handle("POST /clientes/{clienteId}/reativacao", clientePresentation.NewReativarHandler(reativarCliente, jwt))
 
 	server := &http.Server{
 		Addr:    ":8080",

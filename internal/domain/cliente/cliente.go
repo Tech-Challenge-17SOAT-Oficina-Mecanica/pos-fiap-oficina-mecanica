@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/mail"
 	"strings"
+	"time"
 )
 
 const (
@@ -21,6 +22,7 @@ var (
 	ErrTelefoneInvalido         = errors.New("telefone deve ter 10 ou 11 dígitos")
 	ErrEmailInvalido            = errors.New("email inválido")
 	ErrClienteIDObrigatorio     = errors.New("clienteId é obrigatório")
+	ErrMotivoInvalido           = errors.New("motivo deve ter no máximo 200 caracteres")
 )
 
 type Cliente struct {
@@ -31,6 +33,9 @@ type Cliente struct {
 	Telefone      string
 	Email         string
 	Ativo         bool
+	InativadoEm   *time.Time
+	InativadoPor  string
+	Motivo        string
 	Version       int
 	Veiculos      []Veiculo
 }
@@ -41,6 +46,11 @@ type Veiculo struct {
 	Marca  string `json:"marca"`
 	Modelo string `json:"modelo"`
 	Ano    int    `json:"ano"`
+}
+
+type VeiculoInativado struct {
+	ID    string `json:"id"`
+	Placa string `json:"placa"`
 }
 
 type NovoClienteInput struct {
@@ -57,6 +67,14 @@ type AtualizarClienteInput struct {
 	TipoDocumento string
 	Telefone      string
 	Email         string
+}
+
+func MotivoParaInativacao(motivo string) (string, error) {
+	motivo = strings.TrimSpace(motivo)
+	if len(motivo) > 200 {
+		return "", ErrMotivoInvalido
+	}
+	return motivo, nil
 }
 
 func Novo(input NovoClienteInput) (Cliente, error) {

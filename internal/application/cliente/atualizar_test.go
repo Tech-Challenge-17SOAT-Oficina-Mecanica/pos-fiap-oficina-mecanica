@@ -30,8 +30,16 @@ func (fake *atualizarRepositoryFake) BuscarPorID(context.Context, string) (domai
 	return fake.cliente, fake.buscarErr
 }
 
+func (fake *atualizarRepositoryFake) BuscarPorIDIncluindoInativo(context.Context, string) (domain.Cliente, error) {
+	return domain.Cliente{}, ErrClienteNaoEncontrado
+}
+
 func (fake *atualizarRepositoryFake) BuscarPorDocumento(context.Context, string) (domain.Cliente, error) {
 	return domain.Cliente{}, nil
+}
+
+func (fake *atualizarRepositoryFake) BuscarOSAbertas(context.Context, string) ([]OrdemServicoAberta, error) {
+	return nil, nil
 }
 
 func (fake *atualizarRepositoryFake) Salvar(context.Context, domain.Cliente) (domain.Cliente, error) {
@@ -43,6 +51,14 @@ func (fake *atualizarRepositoryFake) Atualizar(_ context.Context, cliente domain
 	fake.atualizado = cliente
 	cliente.Version++
 	return cliente, fake.atualizarErr
+}
+
+func (fake *atualizarRepositoryFake) Inativar(context.Context, InativarRepositoryInput) (Inativacao, error) {
+	return Inativacao{}, nil
+}
+
+func (fake *atualizarRepositoryFake) Reativar(context.Context, ReativarRepositoryInput) (Reativacao, error) {
+	return Reativacao{}, nil
 }
 
 func TestAtualizarClienteUseCase(t *testing.T) {
