@@ -63,6 +63,15 @@ type fornecedorAtualizadoResponse struct {
 	DataAtualizacao  string `json:"dataAtualizacao"`
 }
 
+type fornecedorSituacaoResponse struct {
+	ID           string  `json:"id"`
+	RazaoSocial  string  `json:"razaoSocial"`
+	Documento    string  `json:"documento"`
+	Ativo        bool    `json:"ativo"`
+	InativadoEm  *string `json:"inativadoEm"`
+	InativadoPor *string `json:"inativadoPor"`
+}
+
 type fornecedorResumoResponse struct {
 	ID               string `json:"id"`
 	RazaoSocial      string `json:"razaoSocial"`
@@ -245,6 +254,58 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 	}
 }
 
+func NewDesativarHandler(useCase application.DesativarFornecedor) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fornecedorID := request.PathValue("fornecedorId")
+		if !uuidRegex.MatchString(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+			return
+		}
+		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, claims.Subject)
+		if err != nil {
+			handleSituacaoError(writer, err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(newFornecedorSituacaoResponse(fornecedor))
+	}
+}
+
+func NewReativarHandler(useCase application.ReativarFornecedor) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fornecedorID := request.PathValue("fornecedorId")
+		if !uuidRegex.MatchString(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+			return
+		}
+		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, claims.Subject)
+		if err != nil {
+			handleSituacaoError(writer, err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(newFornecedorSituacaoResponse(fornecedor))
+	}
+}
+
+func handleSituacaoError(writer http.ResponseWriter, err error) {
+	if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
+		writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")
+		return
+	}
+	if errors.Is(err, application.ErrFornecedorJaInativo) || errors.Is(err, application.ErrFornecedorJaAtivo) || errors.Is(err, application.ErrFornecedorComPedidoAberto) || errors.Is(err, application.ErrDocumentoAtivoDuplicado) {
+		writeProblem(writer, http.StatusConflict, "Conflito de estado", err.Error(), "fornecedorId")
+		return
+	}
+	if errors.Is(err, application.ErrSituacaoInvalida) {
+		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedorId")
+		return
+	}
+	writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao alterar situacao do fornecedor", "")
+}
+
 func decodeAtualizarRequest(request *http.Request) (atualizarRequest, error) {
 	var raw map[string]json.RawMessage
 	decoder := json.NewDecoder(request.Body)
@@ -344,6 +405,26 @@ func newFornecedorAtualizadoResponse(fornecedor domain.Fornecedor) fornecedorAtu
 		Ativo:            fornecedor.Ativo,
 		Version:          fornecedor.Version,
 		DataAtualizacao:  fornecedor.AtualizadoEm.Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+func newFornecedorSituacaoResponse(fornecedor domain.Fornecedor) fornecedorSituacaoResponse {
+	var inativadoEm *string
+	if fornecedor.InativadoEm != nil {
+		formatted := fornecedor.InativadoEm.Format("2006-01-02T15:04:05Z07:00")
+		inativadoEm = &formatted
+	}
+	var inativadoPor *string
+	if fornecedor.InativadoPor != "" {
+		inativadoPor = &fornecedor.InativadoPor
+	}
+	return fornecedorSituacaoResponse{
+		ID:           fornecedor.ID,
+		RazaoSocial:  fornecedor.RazaoSocial,
+		Documento:    fornecedor.Documento,
+		Ativo:        fornecedor.Ativo,
+		InativadoEm:  inativadoEm,
+		InativadoPor: inativadoPor,
 	}
 }
 

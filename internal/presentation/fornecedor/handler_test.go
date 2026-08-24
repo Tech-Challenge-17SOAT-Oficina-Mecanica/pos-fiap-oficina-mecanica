@@ -39,6 +39,14 @@ func (stub *repositoryStub) Atualizar(_ context.Context, _ string, _ domain.Atua
 	return stub.fornecedor, stub.err
 }
 
+func (stub repositoryStub) Desativar(context.Context, string, string) (domain.Fornecedor, error) {
+	return stub.fornecedor, stub.err
+}
+
+func (stub repositoryStub) Reativar(context.Context, string, string) (domain.Fornecedor, error) {
+	return stub.fornecedor, stub.err
+}
+
 func TestCadastrarHandlerCriaFornecedor(t *testing.T) {
 	useCase := application.NewCadastrar(repositoryStub{fornecedor: domain.Fornecedor{
 		ID: "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa",
@@ -227,6 +235,89 @@ func TestAtualizarHandlerRejeitaAtualizacaoSemContato(t *testing.T) {
 	NewAtualizarHandler(application.NewAtualizarFornecedor(&repositoryStub{err: errors.New("nao deveria chamar repositorio")})).ServeHTTP(response, request)
 
 	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestDesativarHandlerDesativaFornecedor(t *testing.T) {
+	inativadoEm := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
+	useCase := application.NewDesativarFornecedor(repositoryStub{fornecedor: domain.Fornecedor{
+		ID: "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa",
+		Cadastro: domain.Cadastro{
+			RazaoSocial: "Auto Pecas Brasil Ltda",
+			Documento:   "04252011000110",
+		},
+		Ativo:        false,
+		InativadoEm:  &inativadoEm,
+		InativadoPor: "90000000-0000-0000-0000-000000000001",
+	}})
+	request := httptest.NewRequest(http.MethodDelete, "/fornecedores/e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa", nil)
+	request.SetPathValue("fornecedorId", "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa")
+	response := httptest.NewRecorder()
+
+	NewDesativarHandler(useCase).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	var body fornecedorSituacaoResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Ativo || body.InativadoEm == nil || body.InativadoPor == nil {
+		t.Fatalf("body=%+v", body)
+	}
+}
+
+func TestDesativarHandlerMapeiaPedidoAberto(t *testing.T) {
+	useCase := application.NewDesativarFornecedor(repositoryStub{err: application.ErrFornecedorComPedidoAberto})
+	request := httptest.NewRequest(http.MethodDelete, "/fornecedores/e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa", nil)
+	request.SetPathValue("fornecedorId", "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa")
+	response := httptest.NewRecorder()
+
+	NewDesativarHandler(useCase).ServeHTTP(response, request)
+
+	if response.Code != http.StatusConflict {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestReativarHandlerReativaFornecedor(t *testing.T) {
+	useCase := application.NewReativarFornecedor(repositoryStub{fornecedor: domain.Fornecedor{
+		ID: "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa",
+		Cadastro: domain.Cadastro{
+			RazaoSocial: "Auto Pecas Brasil Ltda",
+			Documento:   "04252011000110",
+		},
+		Ativo: true,
+	}})
+	request := httptest.NewRequest(http.MethodPost, "/fornecedores/e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa/reativacao", nil)
+	request.SetPathValue("fornecedorId", "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa")
+	response := httptest.NewRecorder()
+
+	NewReativarHandler(useCase).ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+	var body fornecedorSituacaoResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if !body.Ativo || body.InativadoEm != nil || body.InativadoPor != nil {
+		t.Fatalf("body=%+v", body)
+	}
+}
+
+func TestReativarHandlerMapeiaDocumentoDuplicado(t *testing.T) {
+	useCase := application.NewReativarFornecedor(repositoryStub{err: application.ErrDocumentoAtivoDuplicado})
+	request := httptest.NewRequest(http.MethodPost, "/fornecedores/e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa/reativacao", nil)
+	request.SetPathValue("fornecedorId", "e5d3e1bc-74f2-49ad-b3d8-95eed4ef0cfa")
+	response := httptest.NewRecorder()
+
+	NewReativarHandler(useCase).ServeHTTP(response, request)
+
+	if response.Code != http.StatusConflict {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
 }

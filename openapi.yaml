@@ -132,6 +132,40 @@ paths:
           description: Escopo insuficiente
         '404':
           description: Fornecedor nao encontrado
+    delete:
+      tags: [Fornecedores]
+      summary: Desativa um fornecedor
+      description: Realiza exclusao logica do fornecedor, preservando o historico de pedidos de compra.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fornecedor desativado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FornecedorSituacao'
+        '400':
+          description: Identificador invalido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Token ausente ou expirado
+        '403':
+          description: Escopo insuficiente
+        '404':
+          description: Fornecedor nao encontrado
+        '409':
+          description: Fornecedor ja inativo ou com pedido de compra em aberto
     put:
       tags: [Fornecedores]
       summary: Atualiza um fornecedor
@@ -181,6 +215,40 @@ paths:
           description: If-Match divergente
         '428':
           description: If-Match nao informado
+  /fornecedores/{fornecedorId}/reativacao:
+    post:
+      tags: [Fornecedores]
+      summary: Reativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Fornecedor reativado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FornecedorSituacao'
+        '400':
+          description: Identificador invalido
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '401':
+          description: Token ausente ou expirado
+        '403':
+          description: Escopo insuficiente
+        '404':
+          description: Fornecedor nao encontrado
+        '409':
+          description: Fornecedor ja ativo ou documento ja usado por outro fornecedor ativo
   /autenticacao/login:
     post:
       tags: [Seguranca]
@@ -314,6 +382,29 @@ components:
             dataAtualizacao:
               type: string
               format: date-time
+    FornecedorSituacao:
+      type: object
+      required: [id, razaoSocial, documento, ativo]
+      properties:
+        id:
+          type: string
+          format: uuid
+        razaoSocial:
+          type: string
+          example: Auto Pecas Bandeirantes Ltda
+        documento:
+          type: string
+          example: 04252011000110
+        ativo:
+          type: boolean
+        inativadoEm:
+          type: string
+          format: date-time
+          nullable: true
+        inativadoPor:
+          type: string
+          format: uuid
+          nullable: true
     FornecedorResumo:
       allOf:
         - $ref: '#/components/schemas/CadastrarFornecedor'

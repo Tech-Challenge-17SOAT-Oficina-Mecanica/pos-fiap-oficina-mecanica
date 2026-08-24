@@ -47,6 +47,12 @@ func main() {
 	mux.Handle("PUT /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewAtualizarHandler(
 		fornecedorApplication.NewAtualizarFornecedor(fornecedorRepository),
 	)))
+	mux.Handle("DELETE /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewDesativarHandler(
+		fornecedorApplication.NewDesativarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("POST /fornecedores/{fornecedorId}/reativacao", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewReativarHandler(
+		fornecedorApplication.NewReativarFornecedor(fornecedorRepository),
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 
 	server := &http.Server{
@@ -64,7 +70,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if origin == "http://localhost:8081" || origin == "http://127.0.0.1:8081" {
 			writer.Header().Set("Access-Control-Allow-Origin", origin)
 			writer.Header().Set("Vary", "Origin")
-			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+			writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization, If-Match")
 		}
 		if request.Method == http.MethodOptions {
