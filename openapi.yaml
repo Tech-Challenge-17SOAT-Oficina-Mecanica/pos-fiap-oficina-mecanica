@@ -5,6 +5,53 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /clientes:
+    post:
+      tags: [Cliente]
+      summary: Cadastra um cliente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, documento, tipoDocumento]
+              properties:
+                nome:
+                  type: string
+                  example: Ana Martins
+                documento:
+                  type: string
+                  example: '12345678909'
+                tipoDocumento:
+                  type: string
+                  enum: [CPF, CNPJ]
+                telefone:
+                  type: string
+                  example: '11988887777'
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Cliente cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '409': { description: Cliente já cadastrado }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -20,9 +67,11 @@ paths:
                 email:
                   type: string
                   format: email
+                  example: mecanico@oficina.local
                 senha:
                   type: string
                   format: password
+                  example: mecanico123
       responses:
         '200':
           description: Autenticado
@@ -36,3 +85,9 @@ paths:
                   expiresIn: { type: integer, example: 3600 }
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
