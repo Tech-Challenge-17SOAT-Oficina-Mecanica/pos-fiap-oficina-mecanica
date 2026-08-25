@@ -57,6 +57,15 @@ func main() {
 	mux.Handle("GET /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewBuscarPorIDHandler(
 		fornecedorApplication.NewConsultarFornecedorPorID(fornecedorRepository),
 	)))
+	mux.Handle("PUT /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewAtualizarHandler(
+		fornecedorApplication.NewAtualizarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("DELETE /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewDesativarHandler(
+		fornecedorApplication.NewDesativarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("POST /fornecedores/{fornecedorId}/reativacao", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewReativarHandler(
+		fornecedorApplication.NewReativarFornecedor(fornecedorRepository),
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))

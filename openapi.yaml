@@ -80,6 +80,69 @@ paths:
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo compras:ler }
         '404': { description: Fornecedor não encontrado }
+    put:
+      tags: [Fornecedores]
+      summary: Atualiza um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarFornecedor' }
+      responses:
+        '200': { description: Fornecedor atualizado }
+        '400': { description: Dados inválidos ou campo imutável enviado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor inativo }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Fornecedores]
+      summary: Desativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor desativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já inativo ou com pedido de compra em aberto }
+  /fornecedores/{fornecedorId}/reativacao:
+    post:
+      tags: [Fornecedores]
+      summary: Reativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor reativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já ativo ou documento já utilizado }
   /veiculos:
     get:
       tags: [Veículos]
@@ -497,6 +560,15 @@ components:
         telefone: { type: string }
         email: { type: string, format: email }
         prazoEntregaDias: { type: integer, minimum: 1, maximum: 365, default: 7 }
+    AtualizarFornecedor:
+      type: object
+      required: [razaoSocial]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365 }
     Fornecedor:
       allOf:
         - $ref: '#/components/schemas/CadastrarFornecedor'

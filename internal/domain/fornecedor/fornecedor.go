@@ -24,9 +24,20 @@ type Cadastro struct {
 type Fornecedor struct {
 	ID string
 	Cadastro
-	Ativo    bool
-	Version  int
-	CriadoEm time.Time
+	Ativo        bool
+	Version      int
+	CriadoEm     time.Time
+	AtualizadoEm time.Time
+	InativadoEm  *time.Time
+	InativadoPor string
+}
+
+type Atualizacao struct {
+	RazaoSocial      string
+	NomeFantasia     string
+	Telefone         string
+	Email            string
+	PrazoEntregaDias *int
 }
 
 func NovoCadastro(razaoSocial, nomeFantasia, documento, tipoDocumento, telefone, email string, prazoEntregaDias *int) (Cadastro, error) {
@@ -68,6 +79,36 @@ func NovoCadastro(razaoSocial, nomeFantasia, documento, tipoDocumento, telefone,
 		return Cadastro{}, errors.New("prazoEntregaDias deve estar entre 1 e 365")
 	}
 	return cadastro, nil
+}
+
+func NovaAtualizacao(razaoSocial, nomeFantasia, telefone, email string, prazoEntregaDias *int) (Atualizacao, error) {
+	atualizacao := Atualizacao{
+		RazaoSocial:      strings.TrimSpace(razaoSocial),
+		NomeFantasia:     strings.TrimSpace(nomeFantasia),
+		Telefone:         validation.OnlyDigits(telefone),
+		Email:            strings.TrimSpace(email),
+		PrazoEntregaDias: prazoEntregaDias,
+	}
+
+	if tamanhoInvalido(atualizacao.RazaoSocial, 3, 120) {
+		return Atualizacao{}, errors.New("razaoSocial deve ter entre 3 e 120 caracteres")
+	}
+	if len(atualizacao.NomeFantasia) > 120 {
+		return Atualizacao{}, errors.New("nomeFantasia deve ter no maximo 120 caracteres")
+	}
+	if atualizacao.Telefone != "" && (len(atualizacao.Telefone) < 10 || len(atualizacao.Telefone) > 11) {
+		return Atualizacao{}, errors.New("telefone deve ter 10 ou 11 digitos")
+	}
+	if atualizacao.Email != "" && !emailValido(atualizacao.Email) {
+		return Atualizacao{}, errors.New("email invalido")
+	}
+	if atualizacao.Telefone == "" && atualizacao.Email == "" {
+		return Atualizacao{}, errors.New("telefone ou email e obrigatorio")
+	}
+	if atualizacao.PrazoEntregaDias != nil && (*atualizacao.PrazoEntregaDias < 1 || *atualizacao.PrazoEntregaDias > 365) {
+		return Atualizacao{}, errors.New("prazoEntregaDias deve estar entre 1 e 365")
+	}
+	return atualizacao, nil
 }
 
 func tamanhoInvalido(value string, minimo, maximo int) bool {
