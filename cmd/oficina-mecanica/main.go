@@ -6,14 +6,17 @@ import (
 	"os"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
+	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
+	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	veiculoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
@@ -31,10 +34,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
-	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
-	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
-	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
+
+	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
@@ -46,9 +47,29 @@ func main() {
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
 	inativarCliente := clienteApplication.NewInativar(clienteRepository)
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
+	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
+	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewCadastrarHandler(
+		fornecedorApplication.NewCadastrar(fornecedorRepository),
+	)))
+	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewListarHandler(
+		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
+	)))
+	mux.Handle("GET /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewBuscarPorIDHandler(
+		fornecedorApplication.NewConsultarFornecedorPorID(fornecedorRepository),
+	)))
+	mux.Handle("PUT /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewAtualizarHandler(
+		fornecedorApplication.NewAtualizarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("DELETE /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewDesativarHandler(
+		fornecedorApplication.NewDesativarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("POST /fornecedores/{fornecedorId}/reativacao", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewReativarHandler(
+		fornecedorApplication.NewReativarFornecedor(fornecedorRepository),
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))

@@ -6,62 +6,143 @@ servers:
   - url: http://localhost:8080
 tags:
   - name: Veículos
-  - name: Cliente
-  - name: Mecânico
-  - name: Segurança
+  - name: Fornecedores
 paths:
-  /mecanicos:
+  /health:
+    get:
+      summary: Verifica a disponibilidade da API
+      responses:
+        '200': { description: API disponível }
+  /fornecedores:
+    get:
+      tags: [Fornecedores]
+      summary: Lista fornecedores cadastrados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nome
+          in: query
+          schema: { type: string }
+          description: Filtro parcial por razão social ou nome fantasia.
+        - name: documento
+          in: query
+          schema: { type: string }
+          description: Filtro exato por CPF/CNPJ, com ou sem máscara.
+        - name: incluirInativos
+          in: query
+          schema: { type: boolean, default: false }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { description: Consulta realizada }
+        '400': { description: Filtros ou paginação inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
     post:
-      tags: [Mecânico]
-      summary: Cadastra um mecânico
-      description: Exige o escopo `mecanicos:escrever`.
+      tags: [Fornecedores]
+      summary: Cadastra um fornecedor
+      description: Exige o escopo `compras:escrever`.
       security:
         - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [nome, email, senha, escopos]
-              properties:
-                nome:
-                  type: string
-                  example: Maria Souza
-                email:
-                  type: string
-                  format: email
-                  example: maria.souza@oficina.local
-                senha:
-                  type: string
-                  format: password
-                  minLength: 15
-                  example: senha-da-maria-123
-                escopos:
-                  type: array
-                  items:
-                    type: string
-                  example: [veiculos:ler, veiculos:escrever]
+            schema: { $ref: '#/components/schemas/CadastrarFornecedor' }
       responses:
         '201':
-          description: Mecânico cadastrado
+          description: Fornecedor cadastrado
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  id: { type: string, format: uuid }
-                  nome: { type: string }
-                  email: { type: string, format: email }
-                  ativo: { type: boolean }
-                  escopos:
-                    type: array
-                    items:
-                      type: string
-        '400': { description: Corpo inválido, campo obrigatório ausente, senha com menos de 15 caracteres ou escopo desconhecido }
+              schema: { $ref: '#/components/schemas/Fornecedor' }
+        '400': { description: Dados inválidos }
         '401': { description: Token ausente, inválido ou expirado }
-        '403': { description: Usuário sem o escopo mecanicos:escrever }
-        '409': { description: E-mail já cadastrado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '409': { description: Documento duplicado }
+  /fornecedores/{fornecedorId}:
+    get:
+      tags: [Fornecedores]
+      summary: Consulta um fornecedor pelo identificador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor encontrado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
+        '404': { description: Fornecedor não encontrado }
+    put:
+      tags: [Fornecedores]
+      summary: Atualiza um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarFornecedor' }
+      responses:
+        '200': { description: Fornecedor atualizado }
+        '400': { description: Dados inválidos ou campo imutável enviado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor inativo }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Fornecedores]
+      summary: Desativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor desativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já inativo ou com pedido de compra em aberto }
+  /fornecedores/{fornecedorId}/reativacao:
+    post:
+      tags: [Fornecedores]
+      summary: Reativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor reativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já ativo ou documento já utilizado }
   /veiculos:
     get:
       tags: [Veículos]
@@ -468,6 +549,36 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    CadastrarFornecedor:
+      type: object
+      required: [razaoSocial, documento, tipoDocumento]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        documento: { type: string }
+        tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365, default: 7 }
+    AtualizarFornecedor:
+      type: object
+      required: [razaoSocial]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365 }
+    Fornecedor:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo, version, dataCriacao]
+          properties:
+            id: { type: string, format: uuid }
+            ativo: { type: boolean }
+            version: { type: integer }
+            dataCriacao: { type: string, format: date-time }
     CadastrarVeiculo:
       type: object
       required: [placa, marca, modelo, ano]
