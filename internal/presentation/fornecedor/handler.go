@@ -89,7 +89,7 @@ func NewCadastrarHandler(useCase application.Cadastrar) http.HandlerFunc {
 		decoder := json.NewDecoder(request.Body)
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&input); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "corpo da requisicao invalido", "")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido", "")
 			return
 		}
 
@@ -103,7 +103,7 @@ func NewCadastrarHandler(useCase application.Cadastrar) http.HandlerFunc {
 			input.PrazoEntregaDias,
 		)
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedor")
 			return
 		}
 
@@ -217,8 +217,7 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
 			return
 		}
-		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
-		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, atualizacao, version, claims.Subject)
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, atualizacao, version, segurancaPresentation.UsuarioID(request.Context()))
 		if err != nil {
 			if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
 				writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")

@@ -11,9 +11,12 @@ import (
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
 )
 
-type PostgresRepository struct {
-	db *pgxpool.Pool
+type queryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
 }
+
+type PostgresRepository struct{ db queryer }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository {
 	return PostgresRepository{db: db}

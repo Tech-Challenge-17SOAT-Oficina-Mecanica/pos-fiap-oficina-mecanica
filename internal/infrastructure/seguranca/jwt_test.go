@@ -21,7 +21,7 @@ func TestJWT(t *testing.T) {
 		t.Fatal(err)
 	}
 	claims, err := service.Validar(raw)
-	if err != nil || claims.Subject != "usuario" || len(claims.Escopos) != 1 {
+	if err != nil || claims.UsuarioID != "usuario" || len(claims.Escopos) != 1 {
 		t.Fatalf("claims: %#v, %v", claims, err)
 	}
 	if _, err := service.Validar("invalido"); err == nil {
@@ -31,7 +31,7 @@ func TestJWT(t *testing.T) {
 	if _, err := other.Validar(raw); err == nil {
 		t.Fatal("esperava assinatura inválida")
 	}
-	wrongAlgorithm, _ := jwt.NewWithClaims(jwt.SigningMethodHS384, Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "usuario", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}).SignedString([]byte("segredo"))
+	wrongAlgorithm, _ := jwt.NewWithClaims(jwt.SigningMethodHS384, jwtClaims{RegisteredClaims: jwt.RegisteredClaims{Subject: "usuario", ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour))}}).SignedString([]byte("segredo"))
 	if _, err := service.Validar(wrongAlgorithm); err == nil {
 		t.Fatal("esperava algoritmo inválido")
 	}

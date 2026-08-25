@@ -29,6 +29,7 @@ e os dados iniciais são carregados pelos scripts de seed em `db/seeds`.
 | Recurso | URL |
 | --- | --- |
 | 💚 Health check | <http://localhost:8080/health> |
+| 📖 Swagger UI | <http://localhost:8081> |
 
 ## 🚀 Primeiros passos
 
@@ -60,6 +61,15 @@ e os dados iniciais são carregados pelos scripts de seed em `db/seeds`.
    ```bash
    make up
    ```
+
+5. ♻️ Após alterar arquivos Go, reconstrua e reinicie a API:
+
+   ```bash
+   make restart
+   ```
+
+   O Go gera um binário durante a imagem Docker; por isso apenas reiniciar o
+   container não incorpora mudanças no código-fonte.
 
 🛑 Para encerrar os containers sem apagar os dados persistidos:
 
