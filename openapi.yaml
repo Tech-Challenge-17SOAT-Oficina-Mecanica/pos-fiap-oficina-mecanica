@@ -7,6 +7,55 @@ servers:
 tags:
   - name: Veículos
 paths:
+  /ordens-servico/{osId}/problema-relatado:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra o problema relatado pelo cliente
+      description: Registra o relato e move a Ordem de Serviço de RECEBIDA para EM_DIAGNOSTICO na mesma operação. Exige o escopo `os:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao]
+              additionalProperties: false
+              properties:
+                descricao:
+                  type: string
+                  example: Veículo apresenta ruído ao frear
+                observacoes:
+                  type: string
+                  example: Cliente relata que o problema começou há aproximadamente uma semana
+      responses:
+        '201':
+          description: Problema relatado registrado e diagnóstico iniciado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ordemServicoId: { type: string, format: uuid }
+                  problemaRelatado:
+                    type: object
+                    properties:
+                      descricao: { type: string }
+                      observacoes: { type: string }
+                  status: { type: string, enum: [EM_DIAGNOSTICO] }
+                  dataInicioDiagnostico: { type: string, format: date-time }
+        '400': { description: osId ou payload inválido; descrição ausente }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Ordem de Serviço não encontrada }
+        '409': { description: OS fora de RECEBIDA ou problema relatado já registrado }
+        '500': { description: Erro inesperado ao registrar o problema relatado }
   /veiculos:
     get:
       tags: [Veículos]
