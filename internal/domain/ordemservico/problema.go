@@ -32,9 +32,10 @@ type Problema struct {
 }
 
 type Orcamento struct {
-	ID     string
-	Tipo   string
-	Status string
+	ID         string
+	Tipo       string
+	Status     string
+	ValorTotal float64
 }
 
 func NovoProblemaCadastro(descricao, observacoes string) (ProblemaCadastro, error) {
