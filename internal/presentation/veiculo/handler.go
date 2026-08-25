@@ -5,12 +5,66 @@ import (
 	"errors"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/veiculo"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 	"io"
 	"net/http"
 	"strconv"
 )
+
+func NewInativarHandler(useCase application.Inativar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("veiculoId")
+		if !validation.IsUUID(id) {
+			writeProblem(w, 400, "Dados inválidos", "veiculoId inválido", "veiculoId")
+			return
+		}
+		result, err := useCase.Execute(r.Context(), id, segurancaPresentation.UsuarioID(r.Context()), r.URL.Query().Get("motivo"))
+		if errors.Is(err, application.ErrVeiculoJaInativo) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		if err != nil {
+			if errors.As(err, &application.OSAbertaError{}) {
+				writeProblem(w, 409, "Conflito de estado", err.Error(), "")
+				return
+			}
+			status := 500
+			if errors.Is(err, application.ErrVeiculoNaoEncontrado) {
+				status = 404
+			}
+			writeProblem(w, status, titleFor(status), err.Error(), "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"veiculoId": result.Veiculo.ID, "placa": result.Veiculo.Placa, "ativo": false, "inativadoEm": result.Veiculo.InativadoEm, "inativadoPor": result.Veiculo.InativadoPor, "motivo": result.Veiculo.Motivo, "placaLiberadaParaNovoCadastro": true})
+	}
+}
+
+func NewReativarHandler(useCase application.Reativar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("veiculoId")
+		if !validation.IsUUID(id) {
+			writeProblem(w, 400, "Dados inválidos", "veiculoId inválido", "veiculoId")
+			return
+		}
+		result, err := useCase.Execute(r.Context(), id, segurancaPresentation.UsuarioID(r.Context()))
+		if err != nil {
+			status := 500
+			if errors.Is(err, application.ErrVeiculoNaoEncontrado) {
+				status = 404
+			}
+			if errors.Is(err, application.ErrVeiculoJaAtivo) || errors.Is(err, application.ErrPlacaDuplicada) || errors.Is(err, application.ErrClienteProprietarioInativo) {
+				status = 409
+			}
+			writeProblem(w, status, titleFor(status), err.Error(), "")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"veiculoId": result.Veiculo.ID, "placa": result.Veiculo.Placa, "ativo": true, "reativadoEm": result.ReativadoEm, "reativadoPor": result.ReativadoPor})
+	}
+}
 
 type request struct {
 	Placa  string `json:"placa"`

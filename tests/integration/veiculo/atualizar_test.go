@@ -2,9 +2,9 @@ package integration_test
 
 import (
 	"bytes"
-	"database/sql"
+	"context"
 	"fmt"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	securityInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
@@ -22,24 +22,25 @@ func TestAtualizarVeiculo(t *testing.T) {
 	if url == "" {
 		t.Skip("DATABASE_URL não configurada")
 	}
-	db, err := sql.Open("pgx", url)
+	db, err := pgxpool.New(context.Background(), url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	ctx := context.Background()
 	id := fmt.Sprintf("40000000-0000-0000-0000-%012x", time.Now().UnixNano()&0xffffffffffff)
 	clienteID := fmt.Sprintf("50000000-0000-0000-0000-%012x", time.Now().UnixNano()&0xffffffffffff)
 	now := time.Now().UnixNano()
 	placa := fmt.Sprintf("X%c%c1A%02d", 'A'+now%26, 'A'+now/26%26, now%100)
-	if _, err = db.Exec("INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", time.Now().UnixNano()%100000000000)); err != nil {
+	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", time.Now().UnixNano()%100000000000)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = db.Exec("INSERT INTO veiculo (id,cliente_id,placa,marca,modelo,ano) VALUES ($1,$2,$3,'Toyota','Corolla',2020)", id, clienteID, placa); err != nil {
+	if _, err = db.Exec(ctx, "INSERT INTO veiculo (id,cliente_id,placa,marca,modelo,ano) VALUES ($1,$2,$3,'Toyota','Corolla',2020)", id, clienteID, placa); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.Exec("DELETE FROM veiculo WHERE id=$1", id)
-		_, _ = db.Exec("DELETE FROM cliente WHERE id=$1", clienteID)
+		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", id)
+		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clienteID)
 	})
 	jwt, err := securityInfrastructure.NewJWT("segredo-de-teste")
 	if err != nil {
@@ -89,5 +90,11 @@ func TestAtualizarVeiculo(t *testing.T) {
 	}
 	if w := req(id, "1", body, authorized); w.Code != 200 {
 		t.Fatalf("sucesso: %d", w.Code)
+	}
+	if _, err := db.Exec(ctx, "UPDATE veiculo SET ativo=FALSE WHERE id=$1", id); err != nil {
+		t.Fatal(err)
+	}
+	if w := req(id, "2", body, authorized); w.Code != 404 {
+		t.Fatalf("inativo: %d", w.Code)
 	}
 }

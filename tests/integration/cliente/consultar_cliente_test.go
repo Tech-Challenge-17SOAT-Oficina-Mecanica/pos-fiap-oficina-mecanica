@@ -11,6 +11,7 @@ import (
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
@@ -40,7 +41,7 @@ func TestConsultarCliente(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewConsultarHandler(application.NewConsultar(clienteInfrastructure.NewPostgresRepository(db)), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "clientes:ler", presentation.NewConsultarHandler(application.NewConsultar(clienteInfrastructure.NewPostgresRepository(db))))
 	for _, test := range []struct {
 		name, documento, auth, body string
 		status                      int
@@ -59,7 +60,7 @@ func TestConsultarCliente(t *testing.T) {
 				request.Header.Set("Authorization", test.auth)
 			}
 			response := httptest.NewRecorder()
-			handler(response, request)
+			handler.ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}

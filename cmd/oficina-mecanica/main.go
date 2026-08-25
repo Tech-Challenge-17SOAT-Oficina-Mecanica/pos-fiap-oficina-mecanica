@@ -19,16 +19,11 @@ import (
 )
 
 func main() {
-	db, err := database.Open()
+	db, err := database.OpenPool()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	clienteDB, err := database.OpenPool()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer clienteDB.Close()
 	jwt, err := segurancaInfrastructure.NewJWT(os.Getenv("JWT_SECRET"))
 	if err != nil {
 		log.Fatal(err)
@@ -38,7 +33,9 @@ func main() {
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
-	clienteRepository := clienteInfrastructure.NewPostgresRepository(clienteDB)
+	inativar := veiculoApplication.NewInativar(veiculo.NewPostgresRepository(db))
+	reativar := veiculoApplication.NewReativar(veiculo.NewPostgresRepository(db))
+	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
 	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
@@ -51,11 +48,13 @@ func main() {
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewAtualizarHandler(atualizar)))
-	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
-	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
-	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
-	mux.Handle("DELETE /clientes/{clienteId}", clientePresentation.NewInativarHandler(inativarCliente, jwt))
-	mux.Handle("POST /clientes/{clienteId}/reativacao", clientePresentation.NewReativarHandler(reativarCliente, jwt))
+	mux.Handle("DELETE /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewInativarHandler(inativar)))
+	mux.Handle("POST /veiculos/{veiculoId}/reativacao", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewReativarHandler(reativar)))
+	mux.Handle("GET /clientes", segurancaPresentation.RequireScope(jwt, "clientes:ler", clientePresentation.NewConsultarHandler(consultarCliente)))
+	mux.Handle("POST /clientes", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewCadastrarHandler(cadastrarCliente)))
+	mux.Handle("PUT /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewAtualizarHandler(atualizarCliente)))
+	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewInativarHandler(inativarCliente)))
+	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
 
 	server := &http.Server{
 		Addr:    ":8080",
