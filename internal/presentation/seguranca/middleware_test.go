@@ -22,7 +22,10 @@ func TestRequireScope(t *testing.T) {
 		response := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodPost, "/", nil)
 		request.Header.Set("Authorization", test.header)
-		RequireScope(jwt, "veiculos:escrever", http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		RequireScope(jwt, "veiculos:escrever", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if test.status == http.StatusNoContent && UsuarioID(request.Context()) != "usuario" {
+				t.Fatal("usuário não foi propagado")
+			}
 			writer.WriteHeader(http.StatusNoContent)
 		})).ServeHTTP(response, request)
 		if response.Code != test.status {

@@ -4,7 +4,31 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:8080
+tags:
+  - name: Veículos
 paths:
+  /veiculos:
+    get:
+      tags: [Veículos]
+      summary: Consulta um veículo pela placa
+      description: Exige o escopo `veiculos:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: placa
+          in: query
+          required: true
+          schema: { type: string, example: ABC1D23 }
+        - name: incluirInativos
+          in: query
+          required: true
+          schema: { type: boolean }
+      responses:
+        '200': { description: Veículo encontrado }
+        '400': { description: Parâmetros inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:ler }
+        '404': { description: Veículo não encontrado }
   /clientes/{clienteId}/veiculos:
     post:
       tags: [Veículos]
@@ -249,6 +273,74 @@ paths:
                       properties:
                         ordemServicoId: { type: string, format: uuid }
                         status: { type: string, example: EM_EXECUCAO }
+  /veiculos/{veiculoId}:
+    put:
+      tags: [Veículos]
+      summary: Atualiza os dados de um veículo
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '200': { description: Veículo atualizado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Placa já cadastrada }
+        '412': { description: Versão divergente }
+        '428': { description: If-Match ausente }
+    delete:
+      tags: [Veículos]
+      summary: Inativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: motivo
+          in: query
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200': { description: Veículo inativado }
+        '204': { description: Veículo já inativo }
+        '400': { description: Identificador ou motivo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo possui OS em aberto }
+  /veiculos/{veiculoId}/reativacao:
+    post:
+      tags: [Veículos]
+      summary: Reativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Veículo reativado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo ativo, placa em uso ou cliente inativo }
   /clientes/{clienteId}/reativacao:
     post:
       tags: [Cliente]

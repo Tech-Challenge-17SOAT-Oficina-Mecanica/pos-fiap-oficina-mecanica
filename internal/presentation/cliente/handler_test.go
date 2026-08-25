@@ -12,6 +12,7 @@ import (
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/cliente"
 	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 )
 
 type cadastrarFake struct {
@@ -69,7 +70,7 @@ func (fake tokenFake) Validar(string) (seguranca.Claims, error) {
 }
 
 func TestCadastrarHandler(t *testing.T) {
-	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoCadastrarCliente}}}
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{"clientes:escrever"}}}
 	validUseCase := cadastrarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777"}}
 	cases := []struct {
 		name    string
@@ -83,6 +84,8 @@ func TestCadastrarHandler(t *testing.T) {
 		{"token invalido", `{}`, "Bearer invalido", validUseCase, tokenFake{err: errors.New("jwt")}, http.StatusUnauthorized},
 		{"sem escopo", `{}`, "Bearer jwt", validUseCase, tokenFake{claims: seguranca.Claims{Escopos: []string{"clientes:ler"}}}, http.StatusForbidden},
 		{"json invalido", `{`, "Bearer jwt", validUseCase, validToken, http.StatusBadRequest},
+		{"campo desconhecido", `{"nome":"Ana","extra":true}`, "Bearer jwt", validUseCase, validToken, http.StatusBadRequest},
+		{"mais de um json", `{} {}`, "Bearer jwt", validUseCase, validToken, http.StatusBadRequest},
 		{"dominio invalido", `{}`, "Bearer jwt", cadastrarFake{err: domain.ErrNomeObrigatorio}, validToken, http.StatusBadRequest},
 		{"duplicado", `{}`, "Bearer jwt", cadastrarFake{err: application.ErrClienteDuplicado}, validToken, http.StatusConflict},
 		{"erro interno", `{}`, "Bearer jwt", cadastrarFake{err: errors.New("db")}, validToken, http.StatusInternalServerError},
@@ -95,7 +98,7 @@ func TestCadastrarHandler(t *testing.T) {
 				request.Header.Set("Authorization", test.auth)
 			}
 			response := httptest.NewRecorder()
-			NewCadastrarHandler(test.useCase, test.token)(response, request)
+			segurancaPresentation.RequireScope(test.token, "clientes:escrever", NewCadastrarHandler(test.useCase)).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
@@ -104,7 +107,7 @@ func TestCadastrarHandler(t *testing.T) {
 }
 
 func TestConsultarHandler(t *testing.T) {
-	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoConsultarCliente}}}
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{"clientes:ler"}}}
 	validUseCase := consultarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 4, Veiculos: []domain.Veiculo{{ID: "v1", Placa: "ABC1D23", Marca: "Toyota", Modelo: "Corolla", Ano: 2020}}}}
 	cases := []struct {
 		name    string
@@ -130,7 +133,7 @@ func TestConsultarHandler(t *testing.T) {
 				request.Header.Set("Authorization", test.auth)
 			}
 			response := httptest.NewRecorder()
-			NewConsultarHandler(test.useCase, test.token)(response, request)
+			segurancaPresentation.RequireScope(test.token, "clientes:ler", NewConsultarHandler(test.useCase)).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
@@ -142,7 +145,7 @@ func TestConsultarHandler(t *testing.T) {
 }
 
 func TestAtualizarHandler(t *testing.T) {
-	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{escopoCadastrarCliente}}}
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "usuario", Escopos: []string{"clientes:escrever"}}}
 	validUseCase := atualizarFake{cliente: domain.Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: domain.TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 3}}
 	validBody := `{"nome":"Ana","documento":"39053344705","tipoDocumento":"CPF","telefone":"11988887777"}`
 	cases := []struct {
@@ -161,6 +164,8 @@ func TestAtualizarHandler(t *testing.T) {
 		{"sem if match", validBody, "Bearer jwt", "", validUseCase, validToken, http.StatusPreconditionRequired, ""},
 		{"if match invalido", validBody, "Bearer jwt", "abc", validUseCase, validToken, http.StatusBadRequest, ""},
 		{"json invalido", `{`, "Bearer jwt", "2", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"campo desconhecido", `{"nome":"Ana","documento":"39053344705","tipoDocumento":"CPF","telefone":"11988887777","extra":true}`, "Bearer jwt", "2", validUseCase, validToken, http.StatusBadRequest, ""},
+		{"mais de um json", validBody + ` {}`, "Bearer jwt", "2", validUseCase, validToken, http.StatusBadRequest, ""},
 		{"dominio invalido", validBody, "Bearer jwt", "2", atualizarFake{err: domain.ErrNomeObrigatorio}, validToken, http.StatusBadRequest, ""},
 		{"nao encontrado", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrClienteNaoEncontrado}, validToken, http.StatusNotFound, ""},
 		{"duplicado", validBody, "Bearer jwt", "2", atualizarFake{err: application.ErrClienteDuplicado}, validToken, http.StatusConflict, ""},
@@ -179,7 +184,7 @@ func TestAtualizarHandler(t *testing.T) {
 				request.Header.Set("If-Match", test.ifMatch)
 			}
 			response := httptest.NewRecorder()
-			NewAtualizarHandler(test.useCase, test.token)(response, request)
+			segurancaPresentation.RequireScope(test.token, "clientes:escrever", NewAtualizarHandler(test.useCase)).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
@@ -192,7 +197,7 @@ func TestAtualizarHandler(t *testing.T) {
 
 func TestInativarHandler(t *testing.T) {
 	now := time.Now()
-	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{escopoCadastrarCliente}}}
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{"clientes:escrever"}}}
 	validUseCase := inativarFake{result: application.Inativacao{
 		Cliente:            domain.Cliente{ID: "00000000-0000-0000-0000-000000000002", Nome: "Ana", Ativo: false, InativadoEm: &now, InativadoPor: "00000000-0000-0000-0000-000000000001", Motivo: "duplicado"},
 		VeiculosInativados: []domain.VeiculoInativado{{ID: "v1", Placa: "ABC1D23"}},
@@ -226,7 +231,7 @@ func TestInativarHandler(t *testing.T) {
 				request.Header.Set("Authorization", test.auth)
 			}
 			response := httptest.NewRecorder()
-			NewInativarHandler(test.useCase, test.token)(response, request)
+			segurancaPresentation.RequireScope(test.token, "clientes:escrever", NewInativarHandler(test.useCase)).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
@@ -238,7 +243,7 @@ func TestInativarHandler(t *testing.T) {
 }
 
 func TestReativarHandler(t *testing.T) {
-	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{escopoCadastrarCliente}}}
+	validToken := tokenFake{claims: seguranca.Claims{UsuarioID: "00000000-0000-0000-0000-000000000001", Escopos: []string{"clientes:escrever"}}}
 	validUseCase := reativarFake{result: application.Reativacao{Cliente: domain.Cliente{ID: "00000000-0000-0000-0000-000000000002", Nome: "Ana", Ativo: true}, ReativadoEm: time.Now()}}
 	cases := []struct {
 		name    string
@@ -267,7 +272,7 @@ func TestReativarHandler(t *testing.T) {
 				request.Header.Set("Authorization", test.auth)
 			}
 			response := httptest.NewRecorder()
-			NewReativarHandler(test.useCase, test.token)(response, request)
+			segurancaPresentation.RequireScope(test.token, "clientes:escrever", NewReativarHandler(test.useCase)).ServeHTTP(response, request)
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}
