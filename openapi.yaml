@@ -7,6 +7,7 @@ servers:
 tags:
   - name: Veículos
   - name: Fornecedores
+  - name: Orcamentos
   - name: Ordens de Servico
 paths:
   /health:
@@ -571,6 +572,28 @@ paths:
         '403': { description: Usuario sem o escopo os:escrever }
         '404': { description: Ordem de servico nao encontrada }
         '409': { description: Status da OS ou orcamento nao permite o registro }
+  /ordens-servico/{osId}/orcamento:
+    get:
+      tags: [Orcamentos]
+      summary: Consulta os orcamentos de uma Ordem de Servico
+      description: Mecanicos exigem `os:ler`. Clientes usam token temporario com `orcamentos:ler`, restrito a propria OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orcamentos consultados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsultaOrcamento' }
+        '400': { description: Identificador invalido }
+        '401': { description: Token ausente, invalido ou expirado }
+        '403': { description: Cliente sem acesso a OS }
+        '404': { description: OS ou orcamento nao encontrado }
 components:
   securitySchemes:
     bearerAuth:
@@ -578,6 +601,54 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    ConsultaOrcamento:
+      type: object
+      required: [cliente, ordemServicoId, statusOrdemServico, orcamentos, valorTotalGeral]
+      properties:
+        cliente:
+          type: object
+          required: [clienteId, nome, documento, tipoDocumento]
+          properties:
+            clienteId: { type: string, format: uuid }
+            nome: { type: string }
+            documento: { type: string }
+            tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string }
+        valorTotalGeral: { type: number, format: double }
+        estimativaEntregaDias: { type: integer, minimum: 0 }
+        orcamentos:
+          type: array
+          items:
+            type: object
+            required: [orcamentoId, tipoOrcamento, statusOrcamento, itens, valorTotal]
+            properties:
+              orcamentoId: { type: string, format: uuid }
+              orcamentoOriginalId: { type: string, format: uuid }
+              tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+              statusOrcamento: { type: string, enum: [CRIADO, APROVADO, RECUSADO] }
+              estimativaEntregaDias: { type: integer, minimum: 0 }
+              dataGeracao: { type: string, format: date-time }
+              valorTotal: { type: number, format: double }
+              itens:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tipo: { type: string }
+                    descricao: { type: string }
+                    quantidade: { type: number, format: double }
+                    valorUnitario: { type: number, format: double }
+                    valorTotal: { type: number, format: double }
+              problemas:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    problemaId: { type: string, format: uuid }
+                    descricao: { type: string }
+                    observacoes: { type: string }
+                    registradoEm: { type: string, format: date-time }
     RegistrarProblema:
       type: object
       required: [descricao]
