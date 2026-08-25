@@ -53,7 +53,7 @@ func NewRegistrarProblemaHandler(useCase application.RegistrarProblema) http.Han
 				writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "osId")
 				return
 			}
-			if errors.Is(err, domain.ErrStatusNaoPermiteProblema) || errors.Is(err, domain.ErrOrcamentoFechado) {
+			if errors.Is(err, domain.ErrStatusNaoPermiteProblema) || errors.Is(err, domain.ErrOrcamentoFechado) || errors.Is(err, domain.ErrOrcamentoPrincipalNaoEncontrado) {
 				writeProblem(writer, http.StatusConflict, "Conflito de estado", err.Error(), "")
 				return
 			}

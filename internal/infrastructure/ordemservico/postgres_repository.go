@@ -72,6 +72,22 @@ func obterOuCriarOrcamento(ctx context.Context, tx pgx.Tx, ordemServicoID, tipo 
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return domain.Orcamento{}, err
 	}
+	if tipo == domain.OrcamentoComplementar {
+		var principalID string
+		err = tx.QueryRow(ctx, "SELECT id FROM orcamento WHERE ordem_servico_id = $1 AND tipo_orcamento = 'PRINCIPAL'", ordemServicoID).Scan(&principalID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Orcamento{}, domain.ErrOrcamentoPrincipalNaoEncontrado
+		}
+		if err != nil {
+			return domain.Orcamento{}, err
+		}
+		err = tx.QueryRow(ctx, `
+			INSERT INTO orcamento (ordem_servico_id, orcamento_original_id, tipo_orcamento, status)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id, tipo_orcamento, status`, ordemServicoID, principalID, tipo, domain.OrcamentoCriado,
+		).Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.Status)
+		return orcamento, err
+	}
 	err = tx.QueryRow(ctx, `
 		INSERT INTO orcamento (ordem_servico_id, tipo_orcamento, status)
 		VALUES ($1, $2, $3)

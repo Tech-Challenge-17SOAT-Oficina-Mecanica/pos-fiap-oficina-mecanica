@@ -38,6 +38,7 @@ func TestRegistrarProblemaHandler(t *testing.T) {
 		{"os ausente", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, application.ErrOrdemServicoNaoEncontrada, http.StatusNotFound},
 		{"status invalido", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrStatusNaoPermiteProblema, http.StatusConflict},
 		{"orcamento fechado", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrOrcamentoFechado, http.StatusConflict},
+		{"principal ausente", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrOrcamentoPrincipalNaoEncontrado, http.StatusConflict},
 		{"erro interno", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, errors.New("falhou"), http.StatusInternalServerError},
 		{"sucesso", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio","observacoes":"urgente"}`, nil, http.StatusCreated},
 	}

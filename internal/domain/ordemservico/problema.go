@@ -17,6 +17,7 @@ const (
 var ErrDescricaoObrigatoria = errors.New("descricao do problema e obrigatoria")
 var ErrStatusNaoPermiteProblema = errors.New("status da ordem de servico nao permite registrar problema")
 var ErrOrcamentoFechado = errors.New("orcamento nao esta aberto para receber problemas")
+var ErrOrcamentoPrincipalNaoEncontrado = errors.New("orcamento principal nao encontrado para a ordem de servico")
 
 type ProblemaCadastro struct {
 	Descricao   string

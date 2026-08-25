@@ -54,6 +54,7 @@ execução: quem tem tipo é o orçamento, não o problema.
 | RF-OS-26 | Permitir que uma OS possua mais de um orçamento `COMPLEMENTAR` ao longo da execução. |
 | RF-OS-27 | Não permitir adicionar novos problemas a orçamentos `APROVADO` ou `RECUSADO`. |
 | RF-OS-28 | Manter o problema sem classificação própria de tipo. |
+| RF-OS-29 | Todo orçamento `COMPLEMENTAR` deve referenciar o orçamento `PRINCIPAL` da OS em `orcamento_original_id`. |
 
 **Requisitos Não Funcionais**
 
@@ -158,6 +159,7 @@ POST /ordens-servico/{osId}/problemas
 - Uma OS possui no máximo um orçamento `PRINCIPAL`.
 - Uma OS possui no máximo um orçamento `COMPLEMENTAR` com status `CRIADO` por vez, e pode ter
   vários complementares ao longo da execução.
+- Todo orçamento `COMPLEMENTAR` referencia o orçamento `PRINCIPAL` da mesma OS.
 
 **Regra de domínio**
 
@@ -185,7 +187,8 @@ OS EM_EXECUCAO    → orçamento COMPLEMENTAR CRIADO (cria se não houver) → v
   `problema_ordem_servico` (insert já vinculado ao orçamento).
 
 Campos de `orcamento`, quando criado: `id`, `ordem_servico_id`, `tipo_orcamento`, `status = CRIADO`
-e `criado_em`. Campos de `problema_ordem_servico`: `id`, `ordem_servico_id`, `orcamento_id`,
+e `criado_em`; no complementar, `orcamento_original_id` recebe o ID do orçamento `PRINCIPAL` da OS.
+Campos de `problema_ordem_servico`: `id`, `ordem_servico_id`, `orcamento_id`,
 `descricao`, `observacoes` e `registrado_em`.
 
 Regras de persistência: no máximo um orçamento `PRINCIPAL` por OS; no máximo um `COMPLEMENTAR`
