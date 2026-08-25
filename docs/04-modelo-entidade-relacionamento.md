@@ -1,8 +1,8 @@
 ---
 documento: Modelo Entidade-Relacionamento
 dono: A definir
-versao: 0.2
-atualizado_em: 2026-08-22
+versao: 0.3
+atualizado_em: 2026-08-23
 status: rascunho
 ---
 
@@ -19,6 +19,22 @@ indices fisicos e nomes finais de colunas devem ser definidos nas migrations.
 
 ```mermaid
 erDiagram
+    USUARIO {
+        uuid id PK
+        string email UK
+        string senha_hash
+        boolean ativo
+        datetime criado_em
+    }
+    MECANICO {
+        uuid id PK
+        uuid usuario_id FK, UK
+        string nome
+    }
+    USUARIO_ESCOPO {
+        uuid usuario_id PK, FK
+        string escopo PK
+    }
     CLIENTE {
         uuid id PK
         string documento UK
@@ -42,6 +58,7 @@ erDiagram
         uuid id PK
         uuid cliente_id FK
         uuid veiculo_id FK
+        uuid mecanico_responsavel_id FK
         string placa_veiculo
         string status
         decimal custo_total_materiais
@@ -196,6 +213,9 @@ erDiagram
         datetime processada_em
     }
 
+    USUARIO ||--|| MECANICO : identifica
+    USUARIO ||--o{ USUARIO_ESCOPO : possui
+    MECANICO o|--o{ ORDEM_SERVICO : executa
     CLIENTE ||--o{ VEICULO : possui
     CLIENTE ||--o{ ORDEM_SERVICO : solicita
     VEICULO ||--o{ ORDEM_SERVICO : atende
@@ -230,6 +250,37 @@ erDiagram
 `PK` identifica a chave primaria, `FK` a chave estrangeira e `UK` uma restricao de unicidade.
 Status, tipos e unidades sao persistidos como `string`; seus valores permitidos sao validados no
 dominio. `PECA` usa quantidade inteira; `INSUMO` admite fracao conforme a unidade de medida.
+
+### Segurança
+
+#### `USUARIO`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `email` | `string` | Obrigatório e único; identificador de login |
+| `senha_hash` | `string` | Obrigatório; hash BCrypt |
+| `ativo` | `boolean` | Conta inativa não autentica |
+| `criado_em` | `datetime` | Data de criação |
+
+Relacionamentos: 1:1 com `MECANICO` e 1:N com `USUARIO_ESCOPO`.
+
+#### `MECANICO`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `usuario_id` | `uuid` | FK única para `USUARIO` |
+| `nome` | `string` | Obrigatório |
+
+Relacionamentos: 1:1 com `USUARIO` e 1:N com `ORDEM_SERVICO`.
+
+#### `USUARIO_ESCOPO`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `usuario_id` | `uuid` | PK composta e FK para `USUARIO` |
+| `escopo` | `string` | PK composta; escopo oficial do projeto |
 
 ### Cliente e Veiculo
 
@@ -278,6 +329,7 @@ proprietario atual; nao existe historico de proprietarios.
 | `id` | `uuid` | PK |
 | `cliente_id` | `uuid` | FK para `CLIENTE` |
 | `veiculo_id` | `uuid` | FK para `VEICULO` |
+| `mecanico_responsavel_id` | `uuid` | FK opcional para `MECANICO` |
 | `placa_veiculo` | `string` | Fotografia da placa na abertura |
 | `status` | `string` | Nove estados definidos para o fluxo, validados no dominio |
 | `custo_total_materiais` | `decimal` | Acumulado pelas saidas de estoque |
@@ -291,7 +343,7 @@ proprietario atual; nao existe historico de proprietarios.
 | `responsavel_entrega_id` | `uuid` | Usuario responsavel |
 | `observacoes_entrega` | `string` | Opcional |
 
-Relacionamentos: N:1 com cliente e veiculo; 1:N com problemas, servicos, materiais, orcamentos,
+Relacionamentos: N:1 com cliente, veiculo e mecanico responsavel; 1:N com problemas, servicos, materiais, orcamentos,
 movimentacoes e registros de auditoria.
 
 #### `PROBLEMA_ORDEM_SERVICO`
@@ -339,7 +391,7 @@ pedido por `PEDIDO_COMPRA_ITEM_OS`.
 |---|---|---|
 | `id` | `uuid` | PK |
 | `ordem_servico_id` | `uuid` | FK para `ORDEM_SERVICO` |
-| `usuario_id` | `uuid` | Ator autenticado; sem FK local enquanto Autenticacao nao for modelada |
+| `usuario_id` | `uuid` | FK para `USUARIO`; ator autenticado |
 | `agregado` | `string` | Agregado relacionado |
 | `agregado_id` | `uuid` | Identificador do agregado |
 | `tipo_evento` | `string` | Acao auditada |

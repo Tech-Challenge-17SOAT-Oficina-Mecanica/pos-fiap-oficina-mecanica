@@ -1,8 +1,8 @@
 ---
 documento: Catálogo de Endpoints
 dono: José Lázaro
-versao: 1.3
-atualizado_em: 2026-08-22
+versao: 1.5
+atualizado_em: 2026-08-23
 status: em construcao
 ---
 
@@ -26,6 +26,13 @@ existe? quem é o dono dela? o caminho está no padrão?
   `recurso:acao`.
 
 ---
+
+## Segurança
+
+| Método | Rota | O que faz | Escopo | Documento |
+|---|---|---|---|---|
+| `POST` | `/autenticacao/login` | Autentica mecânico e emite JWT | — | [autenticar-mecanico.md](seguranca/autenticar-mecanico.md) |
+| `POST` | `/mecanicos` | Cadastra mecânico e sua conta de acesso | `mecanicos:escrever` | [cadastrar-mecanico.md](seguranca/cadastrar-mecanico.md) |
 
 ## Cliente
 
