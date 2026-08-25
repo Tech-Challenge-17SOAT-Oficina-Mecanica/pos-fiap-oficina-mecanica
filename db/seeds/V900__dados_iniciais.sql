@@ -2,16 +2,20 @@ BEGIN;
 
 -- Dados fixos e cenarios de catalogo, atendimento, reserva, compra e auditoria.
 INSERT INTO usuario (id, email, senha_hash, ativo) VALUES
-    ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', crypt('mecanico123', gen_salt('bf')), TRUE)
+    ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', crypt('mecanico@oficina2026', gen_salt('bf')), TRUE)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO mecanico (id, usuario_id, nome) VALUES
-    ('90000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Mecânico Inicial')
+INSERT INTO mecanico (id, usuario_id, nome, version) VALUES
+    ('90000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Mecânico Inicial', 1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'mecanicos:escrever'),
-    ('90000000-0000-0000-0000-000000000001', 'compras:ler')
+    ('90000000-0000-0000-0000-000000000001', 'veiculos:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'compras:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'compras:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'clientes:escrever')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categoria (id, nome, ativa) VALUES

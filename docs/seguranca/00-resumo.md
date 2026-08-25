@@ -17,7 +17,6 @@ Autenticação de usuários internos da oficina e autorização por escopos nas 
 | # | Tarefa | Rota | Arquivo |
 |---|---|---|---|
 | 1 | Autenticar Mecânico | `POST /autenticacao/login` | [autenticar-mecanico.md](autenticar-mecanico.md) |
-| 2 | Cadastrar Mecânico | `POST /mecanicos` | [cadastrar-mecanico.md](cadastrar-mecanico.md) |
 
 ## Tipos do contexto
 
@@ -31,14 +30,6 @@ Autenticação de usuários internos da oficina e autorização por escopos nas 
 | `ativo` | boolean | Conta inativa não pode autenticar. |
 | `criadoEm` | datetime | Data de criação da conta. |
 
-**Mecânico**
-
-| Campo | Tipo | Observação |
-|---|---|---|
-| `id` | uuid | Identificador do profissional no domínio. |
-| `usuarioId` | uuid | Vínculo único com `usuario`. |
-| `nome` | string | Nome do profissional. |
-
 ## Convenções em vigor
 
 - JWT é usado nas APIs administrativas, enviado como `Authorization: Bearer <token>`.
@@ -49,5 +40,6 @@ Autenticação de usuários internos da oficina e autorização por escopos nas 
 
 ## O que este contexto não faz
 
+- Não cadastra ou mantém o profissional Mecânico.
 - Não atualiza ou inativa mecânicos nesta entrega.
 - Não implementa recuperação ou troca de senha.

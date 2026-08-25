@@ -30,6 +30,7 @@ erDiagram
         uuid id PK
         uuid usuario_id FK, UK
         string nome
+        integer version
     }
     USUARIO_ESCOPO {
         uuid usuario_id PK, FK
@@ -263,7 +264,16 @@ dominio. `PECA` usa quantidade inteira; `INSUMO` admite fracao conforme a unidad
 | `ativo` | `boolean` | Conta inativa não autentica |
 | `criado_em` | `datetime` | Data de criação |
 
-Relacionamentos: 1:1 com `MECANICO` e 1:N com `USUARIO_ESCOPO`.
+Relacionamentos: 1:N com `USUARIO_ESCOPO` e 1:1 com `MECANICO`.
+
+#### `USUARIO_ESCOPO`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `usuario_id` | `uuid` | PK composta e FK para `USUARIO` |
+| `escopo` | `string` | PK composta; escopo oficial do projeto |
+
+### Mecânico
 
 #### `MECANICO`
 
@@ -272,15 +282,9 @@ Relacionamentos: 1:1 com `MECANICO` e 1:N com `USUARIO_ESCOPO`.
 | `id` | `uuid` | PK |
 | `usuario_id` | `uuid` | FK única para `USUARIO` |
 | `nome` | `string` | Obrigatório |
+| `version` | `integer` | Controle otimista |
 
 Relacionamentos: 1:1 com `USUARIO` e 1:N com `ORDEM_SERVICO`.
-
-#### `USUARIO_ESCOPO`
-
-| Campo | Tipo | Chave ou regra |
-|---|---|---|
-| `usuario_id` | `uuid` | PK composta e FK para `USUARIO` |
-| `escopo` | `string` | PK composta; escopo oficial do projeto |
 
 ### Cliente e Veiculo
 

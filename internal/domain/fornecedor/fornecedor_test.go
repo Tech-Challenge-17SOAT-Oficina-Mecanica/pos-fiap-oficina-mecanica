@@ -48,3 +48,21 @@ func TestNovoCadastroRejeitaDadosInvalidos(t *testing.T) {
 		})
 	}
 }
+
+func TestNovoCadastroRejeitaDemaisLimites(t *testing.T) {
+	prazoInvalido := 0
+	for _, test := range []struct {
+		razao, fantasia, tipo string
+		prazo                 *int
+	}{
+		{"ab", "", "CNPJ", nil},
+		{"Fornecedor válido", string(make([]byte, 121)), "CNPJ", nil},
+		{"Fornecedor válido", "", "RG", nil},
+		{"Fornecedor válido", "", "CNPJ", &prazoInvalido},
+		{"Fornecedor válido", "", "CPF", nil},
+	} {
+		if _, err := NovoCadastro(test.razao, test.fantasia, "04.252.011/0001-10", test.tipo, "11999990000", "", test.prazo); err == nil {
+			t.Fatal("cadastro inválido aceito")
+		}
+	}
+}

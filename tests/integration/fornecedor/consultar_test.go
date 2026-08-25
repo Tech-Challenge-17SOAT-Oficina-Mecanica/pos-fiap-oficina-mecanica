@@ -1,7 +1,6 @@
 package integration_test
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,8 +19,7 @@ func TestConsultarFornecedores(t *testing.T) {
 	if os.Getenv("DATABASE_URL") == "" {
 		t.Skip("DATABASE_URL nao configurada")
 	}
-	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Fatal(err)
 	}

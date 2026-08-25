@@ -1,65 +1,35 @@
 package seguranca
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 )
 
-type tokenValidatorStub struct {
-	claims segurancaInfrastructure.Claims
-	err    error
-}
-
-func (stub tokenValidatorStub) Validar(_ string) (segurancaInfrastructure.Claims, error) {
-	return stub.claims, stub.err
-}
-
-func TestRequireScopePermiteEscopo(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/fornecedores", nil)
-	request.Header.Set("Authorization", "Bearer token")
-	response := httptest.NewRecorder()
-	handler := RequireScope(tokenValidatorStub{claims: segurancaInfrastructure.Claims{Escopos: []string{"compras:ler"}}}, "compras:ler", http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		writer.WriteHeader(http.StatusNoContent)
-	}))
-
-	handler.ServeHTTP(response, request)
-
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("status=%d", response.Code)
+func TestRequireScope(t *testing.T) {
+	jwt, err := infrastructure.NewJWT("segredo")
+	if err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestRequireScopeRejeitaTokenAusente(t *testing.T) {
-	response := httptest.NewRecorder()
-	RequireScope(tokenValidatorStub{}, "compras:ler", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/fornecedores", nil))
-
-	if response.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d", response.Code)
-	}
-}
-
-func TestRequireScopeRejeitaEscopoInsuficiente(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/fornecedores", nil)
-	request.Header.Set("Authorization", "Bearer token")
-	response := httptest.NewRecorder()
-	RequireScope(tokenValidatorStub{claims: segurancaInfrastructure.Claims{Escopos: []string{"mecanicos:escrever"}}}, "compras:ler", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(response, request)
-
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status=%d", response.Code)
-	}
-}
-
-func TestRequireScopeRejeitaTokenInvalido(t *testing.T) {
-	request := httptest.NewRequest(http.MethodGet, "/fornecedores", nil)
-	request.Header.Set("Authorization", "Bearer token")
-	response := httptest.NewRecorder()
-	RequireScope(tokenValidatorStub{err: errors.New("token invalido")}, "compras:ler", http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).ServeHTTP(response, request)
-
-	if response.Code != http.StatusUnauthorized {
-		t.Fatalf("status=%d", response.Code)
+	allowed, _ := jwt.Gerar("usuario", []string{"veiculos:escrever"})
+	denied, _ := jwt.Gerar("usuario", nil)
+	for _, test := range []struct {
+		header string
+		status int
+	}{{"", 401}, {"Bearer invalido", 401}, {"Bearer " + denied, 403}, {"Bearer " + allowed, 204}} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/", nil)
+		request.Header.Set("Authorization", test.header)
+		RequireScope(jwt, "veiculos:escrever", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if test.status == http.StatusNoContent && UsuarioID(request.Context()) != "usuario" {
+				t.Fatal("usuário não foi propagado")
+			}
+			writer.WriteHeader(http.StatusNoContent)
+		})).ServeHTTP(response, request)
+		if response.Code != test.status {
+			t.Fatalf("header=%q status=%d", test.header, response.Code)
+		}
 	}
 }

@@ -3,6 +3,7 @@ package fornecedor
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,5 +69,24 @@ func TestCadastrarHandlerRejeitaDocumentoDuplicado(t *testing.T) {
 
 	if response.Code != http.StatusConflict {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+	}
+}
+
+func TestCadastrarHandlerRejeitaEntradaInvalidaEErroInterno(t *testing.T) {
+	for _, test := range []struct {
+		body    string
+		useCase application.Cadastrar
+		status  int
+	}{
+		{`{`, application.NewCadastrar(repositoryStub{}), http.StatusBadRequest},
+		{`{"razaoSocial":"Fornecedor","documento":"123","tipoDocumento":"CNPJ","telefone":"11999990000"}`, application.NewCadastrar(repositoryStub{}), http.StatusBadRequest},
+		{`{"razaoSocial":"Fornecedor","documento":"04.252.011/0001-10","tipoDocumento":"CNPJ","telefone":"11999990000"}`, application.NewCadastrar(repositoryStub{err: errors.New("db")}), http.StatusInternalServerError},
+	} {
+		request := httptest.NewRequest(http.MethodPost, "/fornecedores", bytes.NewBufferString(test.body))
+		response := httptest.NewRecorder()
+		NewCadastrarHandler(test.useCase).ServeHTTP(response, request)
+		if response.Code != test.status {
+			t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
+		}
 	}
 }
