@@ -11,7 +11,9 @@ import (
 var ErrTokenInvalido = errors.New("token inválido")
 
 type jwtClaims struct {
-	Escopos []string `json:"escopos"`
+	Escopos        []string `json:"escopos"`
+	ClienteID      string   `json:"clienteId,omitempty"`
+	OrdemServicoID string   `json:"ordemServicoId,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -33,6 +35,12 @@ func (service JWT) Gerar(usuarioID string, escopos []string) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.secret)
 }
 
+func (service JWT) GerarCliente(clienteID, ordemServicoID string) (string, error) {
+	now := service.now()
+	claims := jwtClaims{ClienteID: clienteID, OrdemServicoID: ordemServicoID, Escopos: []string{"orcamentos:ler"}, RegisteredClaims: jwt.RegisteredClaims{Subject: clienteID, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour))}}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.secret)
+}
+
 func (service JWT) Validar(raw string) (seguranca.Claims, error) {
 	claims := jwtClaims{}
 	token, err := jwt.ParseWithClaims(raw, &claims, func(token *jwt.Token) (any, error) {
@@ -44,5 +52,5 @@ func (service JWT) Validar(raw string) (seguranca.Claims, error) {
 	if err != nil || !token.Valid || claims.Subject == "" {
 		return seguranca.Claims{}, ErrTokenInvalido
 	}
-	return seguranca.Claims{UsuarioID: claims.Subject, Escopos: claims.Escopos}, nil
+	return seguranca.Claims{UsuarioID: claims.Subject, ClienteID: claims.ClienteID, OrdemServicoID: claims.OrdemServicoID, Escopos: claims.Escopos}, nil
 }
