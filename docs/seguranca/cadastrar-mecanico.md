@@ -43,7 +43,7 @@ Sem um cadastro de profissional e conta de acesso, novos mecânicos não consegu
 
 | ID | Requisito |
 |---|---|
-| RNF-SEG-04 | A senha deve ser persistida somente como hash BCrypt. |
+| RNF-SEG-04 | A senha inicial deve possuir no mínimo 15 caracteres e ser persistida somente como hash BCrypt. |
 | RNF-SEG-05 | A criação deve ser atômica: não pode existir conta sem mecânico, nem mecânico sem conta. |
 
 **Fluxo Principal**
@@ -105,6 +105,7 @@ POST /mecanicos
 **Validações**
 
 - `nome`, `email`, `senha` e `escopos` são obrigatórios.
+- A senha deve possuir no mínimo 15 caracteres.
 - O e-mail não pode estar cadastrado.
 - Cada escopo deve pertencer à lista oficial do projeto.
 
@@ -139,7 +140,7 @@ POST /mecanicos
 | Código | Situação |
 |---|---|
 | `201` | Mecânico cadastrado. |
-| `400` | Corpo inválido ou escopo desconhecido. |
+| `400` | Corpo inválido, campo obrigatório ausente, senha com menos de 15 caracteres ou escopo desconhecido. |
 | `401` | Token ausente, inválido ou expirado. |
 | `403` | Token sem `mecanicos:escrever`. |
 | `409` | E-mail já cadastrado. |
@@ -155,6 +156,7 @@ POST /mecanicos
 *Unitários*
 
 - Gera hash de senha sem expor o valor original.
+- Rejeita senha com menos de 15 caracteres.
 - Rejeita e-mail duplicado e escopo desconhecido.
 
 *Integração*
@@ -186,7 +188,7 @@ POST /mecanicos
 
 **Validações**
 
-- [ ] Validar campos obrigatórios, e-mail único e escopos permitidos.
+- [ ] Validar campos obrigatórios, senha com no mínimo 15 caracteres, e-mail único e escopos permitidos.
 
 **Transação e idempotência**
 
@@ -194,7 +196,7 @@ POST /mecanicos
 
 **Testes unitários**
 
-- [ ] Cobrir hash de senha, e-mail duplicado e escopo desconhecido.
+- [ ] Cobrir hash de senha, senha com menos de 15 caracteres, e-mail duplicado e escopo desconhecido.
 
 **Testes de integração**
 

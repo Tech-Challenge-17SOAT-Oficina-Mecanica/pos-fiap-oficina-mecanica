@@ -2,7 +2,7 @@ BEGIN;
 
 -- Dados fixos e cenarios de catalogo, atendimento, reserva, compra e auditoria.
 INSERT INTO usuario (id, email, senha_hash, ativo) VALUES
-    ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', crypt('mecanico123', gen_salt('bf')), TRUE)
+    ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', crypt('mecanico@oficina2026', gen_salt('bf')), TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO mecanico (id, usuario_id, nome) VALUES
