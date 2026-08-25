@@ -5,6 +5,50 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /ordens-servico:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Cria uma Ordem de Serviço
+      description: Cria a OS com status RECEBIDA para um veículo vinculado ao cliente informado.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clienteId, veiculoId]
+              additionalProperties: false
+              properties:
+                clienteId:
+                  type: string
+                  format: uuid
+                  example: 10000000-0000-0000-0000-000000000001
+                veiculoId:
+                  type: string
+                  format: uuid
+                  example: 20000000-0000-0000-0000-000000000001
+      responses:
+        '201':
+          description: Ordem de Serviço criada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ordemServicoId, clienteId, veiculoId, status, criadaEm]
+                properties:
+                  ordemServicoId: { type: string, format: uuid }
+                  clienteId: { type: string, format: uuid }
+                  veiculoId: { type: string, format: uuid }
+                  status: { type: string, enum: [RECEBIDA] }
+                  criadaEm: { type: string, format: date-time }
+        '400': { description: Identificadores ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Cliente ou veículo não encontrado }
+        '409': { description: Veículo não vinculado ao cliente informado }
+        '500': { description: Erro inesperado ao criar a Ordem de Serviço }
   /clientes:
     get:
       tags: [Cliente]
