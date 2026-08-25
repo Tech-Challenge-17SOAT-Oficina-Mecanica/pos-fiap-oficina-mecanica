@@ -50,7 +50,7 @@ func main() {
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
-	mux.Handle("PUT /veiculos/{veiculoId}", veiculoPresentation.NewAtualizarHandler(atualizar))
+	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewAtualizarHandler(atualizar)))
 	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
 	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))

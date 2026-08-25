@@ -212,6 +212,9 @@ paths:
     put:
       tags: [Veículos]
       summary: Atualiza os dados de um veículo
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
       parameters:
         - name: veiculoId
           in: path
@@ -229,6 +232,8 @@ paths:
       responses:
         '200': { description: Veículo atualizado }
         '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
         '404': { description: Veículo não encontrado }
         '409': { description: Placa já cadastrada }
         '412': { description: Versão divergente }
