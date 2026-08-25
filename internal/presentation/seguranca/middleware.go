@@ -1,12 +1,20 @@
 package seguranca
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	security "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
+
+type usuarioIDKey struct{}
+
+func UsuarioID(ctx context.Context) string {
+	value, _ := ctx.Value(usuarioIDKey{}).(string)
+	return value
+}
 
 type tokenValidator interface {
 	Validar(string) (security.Claims, error)
@@ -26,7 +34,7 @@ func RequireScope(token tokenValidator, scope string, next http.Handler) http.Ha
 		}
 		for _, granted := range claims.Escopos {
 			if granted == scope {
-				next.ServeHTTP(writer, request)
+				next.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), usuarioIDKey{}, claims.UsuarioID)))
 				return
 			}
 		}

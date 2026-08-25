@@ -2,11 +2,10 @@ package seguranca
 
 import (
 	"context"
-	"database/sql"
 	"os"
 	"testing"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func TestBuscarPorEmail(t *testing.T) {
@@ -14,7 +13,7 @@ func TestBuscarPorEmail(t *testing.T) {
 	if dsn == "" {
 		t.Skip("DATABASE_URL não configurada")
 	}
-	db, err := sql.Open("pgx", dsn)
+	db, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}

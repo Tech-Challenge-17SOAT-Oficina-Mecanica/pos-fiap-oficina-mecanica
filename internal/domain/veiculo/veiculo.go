@@ -17,11 +17,23 @@ type Cadastro struct {
 }
 
 type Veiculo struct {
-	ID, ClienteID string `json:"-"`
+	ID        string `json:"id"`
+	ClienteID string `json:"-"`
 	Cadastro
-	Ativo   bool    `json:"ativo"`
-	Version int     `json:"version"`
-	Cliente Cliente `json:"cliente"`
+	Ativo        bool      `json:"ativo"`
+	InativadoEm  time.Time `json:"-"`
+	InativadoPor string    `json:"-"`
+	Motivo       string    `json:"-"`
+	Version      int       `json:"version"`
+	Cliente      Cliente   `json:"cliente"`
+}
+
+func MotivoParaInativacao(valor string) (string, error) {
+	motivo := strings.TrimSpace(valor)
+	if len(motivo) > 200 {
+		return "", errors.New("motivo deve ter no máximo 200 caracteres")
+	}
+	return motivo, nil
 }
 
 type Cliente struct {

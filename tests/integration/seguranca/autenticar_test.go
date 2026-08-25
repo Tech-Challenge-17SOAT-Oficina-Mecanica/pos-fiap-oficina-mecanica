@@ -1,6 +1,7 @@
 package seguranca_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,19 +15,20 @@ import (
 )
 
 func TestAutenticarMecanico(t *testing.T) {
-	db, err := database.Open()
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
 	defer db.Close()
-	if err := db.Ping(); err != nil {
+	ctx := context.Background()
+	if err := db.Ping(ctx); err != nil {
 		t.Skip("banco indisponível")
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte("mecanico123"), bcrypt.MinCost)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`
+	_, err = db.Exec(ctx, `
 		INSERT INTO usuario (id, email, senha_hash, ativo)
 		VALUES ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', $1, TRUE)
 		ON CONFLICT (email) DO UPDATE SET senha_hash = EXCLUDED.senha_hash, ativo = TRUE
@@ -34,7 +36,7 @@ func TestAutenticarMecanico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`
+	_, err = db.Exec(ctx, `
 		INSERT INTO mecanico (id, usuario_id, nome)
 		VALUES ('90000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Mecânico Inicial')
 		ON CONFLICT (id) DO NOTHING
@@ -42,7 +44,7 @@ func TestAutenticarMecanico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = db.Exec(`
+	_, err = db.Exec(ctx, `
 		INSERT INTO usuario_escopo (usuario_id, escopo)
 		VALUES ('90000000-0000-0000-0000-000000000001', 'mecanicos:escrever')
 		ON CONFLICT DO NOTHING

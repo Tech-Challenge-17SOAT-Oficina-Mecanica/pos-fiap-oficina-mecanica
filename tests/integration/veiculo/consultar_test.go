@@ -1,13 +1,15 @@
 package integration_test
 
 import (
-	"database/sql"
+	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	securityInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
@@ -20,11 +22,27 @@ func TestConsultarVeiculo(t *testing.T) {
 	if url == "" {
 		t.Skip("DATABASE_URL não configurada")
 	}
-	db, err := sql.Open("pgx", url)
+	db, err := pgxpool.New(context.Background(), url)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	ctx := context.Background()
+	sufixo := time.Now().UnixNano() % 100
+	clienteID := fmt.Sprintf("60000000-0000-0000-0000-%012x", time.Now().UnixNano()&0xffffffffffff)
+	placaAtiva := fmt.Sprintf("XAA1A%02d", sufixo)
+	placaInativa := fmt.Sprintf("XBB1B%02d", sufixo)
+	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", time.Now().UnixNano()%100000000000)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Exec(ctx, "INSERT INTO veiculo (cliente_id,placa,marca,modelo,ano,ativo) VALUES ($1,$2,'Toyota','Corolla',2020,TRUE),($1,$3,'Ford','Ka',2017,FALSE)", clienteID, placaAtiva, placaInativa); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE cliente_id=$1", clienteID)
+		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clienteID)
+	})
+
 	jwt, err := securityInfrastructure.NewJWT("segredo-de-teste")
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +62,7 @@ func TestConsultarVeiculo(t *testing.T) {
 		url    string
 		token  string
 		status int
-	}{{"/veiculos?placa=ABC1D23&incluirInativos=false", allowed, 200}, {"/veiculos?placa=GHI4J56&incluirInativos=false", allowed, 404}, {"/veiculos?placa=GHI4J56&incluirInativos=true", allowed, 200}, {"/veiculos?placa=INVALIDA&incluirInativos=false", allowed, 400}, {"/veiculos", allowed, 400}, {"/veiculos?placa=ABC1D23&incluirInativos=x", allowed, 400}, {"/veiculos?placa=ABC1D23&incluirInativos=false", "", 401}, {"/veiculos?placa=ABC1D23&incluirInativos=false", denied, 403}} {
+	}{{"/veiculos?placa=" + placaAtiva + "&incluirInativos=false", allowed, 200}, {"/veiculos?placa=" + placaInativa + "&incluirInativos=false", allowed, 404}, {"/veiculos?placa=" + placaInativa + "&incluirInativos=true", allowed, 200}, {"/veiculos?placa=INVALIDA&incluirInativos=false", allowed, 400}, {"/veiculos", allowed, 400}, {"/veiculos?placa=" + placaAtiva + "&incluirInativos=x", allowed, 400}, {"/veiculos?placa=" + placaAtiva + "&incluirInativos=false", "", 401}, {"/veiculos?placa=" + placaAtiva + "&incluirInativos=false", denied, 403}} {
 		w := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, test.url, nil)
 		if test.token != "" {
