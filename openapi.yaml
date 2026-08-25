@@ -5,6 +5,57 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /mecanicos:
+    post:
+      tags: [Mecânico]
+      summary: Cadastra um mecânico
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, senha, escopos]
+              properties:
+                nome:
+                  type: string
+                  example: Maria Souza
+                email:
+                  type: string
+                  format: email
+                  example: maria.souza@oficina.local
+                senha:
+                  type: string
+                  format: password
+                  minLength: 15
+                  example: senha-da-maria-123
+                escopos:
+                  type: array
+                  items:
+                    type: string
+                  example: [veiculos:ler, veiculos:escrever]
+      responses:
+        '201':
+          description: Mecânico cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  escopos:
+                    type: array
+                    items:
+                      type: string
+        '400': { description: Corpo inválido, campo obrigatório ausente, senha com menos de 15 caracteres ou escopo desconhecido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo mecanicos:escrever }
+        '409': { description: E-mail já cadastrado }
   /clientes:
     get:
       tags: [Cliente]
