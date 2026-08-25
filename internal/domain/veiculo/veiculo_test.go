@@ -37,3 +37,12 @@ func TestNormalizarPlaca(t *testing.T) {
 		t.Fatal("placa vazia aceita")
 	}
 }
+
+func TestMotivoParaInativacao(t *testing.T) {
+	if motivo, err := MotivoParaInativacao("  teste  "); err != nil || motivo != "teste" {
+		t.Fatalf("motivo=%q err=%v", motivo, err)
+	}
+	if _, err := MotivoParaInativacao(string(make([]byte, 201))); err == nil {
+		t.Fatal("motivo longo aceito")
+	}
+}

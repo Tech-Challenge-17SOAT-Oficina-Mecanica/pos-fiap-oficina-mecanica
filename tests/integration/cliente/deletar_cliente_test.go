@@ -12,6 +12,7 @@ import (
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
@@ -51,11 +52,11 @@ func TestDeletarCliente(t *testing.T) {
 		t.Fatal(err)
 	}
 	repository := clienteInfrastructure.NewPostgresRepository(db)
-	inativarHandler := presentation.NewInativarHandler(application.NewInativar(repository), jwt)
-	reativarHandler := presentation.NewReativarHandler(application.NewReativar(repository), jwt)
+	inativarHandler := segurancaPresentation.RequireScope(jwt, "clientes:escrever", presentation.NewInativarHandler(application.NewInativar(repository)))
+	reativarHandler := segurancaPresentation.RequireScope(jwt, "clientes:escrever", presentation.NewReativarHandler(application.NewReativar(repository)))
 
 	response := httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest(clienteID, "Bearer "+token, "duplicado"))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest(clienteID, "Bearer "+token, "duplicado"))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"veiculosInativados":[{`) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
@@ -75,42 +76,42 @@ func TestDeletarCliente(t *testing.T) {
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest(clienteID, "Bearer "+token, "duplicado"))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest(clienteID, "Bearer "+token, "duplicado"))
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("status idempotente %d: %s", response.Code, response.Body.String())
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest(clienteComOSID, "Bearer "+token, ""))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest(clienteComOSID, "Bearer "+token, ""))
 	if response.Code != http.StatusConflict || !strings.Contains(response.Body.String(), `"status":"EM_EXECUCAO"`) {
 		t.Fatalf("status os aberta %d: %s", response.Code, response.Body.String())
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest("00000000-0000-0000-0000-000000000000", "Bearer "+token, ""))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest("00000000-0000-0000-0000-000000000000", "Bearer "+token, ""))
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("status inexistente %d: %s", response.Code, response.Body.String())
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest(clienteComOSID, "Bearer "+tokenClienteLer(t, jwt), ""))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest(clienteComOSID, "Bearer "+tokenClienteLer(t, jwt), ""))
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status sem escopo %d: %s", response.Code, response.Body.String())
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest("id", "Bearer "+token, ""))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest("id", "Bearer "+token, ""))
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status uuid %d: %s", response.Code, response.Body.String())
 	}
 
 	response = httptest.NewRecorder()
-	inativarHandler(response, deleteClienteRequest(reativarID, "Bearer "+token, ""))
+	inativarHandler.ServeHTTP(response, deleteClienteRequest(reativarID, "Bearer "+token, ""))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status inativar reativacao %d: %s", response.Code, response.Body.String())
 	}
 	response = httptest.NewRecorder()
-	reativarHandler(response, postReativacaoRequest(reativarID, "Bearer "+token))
+	reativarHandler.ServeHTTP(response, postReativacaoRequest(reativarID, "Bearer "+token))
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"veiculosReativados":0`) {
 		t.Fatalf("status reativar %d: %s", response.Code, response.Body.String())
 	}
@@ -122,7 +123,7 @@ func TestDeletarCliente(t *testing.T) {
 	}
 
 	response = httptest.NewRecorder()
-	reativarHandler(response, postReativacaoRequest(clienteID, "Bearer "+token))
+	reativarHandler.ServeHTTP(response, postReativacaoRequest(clienteID, "Bearer "+token))
 	if response.Code != http.StatusConflict {
 		t.Fatalf("status reativar duplicado %d: %s", response.Code, response.Body.String())
 	}
