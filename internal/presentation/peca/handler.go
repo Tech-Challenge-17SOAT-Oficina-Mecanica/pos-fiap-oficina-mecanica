@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	pecaDomain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
@@ -33,6 +34,8 @@ type pecaResponse struct {
 	PossuiPedidoEmAberto bool         `json:"possuiPedidoEmAberto"`
 	Ativo                bool         `json:"ativo"`
 	Version              int          `json:"version"`
+	// Só o cadastro devolve dataCriacao; consultar e deletar a omitem.
+	DataCriacao *time.Time `json:"dataCriacao,omitempty"`
 }
 
 func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
@@ -114,6 +117,7 @@ func montarResponse(encontrada pecaDomain.Peca, quantidade *int64) pecaResponse 
 		PossuiPedidoEmAberto: encontrada.PossuiPedidoEmAberto,
 		Ativo:                encontrada.Ativo,
 		Version:              encontrada.Version,
+		DataCriacao:          encontrada.DataCriacao,
 	}
 	if encontrada.PrecoVenda != nil {
 		preco := json.Number(*encontrada.PrecoVenda)

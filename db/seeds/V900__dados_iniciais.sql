@@ -152,4 +152,12 @@ INSERT INTO chave_idempotencia (id, chave, operacao, hash_requisicao, status_res
     ('85000000-0000-0000-0000-000000000002', 'seed-entrada-001', 'ENTRADA_ESTOQUE', 'seed-hash-entrada-001', 201, '{"documentoOrigem":"NF-1002"}', CURRENT_TIMESTAMP - INTERVAL '1 day')
 ON CONFLICT (operacao, chave) DO NOTHING;
 
+-- O seed grava codigos de peca fixos (PEC-000001, PEC-000002). Avanca a sequencia para
+-- alem deles, senao o primeiro cadastro pela API colidiria no indice unico de codigo.
+SELECT setval(
+    'seq_peca_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'PECA';
+
 COMMIT;

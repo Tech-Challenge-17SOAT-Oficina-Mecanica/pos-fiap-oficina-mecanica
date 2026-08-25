@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
@@ -170,4 +172,50 @@ func (repository PostgresRepository) Desativar(ctx context.Context, item peca.Pe
 		return peca.ErrJaInativa
 	}
 	return nil
+}
+
+// Cadastrar insere a peca e devolve a entidade ja montada pelo BuscarPorID, que traz o
+// nome da categoria e a flag de pedido em aberto sem duplicar o SELECT.
+func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro peca.Cadastro) (peca.Peca, error) {
+	var ativa bool
+	err := repository.db.QueryRow(ctx,
+		`SELECT ativa FROM categoria WHERE id = $1`, cadastro.CategoriaID).Scan(&ativa)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	if !ativa {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+
+	var id string
+	var criadoEm time.Time
+	err = repository.db.QueryRow(ctx, `
+		INSERT INTO item_estoque (
+			categoria_id, tipo, codigo, nome, descricao, descricao_normalizada,
+			fabricante, unidade_medida, preco_venda, estoque_minimo
+		) VALUES (
+			$1, 'PECA', 'PEC-' || LPAD(nextval('seq_peca_codigo')::TEXT, 6, '0'),
+			$2, $3, $4, $5, $6, $7, $8
+		)
+		RETURNING id, criado_em`,
+		cadastro.CategoriaID, cadastro.Nome, cadastro.Descricao, cadastro.DescricaoNormalizada,
+		cadastro.Fabricante, cadastro.UnidadeMedida, cadastro.PrecoVenda, cadastro.EstoqueMinimo,
+	).Scan(&id, &criadoEm)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23505" {
+			return peca.Peca{}, pecaApplication.ErrDescricaoDuplicada
+		}
+		return peca.Peca{}, err
+	}
+
+	cadastrada, err := repository.BuscarPorID(ctx, id)
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	cadastrada.DataCriacao = &criadoEm
+	return cadastrada, nil
 }

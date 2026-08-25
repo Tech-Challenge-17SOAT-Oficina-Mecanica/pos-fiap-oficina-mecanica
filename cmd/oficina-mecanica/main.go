@@ -51,6 +51,7 @@ func main() {
 	reativar := veiculoApplication.NewReativar(veiculo.NewPostgresRepository(db))
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
+	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
 	desativarPeca := pecaApplication.NewDesativarPeca(pecaRepository)
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
@@ -93,6 +94,8 @@ func main() {
 	mux.Handle("PUT /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewAtualizarHandler(atualizarCliente)))
 	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewInativarHandler(inativarCliente)))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
+	mux.Handle("POST /estoque/pecas", segurancaPresentation.RequireScope(jwt, escopoEstoqueEscrever,
+		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
 	mux.Handle("GET /estoque/pecas", segurancaPresentation.RequireScope(jwt, escopoEstoqueLer,
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, escopoEstoqueLer,
