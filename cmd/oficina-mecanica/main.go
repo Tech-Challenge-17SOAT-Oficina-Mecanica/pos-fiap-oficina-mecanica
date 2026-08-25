@@ -36,7 +36,6 @@ func main() {
 
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
-	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(clienteDB)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
 	consultarCliente := clienteApplication.NewConsultar(clienteRepository)
@@ -48,7 +47,6 @@ func main() {
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
-	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
 	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
@@ -59,6 +57,7 @@ func main() {
 		Addr:    ":8080",
 		Handler: sharedhttp.CORS(mux),
 	}
+
 	log.Println("API iniciada na porta 8080")
 	log.Fatal(server.ListenAndServe())
 }
