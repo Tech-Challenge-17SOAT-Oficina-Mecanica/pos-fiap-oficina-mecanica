@@ -10,4 +10,4 @@ status: rascunho
 
 | # | Ponto | Arquivo relacionado | Responsável |
 |---|---|---|---|
-| 1 | Política de troca, recuperação e inativação de contas de mecânico será refinada em tarefas próprias. | [cadastrar-mecanico.md](cadastrar-mecanico.md) | — |
+| 1 | Política de troca, recuperação e inativação de contas de mecânico será refinada em tarefas próprias. | [atualizar-mecanico.md](atualizar-mecanico.md) | — |

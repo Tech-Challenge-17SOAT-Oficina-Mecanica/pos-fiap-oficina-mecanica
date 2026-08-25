@@ -30,6 +30,7 @@ erDiagram
         uuid id PK
         uuid usuario_id FK, UK
         string nome
+        integer version
     }
     USUARIO_ESCOPO {
         uuid usuario_id PK, FK
@@ -281,6 +282,7 @@ Relacionamentos: 1:N com `USUARIO_ESCOPO` e 1:1 com `MECANICO`.
 | `id` | `uuid` | PK |
 | `usuario_id` | `uuid` | FK única para `USUARIO` |
 | `nome` | `string` | Obrigatório |
+| `version` | `integer` | Controle otimista |
 
 Relacionamentos: 1:1 com `USUARIO` e 1:N com `ORDEM_SERVICO`.
 

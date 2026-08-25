@@ -5,8 +5,8 @@ INSERT INTO usuario (id, email, senha_hash, ativo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'mecanico@oficina.local', crypt('mecanico@oficina2026', gen_salt('bf')), TRUE)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO mecanico (id, usuario_id, nome) VALUES
-    ('90000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Mecânico Inicial')
+INSERT INTO mecanico (id, usuario_id, nome, version) VALUES
+    ('90000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'Mecânico Inicial', 1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
