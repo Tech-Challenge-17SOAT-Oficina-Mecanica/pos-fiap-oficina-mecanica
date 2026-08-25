@@ -2,7 +2,6 @@ package fornecedor
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
 	"time"
 
@@ -69,7 +68,7 @@ func NovoCadastro(razaoSocial, nomeFantasia, documento, tipoDocumento, telefone,
 	if cadastro.Telefone != "" && (len(cadastro.Telefone) < 10 || len(cadastro.Telefone) > 11) {
 		return Cadastro{}, errors.New("telefone deve ter 10 ou 11 dígitos")
 	}
-	if cadastro.Email != "" && !emailValido(cadastro.Email) {
+	if cadastro.Email != "" && !validation.IsEmail(cadastro.Email) {
 		return Cadastro{}, errors.New("email inválido")
 	}
 	if cadastro.Telefone == "" && cadastro.Email == "" {
@@ -99,7 +98,7 @@ func NovaAtualizacao(razaoSocial, nomeFantasia, telefone, email string, prazoEnt
 	if atualizacao.Telefone != "" && (len(atualizacao.Telefone) < 10 || len(atualizacao.Telefone) > 11) {
 		return Atualizacao{}, errors.New("telefone deve ter 10 ou 11 digitos")
 	}
-	if atualizacao.Email != "" && !emailValido(atualizacao.Email) {
+	if atualizacao.Email != "" && !validation.IsEmail(atualizacao.Email) {
 		return Atualizacao{}, errors.New("email invalido")
 	}
 	if atualizacao.Telefone == "" && atualizacao.Email == "" {
@@ -116,7 +115,3 @@ func tamanhoInvalido(value string, minimo, maximo int) bool {
 	return size < minimo || size > maximo
 }
 
-func emailValido(value string) bool {
-	address, err := mail.ParseAddress(value)
-	return err == nil && address.Address == value && strings.Contains(address.Address, "@")
-}
