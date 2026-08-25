@@ -11,12 +11,13 @@ import (
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
 func TestAtualizarCliente(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -53,12 +54,12 @@ func TestAtualizarCliente(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewAtualizarHandler(application.NewAtualizar(clienteInfrastructure.NewPostgresRepository(db)), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "clientes:escrever", presentation.NewAtualizarHandler(application.NewAtualizar(clienteInfrastructure.NewPostgresRepository(db))))
 	body := `{"nome":"Cliente Atualizado","documento":"12345678909","tipoDocumento":"CPF","email":"cliente@example.com"}`
 
 	request := putClienteRequest(clienteID, body, "Bearer "+token, "1")
 	response := httptest.NewRecorder()
-	handler(response, request)
+	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"version":2`) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
@@ -93,7 +94,7 @@ func TestAtualizarCliente(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			response := httptest.NewRecorder()
-			handler(response, putClienteRequest(test.id, test.body, test.auth, test.ifMatch))
+			handler.ServeHTTP(response, putClienteRequest(test.id, test.body, test.auth, test.ifMatch))
 			if response.Code != test.status {
 				t.Fatalf("status %d: %s", response.Code, response.Body.String())
 			}

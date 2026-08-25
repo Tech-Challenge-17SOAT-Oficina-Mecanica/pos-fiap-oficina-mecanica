@@ -1,61 +1,35 @@
 package seguranca
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 )
 
-type autenticadorFake struct {
-	usuarioID string
-	escopos   []string
-	erro      error
-}
-
-func (fake autenticadorFake) Autenticar(string) (string, []string, error) {
-	return fake.usuarioID, fake.escopos, fake.erro
-}
-
-func TestComEscopo(t *testing.T) {
-	casos := []struct {
-		nome          string
-		authorization string
-		autenticador  autenticadorFake
-		status        int
-		chamaProximo  bool
-	}{
-		{"sem header", "", autenticadorFake{}, http.StatusUnauthorized, false},
-		{"esquema errado", "Basic abc", autenticadorFake{}, http.StatusUnauthorized, false},
-		{"bearer vazio", "Bearer   ", autenticadorFake{}, http.StatusUnauthorized, false},
-		{"token invalido", "Bearer x", autenticadorFake{erro: errors.New("expirado")}, http.StatusUnauthorized, false},
-		{"sem o escopo", "Bearer x", autenticadorFake{usuarioID: "u1", escopos: []string{"clientes:ler"}}, http.StatusForbidden, false},
-		{"com o escopo", "Bearer x", autenticadorFake{usuarioID: "u1", escopos: []string{"estoque:ler"}}, http.StatusOK, true},
+func TestRequireScope(t *testing.T) {
+	jwt, err := infrastructure.NewJWT("segredo")
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	for _, caso := range casos {
-		t.Run(caso.nome, func(t *testing.T) {
-			chamado := false
-			protegido := ComEscopo(caso.autenticador, "estoque:ler", func(writer http.ResponseWriter, request *http.Request) {
-				chamado = true
-				if UsuarioID(request.Context()) != caso.autenticador.usuarioID {
-					t.Fatalf("usuarioID no contexto = %q", UsuarioID(request.Context()))
-				}
-			})
-
-			response := httptest.NewRecorder()
-			request := httptest.NewRequest("GET", "/estoque/pecas", nil)
-			if caso.authorization != "" {
-				request.Header.Set("Authorization", caso.authorization)
+	allowed, _ := jwt.Gerar("usuario", []string{"veiculos:escrever"})
+	denied, _ := jwt.Gerar("usuario", nil)
+	for _, test := range []struct {
+		header string
+		status int
+	}{{"", 401}, {"Bearer invalido", 401}, {"Bearer " + denied, 403}, {"Bearer " + allowed, 204}} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, "/", nil)
+		request.Header.Set("Authorization", test.header)
+		RequireScope(jwt, "veiculos:escrever", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			if test.status == http.StatusNoContent && UsuarioID(request.Context()) != "usuario" {
+				t.Fatal("usuário não foi propagado")
 			}
-			protegido(response, request)
-
-			if response.Code != caso.status {
-				t.Fatalf("status = %d, esperado %d", response.Code, caso.status)
-			}
-			if chamado != caso.chamaProximo {
-				t.Fatalf("handler seguinte chamado = %v, esperado %v", chamado, caso.chamaProximo)
-			}
-		})
+			writer.WriteHeader(http.StatusNoContent)
+		})).ServeHTTP(response, request)
+		if response.Code != test.status {
+			t.Fatalf("header=%q status=%d", test.header, response.Code)
+		}
 	}
 }

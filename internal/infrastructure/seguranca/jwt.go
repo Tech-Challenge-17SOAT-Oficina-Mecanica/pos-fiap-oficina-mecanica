@@ -38,7 +38,7 @@ func (service JWT) Autenticar(raw string) (string, []string, error) {
 	if err != nil {
 		return "", nil, err
 	}
-	return claims.Subject, claims.Escopos, nil
+	return claims.UsuarioID, claims.Escopos, nil
 }
 
 func (service JWT) Validar(raw string) (seguranca.Claims, error) {

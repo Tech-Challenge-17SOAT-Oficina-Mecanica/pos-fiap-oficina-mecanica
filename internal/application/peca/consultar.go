@@ -3,10 +3,10 @@ package peca
 import (
 	"context"
 	"errors"
-	"regexp"
 	"strings"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const descricaoMinima = 2
@@ -18,8 +18,6 @@ var (
 	ErrIdentificadorInvalido = errors.New("identificador deve ser um UUID valido")
 	ErrNaoEncontrada         = errors.New("nenhuma peca corresponde aos parametros informados")
 )
-
-var padraoUUID = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type Filtros struct {
 	Codigo             string
@@ -63,7 +61,7 @@ func (useCase ConsultarPecas) Execute(ctx context.Context, filtros Filtros, limi
 }
 
 func (useCase ConsultarPecas) BuscarPorID(ctx context.Context, id string) (peca.Peca, error) {
-	if !padraoUUID.MatchString(strings.TrimSpace(id)) {
+	if !validation.IsUUID(strings.TrimSpace(id)) {
 		return peca.Peca{}, ErrIdentificadorInvalido
 	}
 	return useCase.repository.BuscarPorID(ctx, strings.TrimSpace(id))
@@ -81,7 +79,7 @@ func normalizar(filtros Filtros) (Filtros, error) {
 	if filtros.Descricao != "" && len([]rune(filtros.Descricao)) < descricaoMinima {
 		return Filtros{}, ErrDescricaoCurta
 	}
-	if filtros.CategoriaID != "" && !padraoUUID.MatchString(filtros.CategoriaID) {
+	if filtros.CategoriaID != "" && !validation.IsUUID(filtros.CategoriaID) {
 		return Filtros{}, ErrIdentificadorInvalido
 	}
 	if filtros.QuantidadeDesejada != nil && *filtros.QuantidadeDesejada <= 0 {

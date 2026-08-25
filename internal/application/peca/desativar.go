@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 type ErroSaldoReservado struct {
@@ -40,7 +41,7 @@ func NewDesativarPeca(repository DesativarRepository) DesativarPeca {
 
 func (useCase DesativarPeca) Execute(ctx context.Context, id, usuarioID string) (peca.Peca, error) {
 	id = strings.TrimSpace(id)
-	if !padraoUUID.MatchString(id) {
+	if !validation.IsUUID(id) {
 		return peca.Peca{}, ErrIdentificadorInvalido
 	}
 

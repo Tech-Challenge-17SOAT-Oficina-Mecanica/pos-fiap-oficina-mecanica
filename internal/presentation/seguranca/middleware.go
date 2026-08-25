@@ -3,52 +3,45 @@ package seguranca
 import (
 	"context"
 	"net/http"
-	"slices"
 	"strings"
 
+	security "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
-type Autenticador interface {
-	Autenticar(token string) (usuarioID string, escopos []string, err error)
-}
-
-type chaveContexto string
-
-const chaveUsuarioID chaveContexto = "usuarioID"
+type usuarioIDKey struct{}
 
 func UsuarioID(ctx context.Context) string {
-	usuarioID, _ := ctx.Value(chaveUsuarioID).(string)
-	return usuarioID
+	value, _ := ctx.Value(usuarioIDKey{}).(string)
+	return value
 }
 
-func ComEscopo(autenticador Autenticador, escopo string, proximo http.HandlerFunc) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		token, ok := strings.CutPrefix(request.Header.Get("Authorization"), "Bearer ")
-		if !ok || strings.TrimSpace(token) == "" {
-			problemaAutorizacao(writer, http.StatusUnauthorized, "Não autorizado", "token ausente")
+type tokenValidator interface {
+	Validar(string) (security.Claims, error)
+}
+
+func RequireScope(token tokenValidator, scope string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		parts := strings.Fields(request.Header.Get("Authorization"))
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			unauthorized(writer)
 			return
 		}
-
-		usuarioID, escopos, err := autenticador.Autenticar(strings.TrimSpace(token))
+		claims, err := token.Validar(parts[1])
 		if err != nil {
-			problemaAutorizacao(writer, http.StatusUnauthorized, "Não autorizado", "token inválido ou expirado")
+			unauthorized(writer)
 			return
 		}
-		if !slices.Contains(escopos, escopo) {
-			problemaAutorizacao(writer, http.StatusForbidden, "Acesso negado", "escopo "+escopo+" é obrigatório")
-			return
+		for _, granted := range claims.Escopos {
+			if granted == scope {
+				next.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), usuarioIDKey{}, claims.UsuarioID)))
+				return
+			}
 		}
-
-		proximo(writer, request.WithContext(context.WithValue(request.Context(), chaveUsuarioID, usuarioID)))
-	}
+		sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autorizacao", Title: "Acesso negado", Status: http.StatusForbidden, Detail: "usuário sem permissão para esta operação"})
+	})
 }
 
-func problemaAutorizacao(writer http.ResponseWriter, status int, title, detail string) {
-	sharedhttp.WriteProblem(writer, sharedhttp.Problem{
-		Type:   "https://api.oficina-mecanica.dev/errors/autorizacao",
-		Title:  title,
-		Status: status,
-		Detail: detail,
-	})
+func unauthorized(writer http.ResponseWriter) {
+	sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autenticacao", Title: "Não autorizado", Status: http.StatusUnauthorized, Detail: "token de acesso inválido ou ausente"})
 }

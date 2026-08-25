@@ -20,7 +20,7 @@ func repositorio(t *testing.T) pecaInfrastructure.PostgresRepository {
 	if os.Getenv("DATABASE_URL") == "" {
 		t.Skip("DATABASE_URL nao definida; teste de integracao ignorado")
 	}
-	pool, err := database.Open(context.Background())
+	pool, err := database.OpenPool()
 	if err != nil {
 		t.Fatal(err)
 	}

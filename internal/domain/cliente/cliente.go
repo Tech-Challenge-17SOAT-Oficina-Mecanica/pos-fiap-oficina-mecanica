@@ -5,6 +5,8 @@ import (
 	"net/mail"
 	"strings"
 	"time"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const (
@@ -80,8 +82,8 @@ func MotivoParaInativacao(motivo string) (string, error) {
 func Novo(input NovoClienteInput) (Cliente, error) {
 	cliente := Cliente{
 		Nome:          strings.TrimSpace(input.Nome),
-		Documento:     strings.TrimSpace(input.Documento),
-		TipoDocumento: strings.TrimSpace(input.TipoDocumento),
+		Documento:     validation.OnlyDigits(input.Documento),
+		TipoDocumento: strings.ToUpper(strings.TrimSpace(input.TipoDocumento)),
 		Telefone:      strings.TrimSpace(input.Telefone),
 		Email:         strings.TrimSpace(input.Email),
 		Ativo:         true,
@@ -95,8 +97,8 @@ func Novo(input NovoClienteInput) (Cliente, error) {
 
 func (cliente Cliente) Atualizar(input AtualizarClienteInput) (Cliente, error) {
 	cliente.Nome = strings.TrimSpace(input.Nome)
-	cliente.Documento = strings.TrimSpace(input.Documento)
-	cliente.TipoDocumento = strings.TrimSpace(input.TipoDocumento)
+	cliente.Documento = validation.OnlyDigits(input.Documento)
+	cliente.TipoDocumento = strings.ToUpper(strings.TrimSpace(input.TipoDocumento))
 	cliente.Telefone = strings.TrimSpace(input.Telefone)
 	cliente.Email = strings.TrimSpace(input.Email)
 	if err := cliente.validarCadastro(); err != nil {
@@ -118,7 +120,7 @@ func (cliente Cliente) validarCadastro() error {
 	if cliente.TipoDocumento != TipoDocumentoCPF && cliente.TipoDocumento != TipoDocumentoCNPJ {
 		return ErrTipoDocumentoInvalido
 	}
-	if !somenteDigitos(cliente.Documento) || !documentoValido(cliente.Documento, cliente.TipoDocumento) {
+	if !validation.IsDocumento(cliente.Documento, cliente.TipoDocumento) {
 		return ErrDocumentoInvalido
 	}
 	if cliente.Telefone == "" && cliente.Email == "" {
@@ -134,11 +136,11 @@ func (cliente Cliente) validarCadastro() error {
 }
 
 func DocumentoParaConsulta(documento string) (string, error) {
-	documento = strings.TrimSpace(documento)
+	documento = validation.OnlyDigits(documento)
 	if documento == "" {
 		return "", ErrDocumentoObrigatorio
 	}
-	if !somenteDigitos(documento) || (!cpfValido(documento) && !cnpjValido(documento)) {
+	if !validation.IsCPF(documento) && !validation.IsCNPJ(documento) {
 		return "", ErrDocumentoInvalido
 	}
 	return documento, nil
@@ -156,59 +158,4 @@ func somenteDigitos(value string) bool {
 func emailValido(value string) bool {
 	address, err := mail.ParseAddress(value)
 	return err == nil && address.Address == value
-}
-
-func documentoValido(documento, tipo string) bool {
-	if tipo == TipoDocumentoCPF {
-		return cpfValido(documento)
-	}
-	return cnpjValido(documento)
-}
-
-func cpfValido(cpf string) bool {
-	if len(cpf) != 11 || todosIguais(cpf) {
-		return false
-	}
-	return digitoCPF(cpf, 9) == int(cpf[9]-'0') && digitoCPF(cpf, 10) == int(cpf[10]-'0')
-}
-
-func digitoCPF(cpf string, pos int) int {
-	sum := 0
-	for i := 0; i < pos; i++ {
-		sum += int(cpf[i]-'0') * (pos + 1 - i)
-	}
-	digit := (sum * 10) % 11
-	if digit == 10 {
-		return 0
-	}
-	return digit
-}
-
-func cnpjValido(cnpj string) bool {
-	if len(cnpj) != 14 || todosIguais(cnpj) {
-		return false
-	}
-	return digitoCNPJ(cnpj, []int{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}) == int(cnpj[12]-'0') &&
-		digitoCNPJ(cnpj, []int{6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}) == int(cnpj[13]-'0')
-}
-
-func digitoCNPJ(cnpj string, weights []int) int {
-	sum := 0
-	for i, weight := range weights {
-		sum += int(cnpj[i]-'0') * weight
-	}
-	rest := sum % 11
-	if rest < 2 {
-		return 0
-	}
-	return 11 - rest
-}
-
-func todosIguais(value string) bool {
-	for i := 1; i < len(value); i++ {
-		if value[i] != value[0] {
-			return false
-		}
-	}
-	return true
 }
