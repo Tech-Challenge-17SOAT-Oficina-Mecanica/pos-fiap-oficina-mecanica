@@ -5,47 +5,43 @@ import (
 	"net/http"
 	"strings"
 
-	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	security "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
-type claimsContextKey struct{}
+type usuarioIDKey struct{}
 
-type TokenValidator interface {
-	Validar(string) (segurancaInfrastructure.Claims, error)
+func UsuarioID(ctx context.Context) string {
+	value, _ := ctx.Value(usuarioIDKey{}).(string)
+	return value
 }
 
-func RequireScope(tokenValidator TokenValidator, escopo string, next http.Handler) http.Handler {
+type tokenValidator interface {
+	Validar(string) (security.Claims, error)
+}
+
+func RequireScope(token tokenValidator, scope string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		raw := strings.TrimSpace(strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer "))
-		if raw == "" {
-			sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autenticacao", Title: "Nao autenticado", Status: http.StatusUnauthorized, Detail: "token ausente"})
+		parts := strings.Fields(request.Header.Get("Authorization"))
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+			unauthorized(writer)
 			return
 		}
-		claims, err := tokenValidator.Validar(raw)
+		claims, err := token.Validar(parts[1])
 		if err != nil {
-			sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autenticacao", Title: "Nao autenticado", Status: http.StatusUnauthorized, Detail: "token invalido"})
+			unauthorized(writer)
 			return
 		}
-		if !temEscopo(claims.Escopos, escopo) {
-			sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autorizacao", Title: "Acesso negado", Status: http.StatusForbidden, Detail: "escopo insuficiente"})
-			return
+		for _, granted := range claims.Escopos {
+			if granted == scope {
+				next.ServeHTTP(writer, request.WithContext(context.WithValue(request.Context(), usuarioIDKey{}, claims.UsuarioID)))
+				return
+			}
 		}
-		request = request.WithContext(context.WithValue(request.Context(), claimsContextKey{}, claims))
-		next.ServeHTTP(writer, request)
+		sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autorizacao", Title: "Acesso negado", Status: http.StatusForbidden, Detail: "usuário sem permissão para esta operação"})
 	})
 }
 
-func ClaimsFromContext(ctx context.Context) (segurancaInfrastructure.Claims, bool) {
-	claims, ok := ctx.Value(claimsContextKey{}).(segurancaInfrastructure.Claims)
-	return claims, ok
-}
-
-func temEscopo(escopos []string, esperado string) bool {
-	for _, escopo := range escopos {
-		if escopo == esperado {
-			return true
-		}
-	}
-	return false
+func unauthorized(writer http.ResponseWriter) {
+	sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/autenticacao", Title: "Não autorizado", Status: http.StatusUnauthorized, Detail: "token de acesso inválido ou ausente"})
 }

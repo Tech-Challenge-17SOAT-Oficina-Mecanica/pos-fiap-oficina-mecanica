@@ -1,0 +1,90 @@
+package cliente
+
+import (
+	"errors"
+	"strings"
+	"testing"
+)
+
+func TestNovoCliente(t *testing.T) {
+	cases := []struct {
+		name  string
+		input NovoClienteInput
+		want  error
+	}{
+		{"valido cpf telefone", NovoClienteInput{Nome: " Ana ", Documento: "390.533.447-05", TipoDocumento: "cpf", Telefone: "11988887777"}, nil},
+		{"valido cnpj email", NovoClienteInput{Nome: "Empresa", Documento: "11222333000181", TipoDocumento: TipoDocumentoCNPJ, Email: "empresa@example.com"}, nil},
+		{"nome ausente", NovoClienteInput{Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrNomeObrigatorio},
+		{"documento ausente", NovoClienteInput{Nome: "Ana", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrDocumentoObrigatorio},
+		{"tipo ausente", NovoClienteInput{Nome: "Ana", Documento: "39053344705", Telefone: "11988887777"}, ErrTipoDocumentoObrigatorio},
+		{"tipo invalido", NovoClienteInput{Nome: "Ana", Documento: "39053344705", TipoDocumento: "RG", Telefone: "11988887777"}, ErrTipoDocumentoInvalido},
+		{"cpf invalido", NovoClienteInput{Nome: "Ana", Documento: "11111111111", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrDocumentoInvalido},
+		{"cnpj invalido", NovoClienteInput{Nome: "Empresa", Documento: "11111111111111", TipoDocumento: TipoDocumentoCNPJ, Telefone: "11988887777"}, ErrDocumentoInvalido},
+		{"documento com letra", NovoClienteInput{Nome: "Ana", Documento: "3905334470A", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrDocumentoInvalido},
+		{"contato ausente", NovoClienteInput{Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF}, ErrContatoObrigatorio},
+		{"telefone curto", NovoClienteInput{Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "119"}, ErrTelefoneInvalido},
+		{"telefone com letra", NovoClienteInput{Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "1198888777a"}, ErrTelefoneInvalido},
+		{"email invalido", NovoClienteInput{Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Email: "email"}, ErrEmailInvalido},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := Novo(test.input)
+			if !errors.Is(err, test.want) {
+				t.Fatalf("erro: %v", err)
+			}
+			if test.want == nil && (!got.Ativo || got.Version != 1 || got.Nome != strings.TrimSpace(test.input.Nome)) {
+				t.Fatalf("cliente: %#v", got)
+			}
+		})
+	}
+}
+
+func TestDocumentoParaConsulta(t *testing.T) {
+	cases := []struct {
+		name, documento string
+		want            error
+	}{
+		{"cpf valido", " 390.533.447-05 ", nil},
+		{"cnpj valido", "11222333000181", nil},
+		{"ausente", "", ErrDocumentoObrigatorio},
+		{"letra", "3905334470A", ErrDocumentoInvalido},
+		{"invalido", "11111111111", ErrDocumentoInvalido},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := DocumentoParaConsulta(test.documento)
+			if !errors.Is(err, test.want) {
+				t.Fatalf("erro: %v", err)
+			}
+			if test.want == nil && got != "39053344705" && got != "11222333000181" {
+				t.Fatalf("documento: %q", got)
+			}
+		})
+	}
+}
+
+func TestAtualizarCliente(t *testing.T) {
+	atual := Cliente{ID: "id", Nome: "Ana", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777", Ativo: true, Version: 2, Veiculos: []Veiculo{{ID: "v1"}}}
+	got, err := atual.Atualizar(AtualizarClienteInput{Nome: " Maria ", Documento: "11222333000181", TipoDocumento: TipoDocumentoCNPJ, Email: "maria@example.com"})
+	if err != nil {
+		t.Fatalf("erro: %v", err)
+	}
+	if got.ID != atual.ID || got.Version != atual.Version || len(got.Veiculos) != 1 || got.Nome != "Maria" || got.Telefone != "" {
+		t.Fatalf("cliente: %#v", got)
+	}
+	_, err = atual.Atualizar(AtualizarClienteInput{})
+	if !errors.Is(err, ErrNomeObrigatorio) {
+		t.Fatalf("erro: %v", err)
+	}
+}
+
+func TestMotivoParaInativacao(t *testing.T) {
+	got, err := MotivoParaInativacao(" Cadastro duplicado ")
+	if err != nil || got != "Cadastro duplicado" {
+		t.Fatalf("motivo %q, erro: %v", got, err)
+	}
+	_, err = MotivoParaInativacao(strings.Repeat("a", 201))
+	if !errors.Is(err, ErrMotivoInvalido) {
+		t.Fatalf("erro: %v", err)
+	}
+}
