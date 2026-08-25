@@ -9,10 +9,13 @@ import (
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
+	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
+	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
@@ -38,6 +41,8 @@ func main() {
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
 	inativarCliente := clienteApplication.NewInativar(clienteRepository)
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
+	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
+	cadastrarServico := servicoApplication.NewCadastrar(servicoRepository)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
@@ -46,6 +51,7 @@ func main() {
 	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
 	mux.Handle("DELETE /clientes/{clienteId}", clientePresentation.NewInativarHandler(inativarCliente, jwt))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", clientePresentation.NewReativarHandler(reativarCliente, jwt))
+	mux.Handle("POST /servicos", servicoPresentation.NewCadastrarHandler(cadastrarServico, jwt))
 
 	server := &http.Server{
 		Addr:    ":8080",
