@@ -1,14 +1,15 @@
 ---
-documento: Refinamento de Requisitos — Cadastrar Mecânico
+documento: Refinamento de Requisitos — Contexto de Mecânico
 dono: Helena Miranda
 versao: 0.1
-atualizado_em: 2026-08-23
+atualizado_em: 2026-08-25
 status: rascunho
 ---
 
 # Refinamento de Requisitos — Cadastrar Mecânico
 
-Este documento define o cadastro de um profissional da oficina e sua conta de acesso.
+Este documento define o cadastro do profissional da oficina. A conta de acesso, a senha e os
+escopos são criados em integração com o contexto de Segurança.
 
 ## 1 · Cadastrar Mecânico
 
@@ -35,16 +36,16 @@ Sem um cadastro de profissional e conta de acesso, novos mecânicos não consegu
 
 | ID | Requisito |
 |---|---|
-| RF-SEG-04 | Permitir que um mecânico autorizado cadastre outro mecânico. |
-| RF-SEG-05 | Criar a conta de acesso e o cadastro profissional na mesma operação. |
-| RF-SEG-06 | Permitir que o novo mecânico faça login com o e-mail e a senha cadastrados. |
+| RF-MEC-01 | Permitir que um mecânico autorizado cadastre outro mecânico. |
+| RF-MEC-02 | Criar a conta de acesso e o cadastro profissional na mesma operação. |
+| RF-MEC-03 | Permitir que o novo mecânico faça login com o e-mail e a senha cadastrados. |
 
 **Requisitos Não Funcionais**
 
 | ID | Requisito |
 |---|---|
-| RNF-SEG-04 | A senha inicial deve possuir no mínimo 15 caracteres e ser persistida somente como hash BCrypt. |
-| RNF-SEG-05 | A criação deve ser atômica: não pode existir conta sem mecânico, nem mecânico sem conta. |
+| RNF-MEC-01 | A senha inicial deve possuir no mínimo 15 caracteres e ser persistida somente como hash BCrypt. |
+| RNF-MEC-02 | A criação deve ser atômica: não pode existir conta sem mecânico, nem mecânico sem conta. |
 
 **Fluxo Principal**
 
@@ -180,11 +181,15 @@ POST /mecanicos
 
 **Repositório**
 
-- [ ] Implementar criação de `usuario`, `mecanico` e `usuario_escopo`.
+- [ ] Implementar `MecanicoRepository` para persistir o profissional vinculado à conta.
+
+**Integrações**
+
+- [ ] Integrar com Segurança para criar `usuario`, gerar o hash BCrypt e associar `usuario_escopo`.
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /mecanicos` com autenticação por escopo.
+- [ ] Implementar `POST /mecanicos` no contexto de Mecânico, com autenticação por escopo.
 
 **Validações**
 
@@ -210,10 +215,4 @@ POST /mecanicos
 
 - [ ] Migration versionada e reversível.
 - [ ] Code Review aprovado.
-
-## Pontos em aberto
-
-| # | Ponto | Responsável |
-|---|---|---|
-| 1 | Política de troca, recuperação e inativação de contas de mecânico será refinada em tarefas próprias. | — |
 

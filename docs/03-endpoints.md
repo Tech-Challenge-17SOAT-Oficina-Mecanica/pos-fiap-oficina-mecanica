@@ -32,7 +32,12 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
 | `POST` | `/autenticacao/login` | Autentica mecânico e emite JWT | — | [autenticar-mecanico.md](seguranca/autenticar-mecanico.md) |
-| `POST` | `/mecanicos` | Cadastra mecânico e sua conta de acesso | `mecanicos:escrever` | [cadastrar-mecanico.md](seguranca/cadastrar-mecanico.md) |
+
+## Mecânico
+
+| Método | Rota | O que faz | Escopo | Documento |
+|---|---|---|---|---|
+| `POST` | `/mecanicos` | Cadastra mecânico e cria sua conta de acesso | `mecanicos:escrever` | [cadastrar-mecanico.md](mecanico/cadastrar-mecanico.md) |
 
 ## Cliente
 
