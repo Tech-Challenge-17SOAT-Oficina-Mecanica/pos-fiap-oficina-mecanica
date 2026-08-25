@@ -2,7 +2,6 @@ package cliente
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
 	"time"
 )
@@ -127,7 +126,7 @@ func (cliente Cliente) validarCadastro() error {
 	if cliente.Telefone != "" && (!somenteDigitos(cliente.Telefone) || len(cliente.Telefone) < 10 || len(cliente.Telefone) > 11) {
 		return ErrTelefoneInvalido
 	}
-	if cliente.Email != "" && !emailValido(cliente.Email) {
+	if cliente.Email != "" && !validation.IsEmail(cliente.Email) {
 		return ErrEmailInvalido
 	}
 	return nil
@@ -153,10 +152,6 @@ func somenteDigitos(value string) bool {
 	return value != ""
 }
 
-func emailValido(value string) bool {
-	address, err := mail.ParseAddress(value)
-	return err == nil && address.Address == value
-}
 
 func documentoValido(documento, tipo string) bool {
 	if tipo == TipoDocumentoCPF {

@@ -2,8 +2,9 @@ package mecanico
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const senhaMinima = 15
@@ -70,7 +71,7 @@ func Novo(input NovoMecanicoInput) (Mecanico, string, error) {
 	if mecanico.Email == "" {
 		return Mecanico{}, "", ErrEmailObrigatorio
 	}
-	if !emailValido(mecanico.Email) {
+	if !validation.IsEmail(mecanico.Email) {
 		return Mecanico{}, "", ErrEmailInvalido
 	}
 	if senha == "" {
@@ -114,7 +115,3 @@ func todosEscoposOficiais(escopos []string) bool {
 	return true
 }
 
-func emailValido(value string) bool {
-	address, err := mail.ParseAddress(value)
-	return err == nil && address.Address == value
-}

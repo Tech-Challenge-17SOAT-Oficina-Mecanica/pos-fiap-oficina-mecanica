@@ -5,22 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/mecanico"
-	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
-const escopoCadastrarMecanico = "mecanicos:escrever"
-
 type CadastrarUseCase interface {
 	Execute(context.Context, domain.NovoMecanicoInput) (domain.Mecanico, error)
-}
-
-type TokenValidator interface {
-	Validar(string) (seguranca.Claims, error)
 }
 
 type cadastrarRequest struct {
@@ -38,16 +30,8 @@ type mecanicoResponse struct {
 	Escopos []string `json:"escopos"`
 }
 
-func NewCadastrarHandler(useCase CadastrarUseCase, token TokenValidator) http.HandlerFunc {
+func NewCadastrarHandler(useCase CadastrarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if status, ok := autorizado(request, token, escopoCadastrarMecanico); !ok {
-			if status == http.StatusUnauthorized {
-				problem(writer, http.StatusUnauthorized, "Não autorizado", "token ausente ou expirado")
-				return
-			}
-			problem(writer, http.StatusForbidden, "Acesso negado", "usuário sem o escopo "+escopoCadastrarMecanico)
-			return
-		}
 		var input cadastrarRequest
 		if json.NewDecoder(request.Body).Decode(&input) != nil {
 			problem(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido")
@@ -73,24 +57,6 @@ func NewCadastrarHandler(useCase CadastrarUseCase, token TokenValidator) http.Ha
 			Escopos: mecanico.Escopos,
 		})
 	}
-}
-
-func autorizado(request *http.Request, token TokenValidator, escopoExigido string) (int, bool) {
-	header := request.Header.Get("Authorization")
-	raw := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
-	if raw == "" || raw == header {
-		return http.StatusUnauthorized, false
-	}
-	claims, err := token.Validar(raw)
-	if err != nil {
-		return http.StatusUnauthorized, false
-	}
-	for _, escopo := range claims.Escopos {
-		if escopo == escopoExigido {
-			return http.StatusOK, true
-		}
-	}
-	return http.StatusForbidden, false
 }
 
 func writeCadastrarError(writer http.ResponseWriter, err error) {

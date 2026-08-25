@@ -13,12 +13,13 @@ import (
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
 func TestCadastrarMecanico(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -39,12 +40,12 @@ func TestCadastrarMecanico(t *testing.T) {
 		t.Fatal(err)
 	}
 	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
-	handler := presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository)))
 
 	request := httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{"nome":"Mecânico Integração","email":"mecanico.integracao@oficina.local","senha":"mecanico123456789","escopos":["clientes:ler"]}`))
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
-	handler(response, request)
+	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
@@ -56,13 +57,13 @@ func TestCadastrarMecanico(t *testing.T) {
 	duplicado := httptest.NewRecorder()
 	duplicateRequest := httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{"nome":"Mecânico Integração","email":"mecanico.integracao@oficina.local","senha":"mecanico123456789","escopos":["clientes:ler"]}`))
 	duplicateRequest.Header.Set("Authorization", "Bearer "+token)
-	handler(duplicado, duplicateRequest)
+	handler.ServeHTTP(duplicado, duplicateRequest)
 	if duplicado.Code != http.StatusConflict {
 		t.Fatalf("duplicado status %d: %s", duplicado.Code, duplicado.Body.String())
 	}
 
 	semToken := httptest.NewRecorder()
-	handler(semToken, httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{}`)))
+	handler.ServeHTTP(semToken, httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{}`)))
 	if semToken.Code != http.StatusUnauthorized {
 		t.Fatalf("sem token status %d", semToken.Code)
 	}
@@ -74,7 +75,7 @@ func TestCadastrarMecanico(t *testing.T) {
 	semEscopoRequest := httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{}`))
 	semEscopoRequest.Header.Set("Authorization", "Bearer "+semEscopoToken)
 	semEscopo := httptest.NewRecorder()
-	handler(semEscopo, semEscopoRequest)
+	handler.ServeHTTP(semEscopo, semEscopoRequest)
 	if semEscopo.Code != http.StatusForbidden {
 		t.Fatalf("sem escopo status %d", semEscopo.Code)
 	}

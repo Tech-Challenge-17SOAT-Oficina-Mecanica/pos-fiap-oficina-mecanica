@@ -4,21 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/cliente"
-	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
-
-const escopoCadastrarCliente = "clientes:escrever"
-const escopoConsultarCliente = "clientes:ler"
-
-var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type CadastrarUseCase interface {
 	Execute(context.Context, domain.NovoClienteInput) (domain.Cliente, error)
@@ -38,10 +34,6 @@ type InativarUseCase interface {
 
 type ReativarUseCase interface {
 	Execute(context.Context, application.ReativarInput) (application.Reativacao, error)
-}
-
-type TokenValidator interface {
-	Validar(string) (seguranca.Claims, error)
 }
 
 type cadastrarRequest struct {
@@ -112,13 +104,12 @@ type reativarResponse struct {
 	VeiculosReativados int    `json:"veiculosReativados"`
 }
 
-func NewCadastrarHandler(useCase CadastrarUseCase, token TokenValidator) http.HandlerFunc {
+func NewCadastrarHandler(useCase CadastrarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if _, ok := autorizado(writer, request, token, escopoCadastrarCliente); !ok {
-			return
-		}
 		var input cadastrarRequest
-		if json.NewDecoder(request.Body).Decode(&input) != nil {
+		decoder := json.NewDecoder(request.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&input); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
 			problem(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido")
 			return
 		}
@@ -146,11 +137,8 @@ func NewCadastrarHandler(useCase CadastrarUseCase, token TokenValidator) http.Ha
 	}
 }
 
-func NewConsultarHandler(useCase ConsultarUseCase, token TokenValidator) http.HandlerFunc {
+func NewConsultarHandler(useCase ConsultarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if _, ok := autorizado(writer, request, token, escopoConsultarCliente); !ok {
-			return
-		}
 		cliente, err := useCase.Execute(request.Context(), request.URL.Query().Get("documento"))
 		if err != nil {
 			writeError(writer, err)
@@ -161,11 +149,8 @@ func NewConsultarHandler(useCase ConsultarUseCase, token TokenValidator) http.Ha
 	}
 }
 
-func NewAtualizarHandler(useCase AtualizarUseCase, token TokenValidator) http.HandlerFunc {
+func NewAtualizarHandler(useCase AtualizarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if _, ok := autorizado(writer, request, token, escopoCadastrarCliente); !ok {
-			return
-		}
 		ifMatch := strings.TrimSpace(request.Header.Get("If-Match"))
 		if ifMatch == "" {
 			problem(writer, http.StatusPreconditionRequired, "Pré-condição obrigatória", "If-Match não informado")
@@ -177,7 +162,9 @@ func NewAtualizarHandler(useCase AtualizarUseCase, token TokenValidator) http.Ha
 			return
 		}
 		var input cadastrarRequest
-		if json.NewDecoder(request.Body).Decode(&input) != nil {
+		decoder := json.NewDecoder(request.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&input); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
 			problem(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido")
 			return
 		}
@@ -210,20 +197,16 @@ func NewAtualizarHandler(useCase AtualizarUseCase, token TokenValidator) http.Ha
 	}
 }
 
-func NewInativarHandler(useCase InativarUseCase, token TokenValidator) http.HandlerFunc {
+func NewInativarHandler(useCase InativarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		claims, ok := autorizado(writer, request, token, escopoCadastrarCliente)
-		if !ok {
-			return
-		}
 		clienteID := request.PathValue("clienteId")
-		if !uuidValido(clienteID) {
+		if !validation.IsUUID(clienteID) {
 			problem(writer, http.StatusBadRequest, "Dados inválidos", "clienteId inválido")
 			return
 		}
 		result, err := useCase.Execute(request.Context(), application.InativarInput{
 			ClienteID: clienteID,
-			UsuarioID: claims.UsuarioID,
+			UsuarioID: segurancaPresentation.UsuarioID(request.Context()),
 			Motivo:    request.URL.Query().Get("motivo"),
 		})
 		if errors.Is(err, application.ErrClienteJaInativo) {
@@ -248,18 +231,15 @@ func NewInativarHandler(useCase InativarUseCase, token TokenValidator) http.Hand
 	}
 }
 
-func NewReativarHandler(useCase ReativarUseCase, token TokenValidator) http.HandlerFunc {
+func NewReativarHandler(useCase ReativarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		claims, ok := autorizado(writer, request, token, escopoCadastrarCliente)
-		if !ok {
-			return
-		}
 		clienteID := request.PathValue("clienteId")
-		if !uuidValido(clienteID) {
+		if !validation.IsUUID(clienteID) {
 			problem(writer, http.StatusBadRequest, "Dados inválidos", "clienteId inválido")
 			return
 		}
-		result, err := useCase.Execute(request.Context(), application.ReativarInput{ClienteID: clienteID, UsuarioID: claims.UsuarioID})
+		usuarioID := segurancaPresentation.UsuarioID(request.Context())
+		result, err := useCase.Execute(request.Context(), application.ReativarInput{ClienteID: clienteID, UsuarioID: usuarioID})
 		if err != nil {
 			writeError(writer, err)
 			return
@@ -270,30 +250,10 @@ func NewReativarHandler(useCase ReativarUseCase, token TokenValidator) http.Hand
 			Nome:               result.Cliente.Nome,
 			Ativo:              result.Cliente.Ativo,
 			ReativadoEm:        result.ReativadoEm.Format("2006-01-02T15:04:05Z07:00"),
-			ReativadoPor:       claims.UsuarioID,
+			ReativadoPor:       usuarioID,
 			VeiculosReativados: result.VeiculosReativados,
 		})
 	}
-}
-
-func autorizado(writer http.ResponseWriter, request *http.Request, token TokenValidator, escopoExigido string) (seguranca.Claims, bool) {
-	raw := strings.TrimSpace(strings.TrimPrefix(request.Header.Get("Authorization"), "Bearer "))
-	if raw == "" || raw == request.Header.Get("Authorization") {
-		problem(writer, http.StatusUnauthorized, "Não autorizado", "token ausente ou expirado")
-		return seguranca.Claims{}, false
-	}
-	claims, err := token.Validar(raw)
-	if err != nil {
-		problem(writer, http.StatusUnauthorized, "Não autorizado", "token ausente ou expirado")
-		return seguranca.Claims{}, false
-	}
-	for _, escopo := range claims.Escopos {
-		if escopo == escopoExigido {
-			return claims, true
-		}
-	}
-	problem(writer, http.StatusForbidden, "Acesso negado", "usuário sem o escopo "+escopoExigido)
-	return seguranca.Claims{}, false
 }
 
 func writeError(writer http.ResponseWriter, err error) {
@@ -346,10 +306,6 @@ func errClienteInvalido(err error) bool {
 
 func problem(writer http.ResponseWriter, status int, title, detail string) {
 	sharedhttp.WriteProblem(writer, sharedhttp.Problem{Type: "https://api.oficina-mecanica.dev/errors/clientes", Title: title, Status: status, Detail: detail})
-}
-
-func uuidValido(value string) bool {
-	return uuidPattern.MatchString(value)
 }
 
 func toConsultaResponse(cliente domain.Cliente) consultaClienteResponse {

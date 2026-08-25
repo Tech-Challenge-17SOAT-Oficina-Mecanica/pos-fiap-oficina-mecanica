@@ -11,12 +11,13 @@ import (
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
 func TestCadastrarCliente(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -36,11 +37,11 @@ func TestCadastrarCliente(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewCadastrarHandler(application.NewCadastrar(clienteInfrastructure.NewPostgresRepository(db)), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "clientes:escrever", presentation.NewCadastrarHandler(application.NewCadastrar(clienteInfrastructure.NewPostgresRepository(db))))
 	request := httptest.NewRequest(http.MethodPost, "/clientes", strings.NewReader(`{"nome":"Cliente Teste","documento":"52998224725","tipoDocumento":"CPF","telefone":"11988887777"}`))
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
-	handler(response, request)
+	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
@@ -52,7 +53,7 @@ func TestCadastrarCliente(t *testing.T) {
 	duplicateRequest := httptest.NewRequest(http.MethodPost, "/clientes", strings.NewReader(`{"nome":"Cliente Teste","documento":"52998224725","tipoDocumento":"CPF","telefone":"11988887777"}`))
 	duplicateRequest.Header.Set("Authorization", "Bearer "+token)
 	duplicado := httptest.NewRecorder()
-	handler(duplicado, duplicateRequest)
+	handler.ServeHTTP(duplicado, duplicateRequest)
 	if duplicado.Code != http.StatusConflict {
 		t.Fatalf("duplicado status %d", duplicado.Code)
 	}

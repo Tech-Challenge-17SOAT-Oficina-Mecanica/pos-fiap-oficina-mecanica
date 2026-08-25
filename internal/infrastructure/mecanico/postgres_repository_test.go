@@ -76,7 +76,20 @@ func (fake *fakeTx) Rollback(context.Context) error {
 }
 
 func TestNewPostgresRepository(t *testing.T) {
-	db, err := database.Open(context.Background())
+	repository := NewPostgresRepository(nil)
+	if repository.begin == nil {
+		t.Fatal("begin obrigatório")
+	}
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("esperava panic ao abrir transação sem db")
+			}
+		}()
+		_, _ = repository.begin(context.Background())
+	}()
+
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -84,7 +97,7 @@ func TestNewPostgresRepository(t *testing.T) {
 	if err := db.Ping(context.Background()); err != nil {
 		t.Skip("banco indisponível")
 	}
-	repository := NewPostgresRepository(db)
+	repository = NewPostgresRepository(db)
 	if repository.db == nil || repository.begin == nil {
 		t.Fatal("db obrigatório")
 	}
