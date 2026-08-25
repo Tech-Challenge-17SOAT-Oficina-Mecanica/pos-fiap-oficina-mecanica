@@ -47,9 +47,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
-	mux.Handle("POST /fornecedores", fornecedorPresentation.NewCadastrarHandler(
+	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewCadastrarHandler(
 		fornecedorApplication.NewCadastrar(fornecedorInfrastructure.NewPostgresRepository(db)),
-	))
+	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))

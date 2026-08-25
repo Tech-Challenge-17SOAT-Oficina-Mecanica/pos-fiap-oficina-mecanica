@@ -17,6 +17,9 @@ paths:
     post:
       tags: [Fornecedores]
       summary: Cadastra um fornecedor
+      description: Exige o escopo `compras:escrever`.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -29,6 +32,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Fornecedor' }
         '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
         '409': { description: Documento duplicado }
   /veiculos:
     get:

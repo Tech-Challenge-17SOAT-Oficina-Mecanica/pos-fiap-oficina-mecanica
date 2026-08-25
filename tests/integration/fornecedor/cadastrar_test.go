@@ -12,7 +12,9 @@ import (
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
+	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
@@ -30,25 +32,47 @@ func TestCadastrarFornecedor(t *testing.T) {
 	defer db.Close()
 
 	documento := cnpjValido(fmt.Sprintf("%012d", time.Now().UnixNano()%1000000000000))
+	jwt, err := segurancaInfrastructure.NewJWT("segredo-de-teste")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := jwt.Gerar("usuario", []string{"compras:escrever"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	semEscopo, err := jwt.Gerar("usuario", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	mux := http.NewServeMux()
-	mux.Handle("POST /fornecedores", presentation.NewCadastrarHandler(
+	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:escrever", presentation.NewCadastrarHandler(
 		application.NewCadastrar(infrastructure.NewPostgresRepository(db)),
-	))
-	request := func() *httptest.ResponseRecorder {
+	)))
+	request := func(token string) *httptest.ResponseRecorder {
 		body := fmt.Sprintf(`{"razaoSocial":"Fornecedor Teste Ltda","documento":"%s","tipoDocumento":"CNPJ","email":"teste@example.com"}`, documento)
 		recorder := httptest.NewRecorder()
-		mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/fornecedores", bytes.NewBufferString(body)))
+		request := httptest.NewRequest(http.MethodPost, "/fornecedores", bytes.NewBufferString(body))
+		if token != "" {
+			request.Header.Set("Authorization", "Bearer "+token)
+		}
+		mux.ServeHTTP(recorder, request)
 		return recorder
 	}
 
-	firstResponse := request()
+	if response := request(""); response.Code != http.StatusUnauthorized {
+		t.Fatalf("sem token=%d", response.Code)
+	}
+	if response := request(semEscopo); response.Code != http.StatusForbidden {
+		t.Fatalf("sem escopo=%d", response.Code)
+	}
+	firstResponse := request(token)
 	if firstResponse.Code != http.StatusCreated {
 		t.Fatalf("status=%d body=%s", firstResponse.Code, firstResponse.Body.String())
 	}
 	t.Cleanup(func() {
 		_, _ = db.Exec(ctx, "DELETE FROM fornecedor WHERE documento = $1", documento)
 	})
-	if duplicateResponse := request(); duplicateResponse.Code != http.StatusConflict {
+	if duplicateResponse := request(token); duplicateResponse.Code != http.StatusConflict {
 		t.Fatalf("status duplicado=%d body=%s", duplicateResponse.Code, duplicateResponse.Body.String())
 	}
 }

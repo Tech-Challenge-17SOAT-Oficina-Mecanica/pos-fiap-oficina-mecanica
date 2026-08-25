@@ -7,7 +7,7 @@ import (
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
 )
 
-var ErrDocumentoDuplicado = errors.New("ja existe fornecedor ativo com este documento")
+var ErrDocumentoDuplicado = errors.New("já existe fornecedor ativo com este documento")
 
 type Repository interface {
 	Cadastrar(context.Context, domain.Cadastro) (domain.Fornecedor, error)

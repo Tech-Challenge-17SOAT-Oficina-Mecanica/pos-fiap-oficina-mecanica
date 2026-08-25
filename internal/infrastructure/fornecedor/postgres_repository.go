@@ -4,15 +4,18 @@ import (
 	"context"
 	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
 )
 
-type PostgresRepository struct {
-	db *pgxpool.Pool
+type queryer interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
 }
+
+type PostgresRepository struct{ db queryer }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository {
 	return PostgresRepository{db: db}
