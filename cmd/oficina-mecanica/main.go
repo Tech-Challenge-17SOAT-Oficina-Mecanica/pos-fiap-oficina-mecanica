@@ -63,7 +63,9 @@ func main() {
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
-	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoInfrastructure.NewPostgresRepository(db))
+	insumoRepository := insumoInfrastructure.NewPostgresRepository(db)
+	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoRepository)
+	desativarInsumo := insumoApplication.NewDesativarInsumo(insumoRepository)
 	desativarPeca := pecaApplication.NewDesativarPeca(pecaRepository)
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
@@ -129,6 +131,8 @@ func main() {
 		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
 	mux.Handle("POST /estoque/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		insumoPresentation.NewCadastrarInsumoHandler(cadastrarInsumo)))
+	mux.Handle("DELETE /estoque/insumos/{insumoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
+		insumoPresentation.NewDesativarHandler(desativarInsumo)))
 	mux.Handle("GET /estoque/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,

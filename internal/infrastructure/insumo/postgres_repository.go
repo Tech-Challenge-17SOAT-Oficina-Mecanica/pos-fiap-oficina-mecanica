@@ -2,6 +2,7 @@ package insumo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -29,6 +30,66 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository {
 	return PostgresRepository{db: db}
+}
+
+func (repository PostgresRepository) Desativar(ctx context.Context, insumoID, usuarioID string) (insumo.Insumo, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return insumo.Insumo{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var tipo string
+	var ativo bool
+	err = tx.QueryRow(ctx, `SELECT tipo, ativo FROM item_estoque WHERE id = $1 FOR UPDATE`, insumoID).Scan(&tipo, &ativo)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && tipo != insumo.Tipo) {
+		return insumo.Insumo{}, insumoApplication.ErrInsumoNaoEncontrado
+	}
+	if err != nil {
+		return insumo.Insumo{}, err
+	}
+	if !ativo {
+		return insumo.Insumo{}, insumo.ErrInsumoJaInativo
+	}
+
+	var raw []byte
+	err = tx.QueryRow(ctx, `SELECT COALESCE(jsonb_agg(DISTINCT bloqueio.ordem_servico_id), '[]'::jsonb)
+		FROM (
+			SELECT ordem_servico_id FROM ordem_servico_item
+			WHERE item_estoque_id = $1 AND quantidade_reservada > 0
+			UNION
+			SELECT o.ordem_servico_id FROM orcamento_item oi
+			JOIN orcamento o ON o.id = oi.orcamento_id
+			WHERE oi.item_estoque_id = $1 AND o.status = 'CRIADO'
+		) bloqueio`, insumoID).Scan(&raw)
+	if err != nil {
+		return insumo.Insumo{}, err
+	}
+	var ordens []string
+	if err := json.Unmarshal(raw, &ordens); err != nil {
+		return insumo.Insumo{}, err
+	}
+	if len(ordens) > 0 {
+		return insumo.Insumo{}, insumoApplication.InsumoEmUsoError{OrdensServico: ordens}
+	}
+
+	var item insumo.Insumo
+	var dataDesativacao time.Time
+	var usuarioDesativacao string
+	err = tx.QueryRow(ctx, `UPDATE item_estoque
+		SET ativo = FALSE, data_desativacao = CURRENT_TIMESTAMP, usuario_desativacao = $2, version = version + 1
+		WHERE id = $1 AND tipo = 'INSUMO' AND ativo
+		RETURNING id, codigo, nome, unidade_medida, saldo_fisico::text, ativo, version, data_desativacao, usuario_desativacao::text`, insumoID, usuarioID).
+		Scan(&item.ID, &item.Codigo, &item.Nome, &item.UnidadeMedida, &item.SaldoFisico, &item.Ativo, &item.Version, &dataDesativacao, &usuarioDesativacao)
+	if err != nil {
+		return insumo.Insumo{}, err
+	}
+	item.DataDesativacao = &dataDesativacao
+	item.UsuarioDesativacao = &usuarioDesativacao
+	if err := tx.Commit(ctx); err != nil {
+		return insumo.Insumo{}, err
+	}
+	return item, nil
 }
 
 func (repository PostgresRepository) BuscarPorID(ctx context.Context, id string) (insumo.Insumo, error) {
