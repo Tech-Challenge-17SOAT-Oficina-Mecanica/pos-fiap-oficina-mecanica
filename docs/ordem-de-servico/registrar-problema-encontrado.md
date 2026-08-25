@@ -181,12 +181,12 @@ OS EM_EXECUCAO    → orçamento COMPLEMENTAR CRIADO (cria se não houver) → v
 **Persistência**
 
 - Consulta: `ordem_servico` (validação de status e vínculo).
-- Altera: `orcamento` (consulta e, quando necessário, insert), `problema` (insert),
-  `orcamento_problema` (insert do vínculo).
+- Altera: `orcamento` (consulta e, quando necessário, insert) e
+  `problema_ordem_servico` (insert já vinculado ao orçamento).
 
-Campos de `orcamento`, quando criado: `id`, `ordem_servico_id`, `tipo`, `status = CRIADO`,
-`created_at`, `updated_at`. Campos de `problema`: `id`, `descricao`, `observacoes`, `created_at`,
-`updated_at`. Campos de `orcamento_problema`: `orcamento_id`, `problema_id`, `created_at`.
+Campos de `orcamento`, quando criado: `id`, `ordem_servico_id`, `tipo_orcamento`, `status = CRIADO`
+e `criado_em`. Campos de `problema_ordem_servico`: `id`, `ordem_servico_id`, `orcamento_id`,
+`descricao`, `observacoes` e `registrado_em`.
 
 Regras de persistência: no máximo um orçamento `PRINCIPAL` por OS; no máximo um `COMPLEMENTAR`
 com status `CRIADO` por OS; o problema é vinculado a um orçamento no momento da criação; problema,
@@ -223,7 +223,7 @@ em caso de erro.
 
 - `OrdemDeServicoRepository`.
 - `OrcamentoRepository`.
-- Repositório de problemas e do vínculo `orcamento_problema`.
+- Repositório de problemas (`problema_ordem_servico`).
 - Middleware de autenticação/autorização.
 
 **Testes**
@@ -272,7 +272,7 @@ em caso de erro.
 
 - [ ] Persistir o eventual novo orçamento
 - [ ] Persistir o novo problema
-- [ ] Persistir o vínculo em `orcamento_problema`
+- [ ] Persistir o problema já vinculado ao orçamento
 
 **Transação**
 
