@@ -44,11 +44,27 @@ func main() {
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
 	inativarCliente := clienteApplication.NewInativar(clienteRepository)
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
+	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewCadastrarHandler(
-		fornecedorApplication.NewCadastrar(fornecedorInfrastructure.NewPostgresRepository(db)),
+		fornecedorApplication.NewCadastrar(fornecedorRepository),
+	)))
+	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewListarHandler(
+		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
+	)))
+	mux.Handle("GET /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewBuscarPorIDHandler(
+		fornecedorApplication.NewConsultarFornecedorPorID(fornecedorRepository),
+	)))
+	mux.Handle("PUT /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewAtualizarHandler(
+		fornecedorApplication.NewAtualizarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("DELETE /fornecedores/{fornecedorId}", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewDesativarHandler(
+		fornecedorApplication.NewDesativarFornecedor(fornecedorRepository),
+	)))
+	mux.Handle("POST /fornecedores/{fornecedorId}/reativacao", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewReativarHandler(
+		fornecedorApplication.NewReativarFornecedor(fornecedorRepository),
 	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))

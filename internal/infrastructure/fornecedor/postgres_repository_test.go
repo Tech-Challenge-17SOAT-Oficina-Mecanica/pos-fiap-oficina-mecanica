@@ -15,6 +15,14 @@ import (
 
 type dbFake struct{ row pgx.Row }
 
+func (fake dbFake) Begin(context.Context) (pgx.Tx, error) {
+	return nil, errors.New("não implementado")
+}
+
+func (fake dbFake) Query(context.Context, string, ...any) (pgx.Rows, error) {
+	return nil, errors.New("não implementado")
+}
+
 func (fake dbFake) QueryRow(context.Context, string, ...any) pgx.Row { return fake.row }
 
 type rowFake struct {
