@@ -48,8 +48,38 @@ func (row fakeRow) Scan(dest ...any) error {
 	*(dest[7].(*bool)) = row.servico.Ativo
 	*(dest[8].(*int)) = row.servico.Version
 	*(dest[9].(*time.Time)) = row.servico.DataCriacao
-	*(dest[10].(*string)) = row.servico.UsuarioCriacao
+	if len(dest) == 12 {
+		*(dest[10].(**time.Time)) = row.servico.DataAtualizacao
+		*(dest[11].(*string)) = row.servico.UsuarioAtualizacao
+	} else {
+		*(dest[10].(*string)) = row.servico.UsuarioCriacao
+	}
 	return nil
+}
+
+func TestExisteAtivoPorNomeNormalizadoExcetoID(t *testing.T) {
+	existe, err := (PostgresRepository{db: fakeDB{row: fakeRow{existe: true}}}).
+		ExisteAtivoPorNomeNormalizadoExcetoID(context.Background(), "revisao", "id")
+	if err != nil || !existe {
+		t.Fatalf("existe: %v, erro: %v", existe, err)
+	}
+}
+
+func TestAtualizar(t *testing.T) {
+	now := time.Now()
+	salvo := domain.Servico{ID: "id", Codigo: "SER-000001", Nome: "Revisão", NomeNormalizado: "revisao",
+		Valor: "180.00", TempoEstimadoMinutos: 40, Ativo: true, Version: 2, DataCriacao: now,
+		DataAtualizacao: &now, UsuarioAtualizacao: "usuario"}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{servico: salvo}}}).Atualizar(context.Background(), salvo, 1, "usuario")
+	if err != nil || got.Version != 2 || got.DataAtualizacao == nil || got.UsuarioAtualizacao != "usuario" {
+		t.Fatalf("serviço: %+v, erro: %v", got, err)
+	}
+
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: &pgconn.PgError{Code: "23505"}}}}).
+		Atualizar(context.Background(), salvo, 1, "usuario")
+	if !errors.Is(err, application.ErrServicoDuplicado) {
+		t.Fatalf("erro: %v", err)
+	}
 }
 
 func TestListar(t *testing.T) {

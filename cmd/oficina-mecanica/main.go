@@ -56,6 +56,7 @@ func main() {
 	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
 	cadastrarServico := servicoApplication.NewCadastrar(servicoRepository)
 	consultarServico := servicoApplication.NewConsultar(servicoRepository)
+	atualizarServico := servicoApplication.NewAtualizar(servicoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
@@ -94,6 +95,7 @@ func main() {
 	mux.Handle("POST /servicos", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewCadastrarHandler(cadastrarServico)))
 	mux.Handle("GET /servicos", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewListarHandler(consultarServico)))
 	mux.Handle("GET /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewConsultarHandler(consultarServico)))
+	mux.Handle("PATCH /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewAtualizarHandler(atualizarServico)))
 
 	server := &http.Server{
 		Addr:    ":8080",
