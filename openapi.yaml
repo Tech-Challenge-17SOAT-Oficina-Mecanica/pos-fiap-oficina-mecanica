@@ -257,6 +257,37 @@ paths:
         '403': { description: Usuário sem o escopo clientes:escrever }
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
+  /orcamentos/{orcamentoId}/calcular:
+    post:
+      tags: [Orçamentos]
+      summary: Calcula os valores e a estimativa de um orçamento
+      description: Recalcula os itens de um orçamento existente em CRIADO, atualiza sua estimativa de entrega e retorna o valor total geral da OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orcamentoId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento calculado com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valorTotalGeral]
+                properties:
+                  valorTotalGeral:
+                    type: number
+                    format: double
+                    example: 754.00
+        '400': { description: Identificador ou item inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:escrever }
+        '404': { description: Orçamento não encontrado }
+        '409': { description: Orçamento fora de CRIADO ou dados insuficientes para o cálculo }
+        '500': { description: Erro inesperado }
   /autenticacao/login:
     post:
       tags: [Segurança]
