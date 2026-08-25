@@ -13,6 +13,7 @@ import (
 )
 
 type queryer interface {
+	Begin(context.Context) (pgx.Tx, error)
 	Query(context.Context, string, ...any) (pgx.Rows, error)
 	QueryRow(context.Context, string, ...any) pgx.Row
 }

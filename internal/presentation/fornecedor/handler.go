@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -13,9 +12,8 @@ import (
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/fornecedor"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
-
-var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type cadastrarRequest struct {
 	RazaoSocial      string `json:"razaoSocial"`
@@ -136,17 +134,17 @@ func NewListarHandler(useCase application.ConsultarFornecedores) http.HandlerFun
 	return func(writer http.ResponseWriter, request *http.Request) {
 		pagina, err := intQuery(request, "pagina", 0)
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "pagina invalida", "pagina")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "página inválida", "pagina")
 			return
 		}
 		tamanho, err := intQuery(request, "tamanho", application.TamanhoPaginaPadrao)
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "tamanho invalido", "tamanho")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "tamanho inválido", "tamanho")
 			return
 		}
 		incluirInativos, err := boolQuery(request, "incluirInativos", false)
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "incluirInativos invalido", "incluirInativos")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "incluirInativos inválido", "incluirInativos")
 			return
 		}
 
@@ -159,7 +157,7 @@ func NewListarHandler(useCase application.ConsultarFornecedores) http.HandlerFun
 		})
 		if err != nil {
 			if errors.Is(err, application.ErrConsultaInvalida) {
-				writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "consulta")
+				writeProblem(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "consulta")
 				return
 			}
 			writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao consultar fornecedores", "")
@@ -180,14 +178,14 @@ func NewListarHandler(useCase application.ConsultarFornecedores) http.HandlerFun
 func NewBuscarPorIDHandler(useCase application.ConsultarFornecedorPorID) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
-		if !uuidRegex.MatchString(fornecedorID) {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+		if !validation.IsUUID(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "fornecedorId inválido", "fornecedorId")
 			return
 		}
 		fornecedor, err := useCase.Execute(request.Context(), fornecedorID)
 		if err != nil {
 			if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
-				writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")
+				writeProblem(writer, http.StatusNotFound, "Fornecedor não encontrado", err.Error(), "fornecedorId")
 				return
 			}
 			writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao consultar fornecedor", "")
@@ -202,23 +200,23 @@ func NewBuscarPorIDHandler(useCase application.ConsultarFornecedorPorID) http.Ha
 func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
-		if !uuidRegex.MatchString(fornecedorID) {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+		if !validation.IsUUID(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "fornecedorId inválido", "fornecedorId")
 			return
 		}
 		version, ok, err := ifMatchVersion(request.Header.Get("If-Match"))
 		if !ok {
-			writeProblem(writer, http.StatusPreconditionRequired, "Pre-condicao obrigatoria", "If-Match obrigatorio", "If-Match")
+			writeProblem(writer, http.StatusPreconditionRequired, "Pré-condição obrigatória", "If-Match obrigatório", "If-Match")
 			return
 		}
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "If-Match invalido", "If-Match")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "If-Match inválido", "If-Match")
 			return
 		}
 
 		input, err := decodeAtualizarRequest(request)
 		if err != nil {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedor")
 			return
 		}
 		atualizacao, err := domain.NovaAtualizacao(input.RazaoSocial, input.NomeFantasia, input.Telefone, input.Email, input.PrazoEntregaDias)
@@ -229,7 +227,7 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, atualizacao, version, segurancaPresentation.UsuarioID(request.Context()))
 		if err != nil {
 			if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
-				writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")
+				writeProblem(writer, http.StatusNotFound, "Fornecedor não encontrado", err.Error(), "fornecedorId")
 				return
 			}
 			if errors.Is(err, application.ErrFornecedorInativo) {
@@ -237,11 +235,11 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 				return
 			}
 			if errors.Is(err, application.ErrVersaoDivergente) {
-				writeProblem(writer, http.StatusPreconditionFailed, "Versao divergente", err.Error(), "If-Match")
+				writeProblem(writer, http.StatusPreconditionFailed, "Versão divergente", err.Error(), "If-Match")
 				return
 			}
 			if errors.Is(err, application.ErrAtualizacaoInvalida) {
-				writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedor")
+				writeProblem(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedor")
 				return
 			}
 			writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao atualizar fornecedor", "")
@@ -256,12 +254,11 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 func NewDesativarHandler(useCase application.DesativarFornecedor) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
-		if !uuidRegex.MatchString(fornecedorID) {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+		if !validation.IsUUID(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "fornecedorId inválido", "fornecedorId")
 			return
 		}
-		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
-		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, claims.Subject)
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, segurancaPresentation.UsuarioID(request.Context()))
 		if err != nil {
 			handleSituacaoError(writer, err)
 			return
@@ -274,12 +271,11 @@ func NewDesativarHandler(useCase application.DesativarFornecedor) http.HandlerFu
 func NewReativarHandler(useCase application.ReativarFornecedor) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
-		if !uuidRegex.MatchString(fornecedorID) {
-			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "fornecedorId invalido", "fornecedorId")
+		if !validation.IsUUID(fornecedorID) {
+			writeProblem(writer, http.StatusBadRequest, "Dados inválidos", "fornecedorId inválido", "fornecedorId")
 			return
 		}
-		claims, _ := segurancaPresentation.ClaimsFromContext(request.Context())
-		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, claims.Subject)
+		fornecedor, err := useCase.Execute(request.Context(), fornecedorID, segurancaPresentation.UsuarioID(request.Context()))
 		if err != nil {
 			handleSituacaoError(writer, err)
 			return
@@ -291,7 +287,7 @@ func NewReativarHandler(useCase application.ReativarFornecedor) http.HandlerFunc
 
 func handleSituacaoError(writer http.ResponseWriter, err error) {
 	if errors.Is(err, application.ErrFornecedorNaoEncontrado) {
-		writeProblem(writer, http.StatusNotFound, "Fornecedor nao encontrado", err.Error(), "fornecedorId")
+		writeProblem(writer, http.StatusNotFound, "Fornecedor não encontrado", err.Error(), "fornecedorId")
 		return
 	}
 	if errors.Is(err, application.ErrFornecedorJaInativo) || errors.Is(err, application.ErrFornecedorJaAtivo) || errors.Is(err, application.ErrFornecedorComPedidoAberto) || errors.Is(err, application.ErrDocumentoAtivoDuplicado) {
@@ -299,7 +295,7 @@ func handleSituacaoError(writer http.ResponseWriter, err error) {
 		return
 	}
 	if errors.Is(err, application.ErrSituacaoInvalida) {
-		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedorId")
+		writeProblem(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedorId")
 		return
 	}
 	writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao alterar situacao do fornecedor", "")
@@ -310,12 +306,12 @@ func decodeAtualizarRequest(request *http.Request) (atualizarRequest, error) {
 	decoder := json.NewDecoder(request.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&raw); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
-		return atualizarRequest{}, errors.New("corpo da requisicao invalido")
+		return atualizarRequest{}, errors.New("corpo da requisição inválido")
 	}
 	allowed := map[string]bool{"razaoSocial": true, "nomeFantasia": true, "telefone": true, "email": true, "prazoEntregaDias": true}
 	for field := range raw {
 		if field == "documento" || field == "ativo" {
-			return atualizarRequest{}, errors.New(field + " nao pode ser alterado")
+			return atualizarRequest{}, errors.New(field + " não pode ser alterado")
 		}
 		if !allowed[field] {
 			return atualizarRequest{}, errors.New("campo desconhecido: " + field)
@@ -327,7 +323,7 @@ func decodeAtualizarRequest(request *http.Request) (atualizarRequest, error) {
 		return atualizarRequest{}, err
 	}
 	if err := json.Unmarshal(encoded, &input); err != nil {
-		return atualizarRequest{}, errors.New("corpo da requisicao invalido")
+		return atualizarRequest{}, errors.New("corpo da requisição inválido")
 	}
 	return input, nil
 }

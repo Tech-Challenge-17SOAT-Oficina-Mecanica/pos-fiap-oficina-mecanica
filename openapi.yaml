@@ -120,6 +120,7 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200': { description: Fornecedor desativado }
+        '400': { description: Identificador inválido }
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo compras:escrever }
         '404': { description: Fornecedor não encontrado }
@@ -137,6 +138,7 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200': { description: Fornecedor reativado }
+        '400': { description: Identificador inválido }
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo compras:escrever }
         '404': { description: Fornecedor não encontrado }
