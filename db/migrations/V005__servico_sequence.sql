@@ -1,0 +1,14 @@
+BEGIN;
+
+CREATE SEQUENCE IF NOT EXISTS seq_servico_codigo
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+ALTER TABLE servico
+    ADD COLUMN IF NOT EXISTS data_atualizacao TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS usuario_atualizacao UUID;
+
+COMMIT;

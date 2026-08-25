@@ -9,16 +9,19 @@ import (
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
+	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
+	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
 	veiculoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
@@ -49,6 +52,7 @@ func main() {
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
+	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -82,6 +86,24 @@ func main() {
 	mux.Handle("PUT /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewAtualizarHandler(atualizarCliente)))
 	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewInativarHandler(inativarCliente)))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
+	mux.Handle("POST /servicos", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewCadastrarHandler(
+		servicoApplication.NewCadastrarServico(servicoRepository),
+	)))
+	mux.Handle("GET /servicos", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewListarHandler(
+		servicoApplication.NewConsultarServicos(servicoRepository),
+	)))
+	mux.Handle("GET /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewBuscarPorIDHandler(
+		servicoApplication.NewConsultarServicoPorID(servicoRepository),
+	)))
+	mux.Handle("PATCH /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewAtualizarHandler(
+		servicoApplication.NewAtualizarServico(servicoRepository),
+	)))
+	mux.Handle("DELETE /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewDesativarHandler(
+		servicoApplication.NewDesativarServico(servicoRepository),
+	)))
+	mux.Handle("POST /servicos/{servicoId}/reativacao", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewReativarHandler(
+		servicoApplication.NewReativarServico(servicoRepository),
+	)))
 
 	server := &http.Server{
 		Addr:    ":8080",
