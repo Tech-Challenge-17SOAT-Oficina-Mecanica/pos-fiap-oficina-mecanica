@@ -10,6 +10,7 @@ type Problem struct {
 	Title  string `json:"title"`
 	Status int    `json:"status"`
 	Detail string `json:"detail"`
+	Erros  any    `json:"erros,omitempty"`
 }
 
 func WriteProblem(writer stdhttp.ResponseWriter, problem Problem) {

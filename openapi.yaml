@@ -5,6 +5,258 @@ info:
 servers:
   - url: http://localhost:8080
 paths:
+  /clientes:
+    get:
+      tags: [Cliente]
+      summary: Consulta cliente por CPF/CNPJ
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: documento
+          required: true
+          schema:
+            type: string
+            example: '39053344705'
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  version: { type: integer }
+                  veiculos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        placa: { type: string }
+                        marca: { type: string }
+                        modelo: { type: string }
+                        ano: { type: integer }
+        '400': { description: CPF/CNPJ ausente ou inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:ler }
+        '404': { description: Cliente não encontrado }
+    post:
+      tags: [Cliente]
+      summary: Cadastra um cliente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, documento, tipoDocumento]
+              properties:
+                nome:
+                  type: string
+                  example: Ana Martins
+                documento:
+                  type: string
+                  example: '12345678909'
+                tipoDocumento:
+                  type: string
+                  enum: [CPF, CNPJ]
+                telefone:
+                  type: string
+                  example: '11988887777'
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Cliente cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '409': { description: Cliente já cadastrado }
+  /clientes/{clienteId}:
+    put:
+      tags: [Cliente]
+      summary: Atualiza um cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+            example: '1'
+          description: Version atual do cliente para controle otimista.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, documento, tipoDocumento]
+              properties:
+                nome:
+                  type: string
+                  example: Ana Martins
+                documento:
+                  type: string
+                  example: '39053344705'
+                tipoDocumento:
+                  type: string
+                  enum: [CPF, CNPJ]
+                telefone:
+                  type: string
+                  example: '11988887777'
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  version: { type: integer }
+        '400': { description: Identificador, dados ou If-Match inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: CPF/CNPJ já vinculado a outro cliente }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Cliente]
+      summary: Inativa um cliente
+      description: Executa exclusão lógica do cliente e inativa os veículos vinculados.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: motivo
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+            example: Cadastro duplicado
+      responses:
+        '200':
+          description: Cliente inativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clienteId: { type: string, format: uuid }
+                  nome: { type: string }
+                  ativo: { type: boolean, example: false }
+                  inativadoEm: { type: string, format: date-time }
+                  inativadoPor: { type: string, format: uuid }
+                  motivo: { type: string }
+                  veiculosInativados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        placa: { type: string }
+                  documentoLiberadoParaNovoCadastro: { type: boolean, example: true }
+        '204': { description: Cliente já estava inativo }
+        '400': { description: clienteId inválido ou motivo acima do limite }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '404': { description: Cliente não encontrado }
+        '409':
+          description: Cliente possui Ordem de Serviço em aberto
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type: { type: string, example: 'https://api.oficina-mecanica.dev/errors/cliente-com-os-aberta' }
+                  title: { type: string, example: Cliente possui Ordem de Serviço em aberto }
+                  status: { type: integer, example: 409 }
+                  detail: { type: string }
+                  erros:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ordemServicoId: { type: string, format: uuid }
+                        status: { type: string, example: EM_EXECUCAO }
+  /clientes/{clienteId}/reativacao:
+    post:
+      tags: [Cliente]
+      summary: Reativa um cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cliente reativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clienteId: { type: string, format: uuid }
+                  nome: { type: string }
+                  ativo: { type: boolean, example: true }
+                  reativadoEm: { type: string, format: date-time }
+                  reativadoPor: { type: string, format: uuid }
+                  veiculosReativados: { type: integer, example: 0 }
+        '400': { description: clienteId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -20,9 +272,11 @@ paths:
                 email:
                   type: string
                   format: email
+                  example: mecanico@oficina.local
                 senha:
                   type: string
                   format: password
+                  example: mecanico123
       responses:
         '200':
           description: Autenticado
@@ -36,3 +290,9 @@ paths:
                   expiresIn: { type: integer, example: 3600 }
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

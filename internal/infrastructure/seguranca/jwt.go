@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 )
 
 var ErrTokenInvalido = errors.New("token inválido")
 
-type Claims struct {
+type jwtClaims struct {
 	Escopos []string `json:"escopos"`
 	jwt.RegisteredClaims
 }
@@ -28,7 +29,7 @@ func NewJWT(secret string) (JWT, error) {
 
 func (service JWT) Gerar(usuarioID string, escopos []string) (string, error) {
 	now := service.now()
-	claims := Claims{Escopos: escopos, RegisteredClaims: jwt.RegisteredClaims{Subject: usuarioID, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour))}}
+	claims := jwtClaims{Escopos: escopos, RegisteredClaims: jwt.RegisteredClaims{Subject: usuarioID, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(time.Hour))}}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.secret)
 }
 
@@ -40,8 +41,8 @@ func (service JWT) Autenticar(raw string) (string, []string, error) {
 	return claims.Subject, claims.Escopos, nil
 }
 
-func (service JWT) Validar(raw string) (Claims, error) {
-	claims := Claims{}
+func (service JWT) Validar(raw string) (seguranca.Claims, error) {
+	claims := jwtClaims{}
 	token, err := jwt.ParseWithClaims(raw, &claims, func(token *jwt.Token) (any, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, ErrTokenInvalido
@@ -49,7 +50,7 @@ func (service JWT) Validar(raw string) (Claims, error) {
 		return service.secret, nil
 	})
 	if err != nil || !token.Valid || claims.Subject == "" {
-		return Claims{}, ErrTokenInvalido
+		return seguranca.Claims{}, ErrTokenInvalido
 	}
-	return claims, nil
+	return seguranca.Claims{UsuarioID: claims.Subject, Escopos: claims.Escopos}, nil
 }
