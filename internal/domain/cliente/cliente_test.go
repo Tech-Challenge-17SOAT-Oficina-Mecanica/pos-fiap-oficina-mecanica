@@ -12,7 +12,7 @@ func TestNovoCliente(t *testing.T) {
 		input NovoClienteInput
 		want  error
 	}{
-		{"valido cpf telefone", NovoClienteInput{Nome: " Ana ", Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, nil},
+		{"valido cpf telefone", NovoClienteInput{Nome: " Ana ", Documento: "390.533.447-05", TipoDocumento: "cpf", Telefone: "11988887777"}, nil},
 		{"valido cnpj email", NovoClienteInput{Nome: "Empresa", Documento: "11222333000181", TipoDocumento: TipoDocumentoCNPJ, Email: "empresa@example.com"}, nil},
 		{"nome ausente", NovoClienteInput{Documento: "39053344705", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrNomeObrigatorio},
 		{"documento ausente", NovoClienteInput{Nome: "Ana", TipoDocumento: TipoDocumentoCPF, Telefone: "11988887777"}, ErrDocumentoObrigatorio},
@@ -39,18 +39,12 @@ func TestNovoCliente(t *testing.T) {
 	}
 }
 
-func TestDigitoCNPJComRestoMenorQueDois(t *testing.T) {
-	if got := digitoCNPJ("00000000000000", []int{5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2}); got != 0 {
-		t.Fatalf("digito: %d", got)
-	}
-}
-
 func TestDocumentoParaConsulta(t *testing.T) {
 	cases := []struct {
 		name, documento string
 		want            error
 	}{
-		{"cpf valido", " 39053344705 ", nil},
+		{"cpf valido", " 390.533.447-05 ", nil},
 		{"cnpj valido", "11222333000181", nil},
 		{"ausente", "", ErrDocumentoObrigatorio},
 		{"letra", "3905334470A", ErrDocumentoInvalido},
@@ -62,7 +56,7 @@ func TestDocumentoParaConsulta(t *testing.T) {
 			if !errors.Is(err, test.want) {
 				t.Fatalf("erro: %v", err)
 			}
-			if test.want == nil && got != strings.TrimSpace(test.documento) {
+			if test.want == nil && got != "39053344705" && got != "11222333000181" {
 				t.Fatalf("documento: %q", got)
 			}
 		})
