@@ -180,6 +180,41 @@ paths:
         '412': { description: If-Match divergente }
         '428': { description: If-Match não informado }
         '500': { description: Falha inesperada }
+    delete:
+      tags: [Serviço]
+      summary: Desativa logicamente um serviço
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: servicoId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Serviço desativado }
+        '400': { description: servicoId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '404': { description: Serviço não encontrado }
+        '409': { description: Serviço já inativo }
+  /servicos/{servicoId}/reativacao:
+    post:
+      tags: [Serviço]
+      summary: Reativa um serviço
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: servicoId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Serviço reativado }
+        '400': { description: servicoId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '404': { description: Serviço não encontrado }
+        '409': { description: Serviço já ativo ou nome usado por outro serviço ativo }
   /fornecedores:
     get:
       tags: [Fornecedores]

@@ -28,6 +28,14 @@ type AtualizarUseCase interface {
 	Execute(context.Context, string, int, domain.Atualizacao, string) (domain.Servico, error)
 }
 
+type DesativarUseCase interface {
+	Execute(context.Context, string, string) (domain.Servico, error)
+}
+
+type ReativarUseCase interface {
+	Execute(context.Context, string) (domain.Servico, error)
+}
+
 type cadastrarRequest struct {
 	Nome                 string       `json:"nome"`
 	Descricao            string       `json:"descricao"`
@@ -76,6 +84,15 @@ type atualizarRequest struct {
 type servicoAtualizadoResponse struct {
 	servicoDetalheResponse
 	DataAtualizacao string `json:"dataAtualizacao"`
+}
+
+type servicoSituacaoResponse struct {
+	ID                 string  `json:"id"`
+	Codigo             string  `json:"codigo"`
+	Nome               string  `json:"nome"`
+	Ativo              bool    `json:"ativo"`
+	DataDesativacao    *string `json:"dataDesativacao"`
+	UsuarioDesativacao *string `json:"usuarioDesativacao"`
 }
 
 func NewCadastrarHandler(useCase CadastrarUseCase) http.HandlerFunc {
@@ -221,10 +238,51 @@ func decodeAtualizarRequest(r *http.Request) (atualizarRequest, error) {
 	return input, nil
 }
 
+func NewDesativarHandler(useCase DesativarUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("servicoId")
+		if !validation.IsUUID(id) {
+			problem(w, 400, "Dados inválidos", "servicoId inválido", "servicoId")
+			return
+		}
+		servico, err := useCase.Execute(r.Context(), id, seguranca.UsuarioID(r.Context()))
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		data := servico.DataDesativacao.Format("2006-01-02T15:04:05Z07:00")
+		usuario := servico.UsuarioDesativacao
+		writeSituacao(w, servico, &data, &usuario)
+	}
+}
+
+func NewReativarHandler(useCase ReativarUseCase) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("servicoId")
+		if !validation.IsUUID(id) {
+			problem(w, 400, "Dados inválidos", "servicoId inválido", "servicoId")
+			return
+		}
+		servico, err := useCase.Execute(r.Context(), id)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeSituacao(w, servico, nil, nil)
+	}
+}
+
+func writeSituacao(w http.ResponseWriter, servico domain.Servico, data, usuario *string) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(servicoSituacaoResponse{ID: servico.ID, Codigo: servico.Codigo, Nome: servico.Nome, Ativo: servico.Ativo, DataDesativacao: data, UsuarioDesativacao: usuario})
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, application.ErrServicoDuplicado):
 		problem(w, 409, "Conflito", err.Error(), "nome")
+	case errors.Is(err, domain.ErrServicoJaInativo), errors.Is(err, domain.ErrServicoJaAtivo):
+		problem(w, 409, "Conflito", err.Error(), "")
 	case errors.Is(err, application.ErrServicoNaoEncontrado):
 		problem(w, 404, "Recurso não encontrado", err.Error(), "")
 	case errors.Is(err, application.ErrVersaoDivergente):

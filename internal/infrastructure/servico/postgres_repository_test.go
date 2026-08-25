@@ -18,11 +18,12 @@ type fakeDB struct{ row fakeRow }
 func (fake fakeDB) QueryRow(context.Context, string, ...any) pgx.Row { return fake.row }
 
 type fakeRow struct {
-	existe  bool
-	servico domain.Servico
-	raw     []byte
-	total   int
-	err     error
+	existe   bool
+	servico  domain.Servico
+	raw      []byte
+	total    int
+	err      error
+	situacao bool
 }
 
 func (row fakeRow) Scan(dest ...any) error {
@@ -49,12 +50,42 @@ func (row fakeRow) Scan(dest ...any) error {
 	*(dest[8].(*int)) = row.servico.Version
 	*(dest[9].(*time.Time)) = row.servico.DataCriacao
 	if len(dest) == 12 {
-		*(dest[10].(**time.Time)) = row.servico.DataAtualizacao
-		*(dest[11].(*string)) = row.servico.UsuarioAtualizacao
+		if row.situacao {
+			*(dest[10].(**time.Time)) = row.servico.DataDesativacao
+			*(dest[11].(*string)) = row.servico.UsuarioDesativacao
+		} else {
+			*(dest[10].(**time.Time)) = row.servico.DataAtualizacao
+			*(dest[11].(*string)) = row.servico.UsuarioAtualizacao
+		}
 	} else {
 		*(dest[10].(*string)) = row.servico.UsuarioCriacao
 	}
 	return nil
+}
+
+func TestAlterarSituacao(t *testing.T) {
+	now := time.Now()
+	inativo := domain.Servico{ID: "id", Codigo: "SER-000001", Nome: "Revisão", Valor: "100.00",
+		TempoEstimadoMinutos: 30, Ativo: false, Version: 2, DataCriacao: now,
+		DataDesativacao: &now, UsuarioDesativacao: "usuario"}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{servico: inativo, situacao: true}}}).Desativar(context.Background(), "id", "usuario")
+	if err != nil || got.Ativo || got.DataDesativacao == nil || got.UsuarioDesativacao != "usuario" {
+		t.Fatalf("serviço: %+v, erro: %v", got, err)
+	}
+	ativo := inativo
+	ativo.Ativo, ativo.DataDesativacao, ativo.UsuarioDesativacao = true, nil, ""
+	got, err = (PostgresRepository{db: fakeDB{row: fakeRow{servico: ativo, situacao: true}}}).Reativar(context.Background(), "id")
+	if err != nil || !got.Ativo || got.DataDesativacao != nil {
+		t.Fatalf("serviço: %+v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).Desativar(context.Background(), "id", "usuario")
+	if !errors.Is(err, domain.ErrServicoJaInativo) {
+		t.Fatalf("erro: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: &pgconn.PgError{Code: "23505"}}}}).Reativar(context.Background(), "id")
+	if !errors.Is(err, application.ErrServicoDuplicado) {
+		t.Fatalf("erro: %v", err)
+	}
 }
 
 func TestExisteAtivoPorNomeNormalizadoExcetoID(t *testing.T) {

@@ -131,6 +131,36 @@ func (repository PostgresRepository) Atualizar(ctx context.Context, servico doma
 	return servico, err
 }
 
+func (repository PostgresRepository) Desativar(ctx context.Context, id, usuarioID string) (domain.Servico, error) {
+	const query = `UPDATE servico SET ativo = FALSE, data_desativacao = CURRENT_TIMESTAMP,
+		usuario_desativacao = $2, version = version + 1 WHERE id = $1 AND ativo
+		RETURNING id, codigo, nome, nome_normalizado, COALESCE(descricao, ''), valor::text,
+			tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, usuario_desativacao::text`
+	return repository.alterarSituacao(ctx, query, domain.ErrServicoJaInativo, id, usuarioID)
+}
+
+func (repository PostgresRepository) Reativar(ctx context.Context, id string) (domain.Servico, error) {
+	const query = `UPDATE servico SET ativo = TRUE, data_desativacao = NULL,
+		usuario_desativacao = NULL, version = version + 1 WHERE id = $1 AND NOT ativo
+		RETURNING id, codigo, nome, nome_normalizado, COALESCE(descricao, ''), valor::text,
+			tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, COALESCE(usuario_desativacao::text, '')`
+	return repository.alterarSituacao(ctx, query, domain.ErrServicoJaAtivo, id)
+}
+
+func (repository PostgresRepository) alterarSituacao(ctx context.Context, query string, conflito error, argumentos ...any) (domain.Servico, error) {
+	var servico domain.Servico
+	err := repository.db.QueryRow(ctx, query, argumentos...).Scan(&servico.ID, &servico.Codigo, &servico.Nome,
+		&servico.NomeNormalizado, &servico.Descricao, &servico.Valor, &servico.TempoEstimadoMinutos,
+		&servico.Ativo, &servico.Version, &servico.DataCriacao, &servico.DataDesativacao, &servico.UsuarioDesativacao)
+	if violacaoUnica(err) {
+		return domain.Servico{}, application.ErrServicoDuplicado
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Servico{}, conflito
+	}
+	return servico, err
+}
+
 func violacaoUnica(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
