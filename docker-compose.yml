@@ -11,22 +11,10 @@ services:
       DB_NAME: oficina
       DB_USER: oficina
       DB_PASSWORD: oficina
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
     depends_on:
       postgres:
         condition: service_healthy
-
-  test:
-    build:
-      context: .
-      target: build
-    environment:
-      DATABASE_URL: postgres://oficina:oficina@postgres:5432/oficina?sslmode=disable
-    volumes:
-      - .:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: sh -c "go test -coverprofile=/tmp/coverage.out ./... && go tool cover -func=/tmp/coverage.out"
 
   swagger:
     image: swaggerapi/swagger-ui
@@ -36,6 +24,20 @@ services:
       SWAGGER_JSON: /tmp/openapi.yaml
     volumes:
       - ./openapi.yaml:/tmp/openapi.yaml:ro
+
+  test:
+    build:
+      context: .
+      target: build
+    environment:
+      DATABASE_URL: postgres://oficina:oficina@postgres:5432/oficina?sslmode=disable
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sh -c "go test -cover ./..."
 
   postgres:
     image: postgres:16-alpine

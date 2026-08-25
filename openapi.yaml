@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Oficina Mecânica API
-  version: 0.1.0
-tags:
-  - name: Veículos
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
 paths:
   /veiculos:
     get:
@@ -26,49 +26,323 @@ paths:
     post:
       tags: [Veículos]
       summary: Cadastra um veículo e o vincula ao cliente
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
       parameters:
         - name: clienteId
           in: path
           required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '201': { description: Veículo cadastrado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente inativo ou placa já cadastrada }
+  /clientes:
+    get:
+      tags: [Cliente]
+      summary: Consulta cliente por CPF/CNPJ
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: documento
+          required: true
           schema:
             type: string
-            format: uuid
+            example: '39053344705'
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  version: { type: integer }
+                  veiculos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        placa: { type: string }
+                        marca: { type: string }
+                        modelo: { type: string }
+                        ano: { type: integer }
+        '400': { description: CPF/CNPJ ausente ou inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:ler }
+        '404': { description: Cliente não encontrado }
+    post:
+      tags: [Cliente]
+      summary: Cadastra um cliente
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CadastrarVeiculo'
+              type: object
+              required: [nome, documento, tipoDocumento]
+              properties:
+                nome:
+                  type: string
+                  example: Ana Martins
+                documento:
+                  type: string
+                  example: '12345678909'
+                tipoDocumento:
+                  type: string
+                  enum: [CPF, CNPJ]
+                telefone:
+                  type: string
+                  example: '11988887777'
+                email:
+                  type: string
+                  format: email
       responses:
         '201':
-          description: Veículo cadastrado e vinculado
+          description: Cliente cadastrado
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Veiculo'
-        '400': { description: Dados inválidos }
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '409': { description: Cliente já cadastrado }
+  /clientes/{clienteId}:
+    put:
+      tags: [Cliente]
+      summary: Atualiza um cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+            example: '1'
+          description: Version atual do cliente para controle otimista.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, documento, tipoDocumento]
+              properties:
+                nome:
+                  type: string
+                  example: Ana Martins
+                documento:
+                  type: string
+                  example: '39053344705'
+                tipoDocumento:
+                  type: string
+                  enum: [CPF, CNPJ]
+                telefone:
+                  type: string
+                  example: '11988887777'
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Cliente atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+                  tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+                  telefone: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  version: { type: integer }
+        '400': { description: Identificador, dados ou If-Match inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
         '404': { description: Cliente não encontrado }
-        '409': { description: Cliente inativo ou placa já cadastrada }
-        '500': { description: Falha inesperada }
+        '409': { description: CPF/CNPJ já vinculado a outro cliente }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Cliente]
+      summary: Inativa um cliente
+      description: Executa exclusão lógica do cliente e inativa os veículos vinculados.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: motivo
+          required: false
+          schema:
+            type: string
+            maxLength: 200
+            example: Cadastro duplicado
+      responses:
+        '200':
+          description: Cliente inativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clienteId: { type: string, format: uuid }
+                  nome: { type: string }
+                  ativo: { type: boolean, example: false }
+                  inativadoEm: { type: string, format: date-time }
+                  inativadoPor: { type: string, format: uuid }
+                  motivo: { type: string }
+                  veiculosInativados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        placa: { type: string }
+                  documentoLiberadoParaNovoCadastro: { type: boolean, example: true }
+        '204': { description: Cliente já estava inativo }
+        '400': { description: clienteId inválido ou motivo acima do limite }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '404': { description: Cliente não encontrado }
+        '409':
+          description: Cliente possui Ordem de Serviço em aberto
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type: { type: string, example: 'https://api.oficina-mecanica.dev/errors/cliente-com-os-aberta' }
+                  title: { type: string, example: Cliente possui Ordem de Serviço em aberto }
+                  status: { type: integer, example: 409 }
+                  detail: { type: string }
+                  erros:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ordemServicoId: { type: string, format: uuid }
+                        status: { type: string, example: EM_EXECUCAO }
+  /clientes/{clienteId}/reativacao:
+    post:
+      tags: [Cliente]
+      summary: Reativa um cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: clienteId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cliente reativado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clienteId: { type: string, format: uuid }
+                  nome: { type: string }
+                  ativo: { type: boolean, example: true }
+                  reativadoEm: { type: string, format: date-time }
+                  reativadoPor: { type: string, format: uuid }
+                  veiculosReativados: { type: integer, example: 0 }
+        '400': { description: clienteId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo clientes:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
+  /autenticacao/login:
+    post:
+      tags: [Segurança]
+      summary: Autentica um mecânico
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: mecanico@oficina.local
+                senha:
+                  type: string
+                  format: password
+                  example: mecanico123
+      responses:
+        '200':
+          description: Autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  tokenType: { type: string, example: Bearer }
+                  expiresIn: { type: integer, example: 3600 }
+        '400': { description: Dados inválidos }
+        '401': { description: Credenciais inválidas }
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     CadastrarVeiculo:
       type: object
       required: [placa, marca, modelo, ano]
       properties:
-        placa:
-          type: string
-          pattern: '^[A-Za-z]{3}[- ]?[0-9][A-Za-z0-9][0-9]{2}$'
-          example: ABC1D23
+        placa: { type: string, example: ABC1D23 }
         marca: { type: string, example: Toyota }
         modelo: { type: string, example: Corolla }
-        ano: { type: integer, minimum: 1900, example: 2024 }
-    Veiculo:
-      allOf:
-        - $ref: '#/components/schemas/CadastrarVeiculo'
-        - type: object
-          required: [id, clienteId, ativo]
-          properties:
-            id: { type: string, format: uuid }
-            clienteId: { type: string, format: uuid }
-            ativo: { type: boolean, example: true }
+        ano: { type: integer, example: 2024 }
