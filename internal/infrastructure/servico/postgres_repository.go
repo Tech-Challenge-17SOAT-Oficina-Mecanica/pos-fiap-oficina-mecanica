@@ -188,13 +188,17 @@ func (r PostgresRepository) Desativar(ctx context.Context, servicoID, usuarioID 
 		WHERE id = $1 AND ativo
 		RETURNING id, codigo, nome, COALESCE(descricao,''), valor, tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, COALESCE(usuario_desativacao::text,'')`
 	s, err := scanServicoSituacao(r.db.QueryRow(ctx, query, servicoID, usuarioID).Scan)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Lost the race: another transaction deactivated between the pre-check and the UPDATE.
+		return domain.Servico{}, application.ErrServicoJaInativo
+	}
 	if err != nil {
 		return domain.Servico{}, err
 	}
 	return s, nil
 }
 
-func (r PostgresRepository) Reativar(ctx context.Context, servicoID, _ string) (domain.Servico, error) {
+func (r PostgresRepository) Reativar(ctx context.Context, servicoID, usuarioID string) (domain.Servico, error) {
 	var ativo bool
 	err := r.db.QueryRow(ctx, `SELECT ativo FROM servico WHERE id = $1`, servicoID).Scan(&ativo)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -210,11 +214,17 @@ func (r PostgresRepository) Reativar(ctx context.Context, servicoID, _ string) (
 	const query = `
 		UPDATE servico
 		SET ativo = true,
-		    data_desativacao    = NULL,
-		    usuario_desativacao = NULL
+		    data_desativacao     = NULL,
+		    usuario_desativacao  = NULL,
+		    data_atualizacao     = CURRENT_TIMESTAMP,
+		    usuario_atualizacao  = NULLIF($2,'')::uuid
 		WHERE id = $1 AND NOT ativo
 		RETURNING id, codigo, nome, COALESCE(descricao,''), valor, tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, COALESCE(usuario_desativacao::text,'')`
-	s, err := scanServicoSituacao(r.db.QueryRow(ctx, query, servicoID).Scan)
+	s, err := scanServicoSituacao(r.db.QueryRow(ctx, query, servicoID, usuarioID).Scan)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Lost the race: another transaction reactivated between the pre-check and the UPDATE.
+		return domain.Servico{}, application.ErrServicoJaAtivo
+	}
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
