@@ -120,3 +120,54 @@ func montarCondicoes(filtros pecaApplication.Filtros) (string, []any) {
 	}
 	return strings.Join(condicoes, " AND "), args
 }
+
+func (repository PostgresRepository) OrdensComReservaAtiva(ctx context.Context, itemID string) ([]string, error) {
+	const consulta = `SELECT DISTINCT osi.ordem_servico_id::text
+		FROM reserva_estoque r
+		JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id
+		WHERE r.item_estoque_id = $1 AND r.status = 'ATIVA'
+		ORDER BY 1`
+
+	rows, err := repository.db.Query(ctx, consulta, itemID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ordens []string
+	for rows.Next() {
+		var ordemID string
+		if err := rows.Scan(&ordemID); err != nil {
+			return nil, err
+		}
+		ordens = append(ordens, ordemID)
+	}
+	return ordens, rows.Err()
+}
+
+func (repository PostgresRepository) EmOrcamentoCriado(ctx context.Context, itemID string) (bool, error) {
+	const consulta = `SELECT EXISTS (
+		SELECT 1 FROM orcamento_item oi
+		JOIN orcamento o ON o.id = oi.orcamento_id
+		WHERE oi.item_estoque_id = $1 AND o.status = 'CRIADO'
+	)`
+
+	var existe bool
+	err := repository.db.QueryRow(ctx, consulta, itemID).Scan(&existe)
+	return existe, err
+}
+
+func (repository PostgresRepository) Desativar(ctx context.Context, item peca.Peca) error {
+	const comando = `UPDATE item_estoque
+		SET ativo = FALSE, data_desativacao = $2, usuario_desativacao = $3
+		WHERE id = $1 AND ativo AND tipo = 'PECA'`
+
+	etiqueta, err := repository.db.Exec(ctx, comando, item.ID, item.DataDesativacao, item.UsuarioDesativacao)
+	if err != nil {
+		return err
+	}
+	if etiqueta.RowsAffected() == 0 {
+		return peca.ErrJaInativa
+	}
+	return nil
+}

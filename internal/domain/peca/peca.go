@@ -1,5 +1,12 @@
 package peca
 
+import (
+	"errors"
+	"time"
+)
+
+var ErrJaInativa = errors.New("peca ja esta desativada")
+
 type Peca struct {
 	ID                   string
 	Codigo               string
@@ -14,8 +21,20 @@ type Peca struct {
 	SaldoReservado       int64
 	EstoqueMinimo        int64
 	Ativo                bool
+	DataDesativacao      *time.Time
+	UsuarioDesativacao   *string
 	Version              int
 	PossuiPedidoEmAberto bool
+}
+
+func (peca Peca) Desativar(usuarioID string, momento time.Time) (Peca, error) {
+	if !peca.Ativo {
+		return Peca{}, ErrJaInativa
+	}
+	peca.Ativo = false
+	peca.DataDesativacao = &momento
+	peca.UsuarioDesativacao = &usuarioID
+	return peca, nil
 }
 
 func (peca Peca) SaldoDisponivel() int64 {

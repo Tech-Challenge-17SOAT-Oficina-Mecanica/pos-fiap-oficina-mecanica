@@ -7,20 +7,23 @@ import (
 	"net/http"
 	"os"
 
-	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
+	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
-	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
+	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
-	pecaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/peca"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	pecaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/peca"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
-const escopoEstoqueLer = "estoque:ler"
+const (
+	escopoEstoqueLer      = "estoque:ler"
+	escopoEstoqueEscrever = "estoque:escrever"
+)
 
 func main() {
 	ctx := context.Background()
@@ -37,7 +40,10 @@ func main() {
 		log.Fatal(err)
 	}
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
-	consultarPecas := pecaApplication.NewConsultarPecas(pecaInfrastructure.NewPostgresRepository(db))
+
+	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
+	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
+	desativarPeca := pecaApplication.NewDesativarPeca(pecaRepository)
 
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
@@ -57,6 +63,8 @@ func main() {
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.ComEscopo(jwt, escopoEstoqueLer,
 		pecaPresentation.NewConsultarPecaPorIDHandler(consultarPecas)))
+	mux.Handle("DELETE /estoque/pecas/{pecaId}", segurancaPresentation.ComEscopo(jwt, escopoEstoqueEscrever,
+		pecaPresentation.NewDesativarPecaHandler(desativarPeca)))
 
 	server := &http.Server{
 		Addr:    ":8080",
