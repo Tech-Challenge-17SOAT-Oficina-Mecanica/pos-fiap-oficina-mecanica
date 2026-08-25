@@ -11,11 +11,11 @@ type FieldError struct {
 }
 
 type Problem struct {
-	Type   string       `json:"type"`
-	Title  string       `json:"title"`
-	Status int          `json:"status"`
-	Detail string       `json:"detail"`
-	Erros  []FieldError `json:"erros,omitempty"`
+	Type   string `json:"type"`
+	Title  string `json:"title"`
+	Status int    `json:"status"`
+	Detail string `json:"detail"`
+	Erros  any    `json:"erros,omitempty"`
 }
 
 func WriteProblem(writer stdhttp.ResponseWriter, problem Problem) {

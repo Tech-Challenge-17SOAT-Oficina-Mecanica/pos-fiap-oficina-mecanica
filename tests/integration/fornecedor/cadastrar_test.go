@@ -23,7 +23,7 @@ func TestCadastrarFornecedor(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Fatal(err)
 	}
