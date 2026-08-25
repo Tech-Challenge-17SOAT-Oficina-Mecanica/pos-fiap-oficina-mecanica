@@ -7,11 +7,16 @@ import (
 	"net/http"
 	"os"
 
+	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
+	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	pecaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/peca"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
+
+const escopoEstoqueLer = "estoque:ler"
 
 func main() {
 	ctx := context.Background()
@@ -28,9 +33,15 @@ func main() {
 		log.Fatal(err)
 	}
 	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
+	consultarPecas := pecaApplication.NewConsultarPecas(pecaInfrastructure.NewPostgresRepository(db))
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
+	mux.Handle("GET /estoque/pecas", segurancaPresentation.ComEscopo(jwt, escopoEstoqueLer,
+		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
+	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.ComEscopo(jwt, escopoEstoqueLer,
+		pecaPresentation.NewConsultarPecaPorIDHandler(consultarPecas)))
 
 	server := &http.Server{
 		Addr:    ":8080",
