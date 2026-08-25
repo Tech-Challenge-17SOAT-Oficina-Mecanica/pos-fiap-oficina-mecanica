@@ -48,7 +48,7 @@ func main() {
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
-	mux.Handle("GET /veiculos", veiculoPresentation.NewConsultaHandler(consultar))
+	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("GET /clientes", clientePresentation.NewConsultarHandler(consultarCliente, jwt))
 	mux.Handle("POST /clientes", clientePresentation.NewCadastrarHandler(cadastrarCliente, jwt))
 	mux.Handle("PUT /clientes/{clienteId}", clientePresentation.NewAtualizarHandler(atualizarCliente, jwt))
