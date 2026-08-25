@@ -5,6 +5,11 @@ import (
 	stdhttp "net/http"
 )
 
+type FieldError struct {
+	Campo    string `json:"campo"`
+	Mensagem string `json:"mensagem"`
+}
+
 type Problem struct {
 	Type   string `json:"type"`
 	Title  string `json:"title"`
