@@ -257,6 +257,42 @@ paths:
         '403': { description: Usuário sem o escopo clientes:escrever }
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
+  /orcamentos:
+    get:
+      tags: [Orçamentos]
+      summary: Consulta orçamento por identificador ou documento do cliente
+      description: Informe orcamentoId para consultar uma OS específica ou documento para obter uma lista paginada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: orcamentoId
+          schema: { type: string, format: uuid }
+          description: Identificador do orçamento.
+        - in: query
+          name: documento
+          schema: { type: string, example: '39053344705' }
+          description: CPF ou CNPJ do cliente, somente com dígitos.
+        - in: query
+          name: pagina
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: tamanho
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Orçamento ou lista de orçamentos consultada com sucesso
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ConsultaOrcamento'
+                  - $ref: '#/components/schemas/PaginaOrcamentos'
+        '400': { description: Critério, documento, identificador ou paginação inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:ler }
+        '404': { description: Orçamento ou cliente não encontrado }
+        '500': { description: Erro inesperado }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -296,3 +332,54 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    ItemOrcamento:
+      type: object
+      required: [tipo, descricao, quantidade, valorUnitario, valorTotal]
+      properties:
+        tipo: { type: string, enum: [SERVICO, PECA, INSUMO] }
+        descricao: { type: string }
+        quantidade: { type: number, format: double }
+        valorUnitario: { type: number, format: double }
+        valorTotal: { type: number, format: double }
+    Orcamento:
+      type: object
+      required: [orcamentoId, tipoOrcamento, statusOrcamento, itens, valorTotal, estimativaEntregaDias, dataGeracao]
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        orcamentoOriginalId: { type: string, format: uuid }
+        statusOrcamento: { type: string, enum: [CRIADO, APROVADO, RECUSADO] }
+        itens:
+          type: array
+          items: { $ref: '#/components/schemas/ItemOrcamento' }
+        valorTotal: { type: number, format: double }
+        estimativaEntregaDias: { type: integer, nullable: true, minimum: 0 }
+        dataGeracao: { type: string, format: date-time }
+    ConsultaOrcamento:
+      type: object
+      required: [cliente, ordemServicoId, statusOrdemServico, orcamentos, valorTotalGeral]
+      properties:
+        cliente:
+          type: object
+          required: [clienteId, documento]
+          properties:
+            clienteId: { type: string, format: uuid }
+            documento: { type: string }
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string }
+        orcamentos:
+          type: array
+          items: { $ref: '#/components/schemas/Orcamento' }
+        valorTotalGeral: { type: number, format: double }
+    PaginaOrcamentos:
+      type: object
+      required: [data, pagina, tamanho, totalElementos, totalPaginas]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ConsultaOrcamento' }
+        pagina: { type: integer }
+        tamanho: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
