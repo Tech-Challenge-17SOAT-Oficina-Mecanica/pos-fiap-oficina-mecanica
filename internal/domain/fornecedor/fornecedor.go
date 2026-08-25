@@ -28,6 +28,8 @@ type Fornecedor struct {
 	Version      int
 	CriadoEm     time.Time
 	AtualizadoEm time.Time
+	InativadoEm  *time.Time
+	InativadoPor string
 }
 
 type Atualizacao struct {
