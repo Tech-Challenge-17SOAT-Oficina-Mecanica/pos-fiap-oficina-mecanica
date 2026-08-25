@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,7 @@ func TestAtualizarFornecedor(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	ctx := context.Background()
 
 	documento := cnpjValido(fmt.Sprintf("%012d", time.Now().UnixNano()%1000000000000))
 	var fornecedorID string
