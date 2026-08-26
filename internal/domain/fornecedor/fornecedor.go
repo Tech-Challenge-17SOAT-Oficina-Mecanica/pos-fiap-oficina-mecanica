@@ -114,4 +114,3 @@ func tamanhoInvalido(value string, minimo, maximo int) bool {
 	size := len([]rune(value))
 	return size < minimo || size > maximo
 }
-
