@@ -9,6 +9,8 @@ import (
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	insumoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
+	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
+	ordemServicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
@@ -18,6 +20,8 @@ import (
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	insumoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/insumo"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
+	orcamentoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/orcamento"
+	ordemServicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
@@ -26,6 +30,8 @@ import (
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	insumoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/insumo"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
+	orcamentoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/orcamento"
+	ordemServicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/ordemservico"
 	pecaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/peca"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
@@ -67,6 +73,14 @@ func main() {
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
 	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
 	cadastrarServico := servicoApplication.NewCadastrar(servicoRepository)
+	consultarServico := servicoApplication.NewConsultar(servicoRepository)
+	atualizarServico := servicoApplication.NewAtualizar(servicoRepository)
+	desativarServico := servicoApplication.NewDesativar(servicoRepository)
+	reativarServico := servicoApplication.NewReativar(servicoRepository)
+	ordemServicoRepository := ordemServicoInfrastructure.NewPostgresRepository(db)
+	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
+	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
+	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
@@ -93,6 +107,9 @@ func main() {
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoMecanicosEscrever, mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))
 	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoMecanicosEscrever, mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewHandler(cadastrar)))
+	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
+	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
+	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewAtualizarHandler(atualizar)))
 	mux.Handle("DELETE /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewInativarHandler(inativar)))
@@ -103,6 +120,11 @@ func main() {
 	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoClientesEscrever, clientePresentation.NewInativarHandler(inativarCliente)))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoClientesEscrever, clientePresentation.NewReativarHandler(reativarCliente)))
 	mux.Handle("POST /servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewCadastrarHandler(cadastrarServico)))
+	mux.Handle("GET /servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosLer, servicoPresentation.NewListarHandler(consultarServico)))
+	mux.Handle("GET /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosLer, servicoPresentation.NewConsultarHandler(consultarServico)))
+	mux.Handle("PATCH /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewAtualizarHandler(atualizarServico)))
+	mux.Handle("DELETE /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewDesativarHandler(desativarServico)))
+	mux.Handle("POST /servicos/{servicoId}/reativacao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewReativarHandler(reativarServico)))
 	mux.Handle("POST /estoque/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
 	mux.Handle("POST /estoque/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
