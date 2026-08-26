@@ -2,7 +2,6 @@ package insumo
 
 import (
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
@@ -90,6 +89,5 @@ func NovoCadastro(nome, descricao, categoriaID, unidadeMedida string, custoUnita
 }
 
 func decimalNaoNegativo(valor string) bool {
-	numero, err := strconv.ParseFloat(strings.TrimSpace(valor), 64)
-	return err == nil && numero >= 0
+	return validation.DecimalNaoNegativo(valor, 3)
 }

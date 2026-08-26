@@ -3,7 +3,6 @@ package insumo
 import (
 	"context"
 	"errors"
-	"regexp"
 	"strings"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/insumo"
@@ -11,8 +10,6 @@ import (
 )
 
 const descricaoMinima = 2
-
-var decimalPositivo = regexp.MustCompile(`^(0|[1-9][0-9]*)(\.[0-9]{1,3})?$`)
 
 var (
 	ErrFiltroObrigatorio     = errors.New("informe codigo, descricao ou categoriaId")
@@ -97,8 +94,5 @@ func normalizarConsulta(filtros FiltrosConsulta) (FiltrosConsulta, error) {
 }
 
 func QuantidadeValida(valor string) bool {
-	if !decimalPositivo.MatchString(valor) {
-		return false
-	}
-	return valor != "0" && valor != "0.0" && valor != "0.00" && valor != "0.000"
+	return validation.DecimalPositivo(valor, 3)
 }
