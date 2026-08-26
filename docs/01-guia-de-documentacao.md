@@ -46,6 +46,8 @@ Regras de formação, tanto para a pasta quanto para os arquivos:
 | Serviços | `servicos/` |
 | Peças | `pecas/` |
 | Insumos | `insumos/` |
+| Segurança | `seguranca/` |
+| Mecânico | `mecanico/` |
 
 Exemplos **errados**: `Pecas.md`, `estoque_cd.md`, `04-pecas.md`, `peças-e-insumos.md`,
 `lazaro-estoque.md`, `pecas-e-insumos-cd.md` (o sufixo `-cd` foi aposentado).
@@ -235,6 +237,8 @@ Sigla de contexto (`<CTX>`) — use sempre a mesma:
 | Orçamento | `ORC` |
 | Peças | `PEC` |
 | Insumos | `INS` |
+| Segurança | `SEG` |
+| Mecânico | `MEC` |
 | Serviços | `SRV` |
 
 **Linguagem.** Prosa em português. Nomes técnicos (campo, classe, enum, rota, escopo)

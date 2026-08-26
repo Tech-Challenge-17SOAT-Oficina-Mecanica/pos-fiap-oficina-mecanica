@@ -21,6 +21,7 @@ CREATE TABLE usuario_escopo (
 );
 
 ALTER TABLE ordem_servico ADD COLUMN mecanico_responsavel_id UUID REFERENCES mecanico (id);
+CREATE INDEX ix_ordem_servico_mecanico_responsavel_id ON ordem_servico (mecanico_responsavel_id);
 ALTER TABLE auditoria_ordem_servico ADD CONSTRAINT fk_auditoria_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id);
 
 COMMIT;

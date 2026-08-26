@@ -4,7 +4,17 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:8080
+tags:
+  - name: Veículos
+  - name: Fornecedores
+  - name: Mecânico
+  - name: Serviço
 paths:
+  /health:
+    get:
+      summary: Verifica a disponibilidade da API
+      responses:
+        '200': { description: API disponível }
   /servicos:
     post:
       tags: [Serviço]
@@ -57,6 +67,247 @@ paths:
         '403': { description: Usuário sem o escopo servicos:escrever }
         '409': { description: Serviço ativo com o mesmo nome normalizado }
         '500': { description: Falha inesperada }
+  /fornecedores:
+    get:
+      tags: [Fornecedores]
+      summary: Lista fornecedores cadastrados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nome
+          in: query
+          schema: { type: string }
+          description: Filtro parcial por razão social ou nome fantasia.
+        - name: documento
+          in: query
+          schema: { type: string }
+          description: Filtro exato por CPF/CNPJ, com ou sem máscara.
+        - name: incluirInativos
+          in: query
+          schema: { type: boolean, default: false }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { description: Consulta realizada }
+        '400': { description: Filtros ou paginação inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
+    post:
+      tags: [Fornecedores]
+      summary: Cadastra um fornecedor
+      description: Exige o escopo `compras:escrever`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarFornecedor' }
+      responses:
+        '201':
+          description: Fornecedor cadastrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Fornecedor' }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '409': { description: Documento duplicado }
+  /fornecedores/{fornecedorId}:
+    get:
+      tags: [Fornecedores]
+      summary: Consulta um fornecedor pelo identificador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor encontrado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
+        '404': { description: Fornecedor não encontrado }
+    put:
+      tags: [Fornecedores]
+      summary: Atualiza um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarFornecedor' }
+      responses:
+        '200': { description: Fornecedor atualizado }
+        '400': { description: Dados inválidos ou campo imutável enviado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor inativo }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Fornecedores]
+      summary: Desativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor desativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já inativo ou com pedido de compra em aberto }
+  /fornecedores/{fornecedorId}/reativacao:
+    post:
+      tags: [Fornecedores]
+      summary: Reativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor reativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já ativo ou documento já utilizado }
+  /mecanicos/{mecanicoId}:
+    put:
+      tags: [Mecânico]
+      summary: Atualiza cadastro e escopos de um mecânico
+      description: Exige o escopo `mecanicos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: mecanicoId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+            example: '1'
+          description: Version atual do mecânico para controle otimista.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, escopos]
+              properties:
+                nome:
+                  type: string
+                  example: Maria Souza
+                email:
+                  type: string
+                  format: email
+                  example: maria.souza@oficina.local
+                escopos:
+                  type: array
+                  items:
+                    type: string
+                  example: [veiculos:ler, veiculos:escrever, os:ler]
+      responses:
+        '200':
+          description: Mecânico atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  escopos:
+                    type: array
+                    items:
+                      type: string
+                  version: { type: integer }
+        '400': { description: Identificador, corpo, e-mail, If-Match ou escopo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo mecanicos:escrever }
+        '404': { description: Mecânico não encontrado }
+        '409': { description: E-mail já cadastrado para outro usuário }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match ausente }
+  /veiculos:
+    get:
+      tags: [Veículos]
+      summary: Consulta um veículo pela placa
+      description: Exige o escopo `veiculos:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: placa
+          in: query
+          required: true
+          schema: { type: string, example: ABC1D23 }
+        - name: incluirInativos
+          in: query
+          required: true
+          schema: { type: boolean }
+      responses:
+        '200': { description: Veículo encontrado }
+        '400': { description: Parâmetros inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:ler }
+        '404': { description: Veículo não encontrado }
+  /clientes/{clienteId}/veiculos:
+    post:
+      tags: [Veículos]
+      summary: Cadastra um veículo e o vincula ao cliente
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clienteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '201': { description: Veículo cadastrado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente inativo ou placa já cadastrada }
   /clientes:
     get:
       tags: [Cliente]
@@ -277,6 +528,74 @@ paths:
                       properties:
                         ordemServicoId: { type: string, format: uuid }
                         status: { type: string, example: EM_EXECUCAO }
+  /veiculos/{veiculoId}:
+    put:
+      tags: [Veículos]
+      summary: Atualiza os dados de um veículo
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '200': { description: Veículo atualizado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Placa já cadastrada }
+        '412': { description: Versão divergente }
+        '428': { description: If-Match ausente }
+    delete:
+      tags: [Veículos]
+      summary: Inativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: motivo
+          in: query
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200': { description: Veículo inativado }
+        '204': { description: Veículo já inativo }
+        '400': { description: Identificador ou motivo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo possui OS em aberto }
+  /veiculos/{veiculoId}/reativacao:
+    post:
+      tags: [Veículos]
+      summary: Reativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Veículo reativado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo ativo, placa em uso ou cliente inativo }
   /clientes/{clienteId}/reativacao:
     post:
       tags: [Cliente]
@@ -348,3 +667,42 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    CadastrarFornecedor:
+      type: object
+      required: [razaoSocial, documento, tipoDocumento]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        documento: { type: string }
+        tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365, default: 7 }
+    AtualizarFornecedor:
+      type: object
+      required: [razaoSocial]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365 }
+    Fornecedor:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo, version, dataCriacao]
+          properties:
+            id: { type: string, format: uuid }
+            ativo: { type: boolean }
+            version: { type: integer }
+            dataCriacao: { type: string, format: date-time }
+    CadastrarVeiculo:
+      type: object
+      required: [placa, marca, modelo, ano]
+      properties:
+        placa: { type: string, example: ABC1D23 }
+        marca: { type: string, example: Toyota }
+        modelo: { type: string, example: Corolla }
+        ano: { type: integer, example: 2024 }
