@@ -19,6 +19,7 @@ INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:ler')
+    ('90000000-0000-0000-0000-000000000001', 'servicos:escrever')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categoria (id, nome, ativa) VALUES
@@ -44,6 +45,13 @@ INSERT INTO servico (id, codigo, nome, nome_normalizado, descricao, valor, tempo
     ('40000000-0000-0000-0000-000000000002', 'SER-000002', 'Troca de correia', 'troca de correia', 'Troca da correia dentada', 450.00, 180, TRUE, 1),
     ('40000000-0000-0000-0000-000000000003', 'SER-000003', 'Alinhamento', 'alinhamento', 'Servico desativado para consulta historica', 120.00, 90, FALSE, 1)
 ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(
+    'servico_codigo_seq',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 1),
+    COUNT(*) > 0
+)
+FROM servico;
 
 INSERT INTO item_estoque (
     id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, fabricante, unidade_medida,

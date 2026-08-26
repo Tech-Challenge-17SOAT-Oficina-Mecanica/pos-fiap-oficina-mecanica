@@ -11,6 +11,7 @@ import (
 	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	ordemServicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
+	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
@@ -18,6 +19,7 @@ import (
 	orcamentoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/orcamento"
 	ordemServicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
+	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
@@ -25,6 +27,7 @@ import (
 	orcamentoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/orcamento"
 	ordemServicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/ordemservico"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
+	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
 	veiculoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
@@ -40,8 +43,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
+	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
+	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
+	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
+	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
+	atualizarMecanico := mecanicoApplication.NewAtualizar(mecanicoRepository)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
@@ -53,6 +59,8 @@ func main() {
 	atualizarCliente := clienteApplication.NewAtualizar(clienteRepository)
 	inativarCliente := clienteApplication.NewInativar(clienteRepository)
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
+	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
+	cadastrarServico := servicoApplication.NewCadastrar(servicoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoInfrastructure.NewPostgresRepository(db))
@@ -80,6 +88,7 @@ func main() {
 	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))
+	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{"os:ler", "orcamentos:ler"}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
@@ -92,6 +101,7 @@ func main() {
 	mux.Handle("PUT /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewAtualizarHandler(atualizarCliente)))
 	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewInativarHandler(inativarCliente)))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
+	mux.Handle("POST /servicos", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewCadastrarHandler(cadastrarServico)))
 
 	server := &http.Server{
 		Addr:    ":8080",

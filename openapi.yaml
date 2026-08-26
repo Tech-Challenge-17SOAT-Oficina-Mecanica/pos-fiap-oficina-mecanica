@@ -9,12 +9,66 @@ tags:
   - name: Fornecedores
   - name: Orcamentos
   - name: Ordens de Servico
+  - name: Mecânico
+  - name: Serviço
 paths:
   /health:
     get:
       summary: Verifica a disponibilidade da API
       responses:
         '200': { description: API disponível }
+  /servicos:
+    post:
+      tags: [Serviço]
+      summary: Cadastra um serviço no catálogo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, valor, tempoEstimadoMinutos]
+              additionalProperties: false
+              properties:
+                nome:
+                  type: string
+                  example: Troca de óleo
+                descricao:
+                  type: string
+                  example: Troca de óleo e filtro
+                valor:
+                  type: number
+                  format: double
+                  minimum: 0
+                  example: 150.00
+                tempoEstimadoMinutos:
+                  type: integer
+                  minimum: 1
+                  example: 60
+      responses:
+        '201':
+          description: Serviço cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  codigo: { type: string, pattern: '^SER-[0-9]{6}$', example: SER-000004 }
+                  nome: { type: string }
+                  descricao: { type: string }
+                  valor: { type: number, format: double }
+                  tempoEstimadoMinutos: { type: integer }
+                  ativo: { type: boolean, example: true }
+                  version: { type: integer, example: 1 }
+                  dataCriacao: { type: string, format: date-time }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '409': { description: Serviço ativo com o mesmo nome normalizado }
+        '500': { description: Falha inesperada }
   /fornecedores:
     get:
       tags: [Fornecedores]
@@ -145,6 +199,71 @@ paths:
         '403': { description: Usuário sem o escopo compras:escrever }
         '404': { description: Fornecedor não encontrado }
         '409': { description: Fornecedor já ativo ou documento já utilizado }
+  /mecanicos/{mecanicoId}:
+    put:
+      tags: [Mecânico]
+      summary: Atualiza cadastro e escopos de um mecânico
+      description: Exige o escopo `mecanicos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: mecanicoId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+            example: '1'
+          description: Version atual do mecânico para controle otimista.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, escopos]
+              properties:
+                nome:
+                  type: string
+                  example: Maria Souza
+                email:
+                  type: string
+                  format: email
+                  example: maria.souza@oficina.local
+                escopos:
+                  type: array
+                  items:
+                    type: string
+                  example: [veiculos:ler, veiculos:escrever, os:ler]
+      responses:
+        '200':
+          description: Mecânico atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  escopos:
+                    type: array
+                    items:
+                      type: string
+                  version: { type: integer }
+        '400': { description: Identificador, corpo, e-mail, If-Match ou escopo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo mecanicos:escrever }
+        '404': { description: Mecânico não encontrado }
+        '409': { description: E-mail já cadastrado para outro usuário }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match ausente }
   /veiculos:
     get:
       tags: [Veículos]
