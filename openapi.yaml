@@ -779,6 +779,54 @@ paths:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
   /estoque/insumos:
+    get:
+      tags: [Estoque]
+      summary: Consulta insumos por filtros e disponibilidade
+      description: Exige o escopo `estoque:ler`. Retorna envelope paginado e não altera saldo, reserva ou pedido.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: codigo
+          in: query
+          schema: { type: string, example: INS-000001 }
+          description: Código exato do insumo.
+        - name: descricao
+          in: query
+          schema: { type: string, minLength: 2 }
+          description: Filtro parcial pela descrição.
+        - name: categoriaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: quantidadeDesejada
+          in: query
+          schema: { type: number, format: double, minimum: 0, exclusiveMinimum: true, example: 3.5 }
+          description: Quando informada, a resposta indica se cada insumo atende a quantidade.
+        - name: somenteDisponiveis
+          in: query
+          schema: { type: boolean, default: false }
+          description: Quando true, exige quantidadeDesejada e filtra saldo suficiente.
+        - name: incluirInativos
+          in: query
+          schema: { type: boolean, default: false }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Consulta realizada, inclusive lista vazia ou quantidade insuficiente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaInsumos' }
+        '400':
+          description: Filtros, quantidade, booleanos ou paginação inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:ler }
     post:
       tags: [Estoque]
       summary: Cadastra um novo insumo no catálogo
@@ -811,6 +859,35 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/insumos/{insumoId}:
+    get:
+      tags: [Estoque]
+      summary: Consulta um insumo específico e sua disponibilidade
+      description: Exige o escopo `estoque:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: insumoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: quantidadeDesejada
+          in: query
+          schema: { type: number, format: double, minimum: 0, exclusiveMinimum: true, example: 3.5 }
+      responses:
+        '200':
+          description: Insumo encontrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InsumoConsulta' }
+        '400':
+          description: Identificador ou quantidade inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:ler }
+        '404': { description: Insumo não encontrado }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -969,6 +1046,36 @@ components:
           type: string
           format: date-time
           description: Devolvida apenas no cadastro.
+    InsumoConsulta:
+      allOf:
+        - $ref: '#/components/schemas/Insumo'
+        - type: object
+          properties:
+            quantidadeDesejada:
+              type: number
+              format: double
+              description: Presente apenas quando informada na consulta.
+            saldoDisponivel:
+              type: number
+              format: double
+              description: Saldo físico menos o reservado.
+            quantidadeDisponivel:
+              type: boolean
+              description: Presente apenas quando quantidadeDesejada é informada.
+            disponivel: { type: boolean }
+            abaixoDoMinimo: { type: boolean }
+            possuiPedidoEmAberto: { type: boolean }
+    ListaInsumos:
+      type: object
+      description: Envelope paginado padrão da API.
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InsumoConsulta' }
+        pagina: { type: integer }
+        tamanho: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
