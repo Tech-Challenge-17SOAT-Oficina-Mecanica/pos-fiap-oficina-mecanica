@@ -1,12 +1,19 @@
 package seguranca
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 )
+
+func TestClaimsAusentes(t *testing.T) {
+	if claims := Claims(context.Background()); claims.UsuarioID != "" || len(claims.Escopos) != 0 {
+		t.Fatalf("claims=%+v", claims)
+	}
+}
 
 func TestRequireScope(t *testing.T) {
 	jwt, err := infrastructure.NewJWT("segredo")

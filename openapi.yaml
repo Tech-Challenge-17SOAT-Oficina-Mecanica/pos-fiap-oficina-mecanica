@@ -7,6 +7,8 @@ servers:
 tags:
   - name: Veículos
   - name: Fornecedores
+  - name: Orcamentos
+  - name: Ordens de Servico
   - name: Mecânico
   - name: Serviço
 paths:
@@ -809,6 +811,84 @@ paths:
                   expiresIn: { type: integer, example: 3600 }
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
+  /ordens-servico/{osId}/problemas:
+    post:
+      tags: [Ordens de Servico]
+      summary: Registra um problema encontrado na ordem de servico
+      description: Exige o escopo `os:escrever`. O orcamento aplicavel e definido pelo status da OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrarProblema' }
+      responses:
+        '201':
+          description: Problema registrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProblemaRegistrado' }
+        '400': { description: Identificador ou dados invalidos }
+        '401': { description: Token ausente, invalido ou expirado }
+        '403': { description: Usuario sem o escopo os:escrever }
+        '404': { description: Ordem de servico nao encontrada }
+        '409': { description: Status da OS ou orcamento nao permite o registro }
+  /ordens-servico/{osId}/orcamento:
+    get:
+      tags: [Orcamentos]
+      summary: Consulta os orcamentos de uma Ordem de Servico
+      description: Mecanicos exigem `os:ler`. Clientes usam token temporario com `orcamentos:ler`, restrito a propria OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orcamentos consultados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsultaOrcamento' }
+        '400': { description: Identificador invalido }
+        '401': { description: Token ausente, invalido ou expirado }
+        '403': { description: Cliente sem acesso a OS }
+        '404': { description: OS ou orcamento nao encontrado }
+  /ordens-servico/{osId}/servicos:
+    post:
+      tags: [Ordens de Servico]
+      summary: Registra servicos necessarios no orcamento da Ordem de Servico
+      description: Exige o escopo `os:escrever`. O orcamento aplicavel e definido pelo status da OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrarServicos' }
+      responses:
+        '201':
+          description: Servicos registrados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServicosRegistrados' }
+        '400': { description: Identificador ou dados invalidos }
+        '401': { description: Token ausente, invalido ou expirado }
+        '403': { description: Usuario sem o escopo os:escrever }
+        '404': { description: Ordem de servico ou servico nao encontrado }
+        '409': { description: Status da OS, orcamento ou servico nao permite o registro }
 components:
   schemas:
     ServicoLista:
@@ -827,6 +907,113 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    ConsultaOrcamento:
+      type: object
+      required: [cliente, ordemServicoId, statusOrdemServico, orcamentos, valorTotalGeral]
+      properties:
+        cliente:
+          type: object
+          required: [clienteId, nome, documento, tipoDocumento]
+          properties:
+            clienteId: { type: string, format: uuid }
+            nome: { type: string }
+            documento: { type: string }
+            tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string }
+        valorTotalGeral: { type: number, format: double }
+        estimativaEntregaDias: { type: integer, minimum: 0 }
+        orcamentos:
+          type: array
+          items:
+            type: object
+            required: [orcamentoId, tipoOrcamento, statusOrcamento, itens, valorTotal]
+            properties:
+              orcamentoId: { type: string, format: uuid }
+              orcamentoOriginalId: { type: string, format: uuid }
+              tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+              statusOrcamento: { type: string, enum: [CRIADO, APROVADO, RECUSADO] }
+              estimativaEntregaDias: { type: integer, minimum: 0 }
+              dataGeracao: { type: string, format: date-time }
+              valorTotal: { type: number, format: double }
+              itens:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tipo: { type: string }
+                    descricao: { type: string }
+                    quantidade: { type: number, format: double }
+                    valorUnitario: { type: number, format: double }
+                    valorTotal: { type: number, format: double }
+              problemas:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    problemaId: { type: string, format: uuid }
+                    descricao: { type: string }
+                    observacoes: { type: string }
+                    registradoEm: { type: string, format: date-time }
+    RegistrarProblema:
+      type: object
+      required: [descricao]
+      additionalProperties: false
+      properties:
+        descricao: { type: string, minLength: 1, example: Pastilhas de freio desgastadas }
+        observacoes: { type: string, example: Desgaste acima do limite recomendado }
+    RegistrarServicos:
+      type: object
+      required: [servicos]
+      additionalProperties: false
+      properties:
+        servicos:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [servicoId]
+            additionalProperties: false
+            properties:
+              servicoId: { type: string, format: uuid }
+              observacao: { type: string }
+    ServicosRegistrados:
+      type: object
+      required: [ordemServicoId, orcamento, servicos]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        orcamento:
+          type: object
+          required: [id, tipo, status, valorTotal]
+          properties:
+            id: { type: string, format: uuid }
+            tipo: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+            status: { type: string, enum: [CRIADO] }
+            valorTotal: { type: number, format: double }
+        servicos:
+          type: array
+          items:
+            type: object
+            required: [servicoId, descricao, valorUnitario]
+            properties:
+              servicoId: { type: string, format: uuid }
+              descricao: { type: string }
+              valorUnitario: { type: number, format: double }
+              observacao: { type: string }
+    ProblemaRegistrado:
+      type: object
+      required: [problemaId, descricao, orcamento]
+      properties:
+        problemaId: { type: string, format: uuid }
+        descricao: { type: string }
+        observacoes: { type: string }
+        orcamento:
+          type: object
+          required: [id, tipo, status]
+          properties:
+            id: { type: string, format: uuid }
+            tipo: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+            status: { type: string, enum: [CRIADO] }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
