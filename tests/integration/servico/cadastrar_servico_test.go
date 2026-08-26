@@ -11,13 +11,14 @@ import (
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
 	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	infra "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
 func TestCadastrarServico(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -37,13 +38,15 @@ func TestCadastrarServico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewCadastrarHandler(application.NewCadastrar(infra.NewPostgresRepository(db)), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "servicos:escrever",
+		presentation.NewCadastrarHandler(application.NewCadastrar(infra.NewPostgresRepository(db))),
+	)
 
 	request := httptest.NewRequest(http.MethodPost, "/servicos", strings.NewReader(
 		`{"nome":"Serviço de Integração","descricao":"Teste completo","valor":199.90,"tempoEstimadoMinutos":45}`))
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
-	handler(response, request)
+	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
@@ -68,7 +71,7 @@ func TestCadastrarServico(t *testing.T) {
 		`{"nome":"  SERVICO  DE INTEGRAÇÃO ","valor":10,"tempoEstimadoMinutos":5}`))
 	duplicate.Header.Set("Authorization", "Bearer "+token)
 	duplicateResponse := httptest.NewRecorder()
-	handler(duplicateResponse, duplicate)
+	handler.ServeHTTP(duplicateResponse, duplicate)
 	if duplicateResponse.Code != http.StatusConflict {
 		t.Fatalf("duplicado status %d: %s", duplicateResponse.Code, duplicateResponse.Body.String())
 	}
