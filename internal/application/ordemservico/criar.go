@@ -3,10 +3,10 @@ package ordemservico
 import (
 	"context"
 	"errors"
-	"regexp"
 	"strings"
 
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 var (
@@ -18,8 +18,6 @@ var (
 	ErrVeiculoNaoEncontrado       = errors.New("veículo não encontrado")
 	ErrVeiculoNaoVinculadoCliente = errors.New("veículo não está vinculado ao cliente informado")
 )
-
-var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type CriarInput struct {
 	ClienteID string
@@ -43,10 +41,10 @@ func (useCase Criar) Execute(ctx context.Context, input CriarInput) (domain.Orde
 	if input.VeiculoID == "" {
 		return domain.OrdemDeServico{}, ErrVeiculoIDObrigatorio
 	}
-	if !uuidPattern.MatchString(input.ClienteID) {
+	if !validation.IsUUID(input.ClienteID) {
 		return domain.OrdemDeServico{}, ErrClienteIDInvalido
 	}
-	if !uuidPattern.MatchString(input.VeiculoID) {
+	if !validation.IsUUID(input.VeiculoID) {
 		return domain.OrdemDeServico{}, ErrVeiculoIDInvalido
 	}
 	return useCase.repository.Criar(ctx, input)

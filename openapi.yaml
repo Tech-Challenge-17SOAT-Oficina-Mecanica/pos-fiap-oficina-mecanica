@@ -6,12 +6,16 @@ servers:
   - url: http://localhost:8080
 tags:
   - name: Veículos
+  - name: Fornecedores
+  - name: Estoque
+  - name: Mecânico
+  - name: Serviço
 paths:
   /ordens-servico:
     post:
       tags: [Ordem de Serviço]
-      summary: Cria uma Ordem de Serviço
-      description: Cria a OS com status RECEBIDA para um veículo vinculado ao cliente informado. Exige o escopo `os:escrever`.
+      summary: Cria uma ordem de serviço
+      description: Cria a OS com status RECEBIDA para um veículo ativo vinculado ao cliente informado. Exige o escopo `os:escrever`.
       security:
         - bearerAuth: []
       requestBody:
@@ -23,27 +27,267 @@ paths:
               required: [clienteId, veiculoId]
               additionalProperties: false
               properties:
-                clienteId: { type: string, format: uuid, example: 20000000-0000-0000-0000-000000000001 }
-                veiculoId: { type: string, format: uuid, example: 30000000-0000-0000-0000-000000000001 }
+                clienteId: { type: string, format: uuid }
+                veiculoId: { type: string, format: uuid }
+      responses:
+        '201': { description: Ordem de serviço criada }
+        '400': { description: Corpo ou identificadores inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Cliente ou veículo não encontrado }
+        '409': { description: Veículo não vinculado ao cliente informado }
+  /health:
+    get:
+      summary: Verifica a disponibilidade da API
+      responses:
+        '200': { description: API disponível }
+  /servicos:
+    post:
+      tags: [Serviço]
+      summary: Cadastra um serviço no catálogo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, valor, tempoEstimadoMinutos]
+              additionalProperties: false
+              properties:
+                nome:
+                  type: string
+                  example: Troca de óleo
+                descricao:
+                  type: string
+                  example: Troca de óleo e filtro
+                valor:
+                  type: number
+                  format: double
+                  minimum: 0
+                  example: 150.00
+                tempoEstimadoMinutos:
+                  type: integer
+                  minimum: 1
+                  example: 60
       responses:
         '201':
-          description: Ordem de Serviço criada
+          description: Serviço cadastrado
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ordemServicoId: { type: string, format: uuid }
-                  clienteId: { type: string, format: uuid }
-                  veiculoId: { type: string, format: uuid }
-                  status: { type: string, enum: [RECEBIDA] }
-                  criadaEm: { type: string, format: date-time }
-        '400': { description: Identificadores ausentes ou inválidos }
+                  id: { type: string, format: uuid }
+                  codigo: { type: string, pattern: '^SER-[0-9]{6}$', example: SER-000004 }
+                  nome: { type: string }
+                  descricao: { type: string }
+                  valor: { type: number, format: double }
+                  tempoEstimadoMinutos: { type: integer }
+                  ativo: { type: boolean, example: true }
+                  version: { type: integer, example: 1 }
+                  dataCriacao: { type: string, format: date-time }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
         '401': { description: Token ausente ou expirado }
-        '403': { description: Usuário sem o escopo os:escrever }
-        '404': { description: Cliente ou veículo não encontrado }
-        '409': { description: Veículo não vinculado ao cliente informado }
-        '500': { description: Erro inesperado ao criar a Ordem de Serviço }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '409': { description: Serviço ativo com o mesmo nome normalizado }
+        '500': { description: Falha inesperada }
+  /fornecedores:
+    get:
+      tags: [Fornecedores]
+      summary: Lista fornecedores cadastrados
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: nome
+          in: query
+          schema: { type: string }
+          description: Filtro parcial por razão social ou nome fantasia.
+        - name: documento
+          in: query
+          schema: { type: string }
+          description: Filtro exato por CPF/CNPJ, com ou sem máscara.
+        - name: incluirInativos
+          in: query
+          schema: { type: boolean, default: false }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200': { description: Consulta realizada }
+        '400': { description: Filtros ou paginação inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
+    post:
+      tags: [Fornecedores]
+      summary: Cadastra um fornecedor
+      description: Exige o escopo `compras:escrever`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarFornecedor' }
+      responses:
+        '201':
+          description: Fornecedor cadastrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Fornecedor' }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '409': { description: Documento duplicado }
+  /fornecedores/{fornecedorId}:
+    get:
+      tags: [Fornecedores]
+      summary: Consulta um fornecedor pelo identificador
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor encontrado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:ler }
+        '404': { description: Fornecedor não encontrado }
+    put:
+      tags: [Fornecedores]
+      summary: Atualiza um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarFornecedor' }
+      responses:
+        '200': { description: Fornecedor atualizado }
+        '400': { description: Dados inválidos ou campo imutável enviado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor inativo }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+    delete:
+      tags: [Fornecedores]
+      summary: Desativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor desativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já inativo ou com pedido de compra em aberto }
+  /fornecedores/{fornecedorId}/reativacao:
+    post:
+      tags: [Fornecedores]
+      summary: Reativa um fornecedor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: fornecedorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Fornecedor reativado }
+        '400': { description: Identificador inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo compras:escrever }
+        '404': { description: Fornecedor não encontrado }
+        '409': { description: Fornecedor já ativo ou documento já utilizado }
+  /mecanicos/{mecanicoId}:
+    put:
+      tags: [Mecânico]
+      summary: Atualiza cadastro e escopos de um mecânico
+      description: Exige o escopo `mecanicos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: mecanicoId
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: If-Match
+          required: true
+          schema:
+            type: string
+            example: '1'
+          description: Version atual do mecânico para controle otimista.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, email, escopos]
+              properties:
+                nome:
+                  type: string
+                  example: Maria Souza
+                email:
+                  type: string
+                  format: email
+                  example: maria.souza@oficina.local
+                escopos:
+                  type: array
+                  items:
+                    type: string
+                  example: [veiculos:ler, veiculos:escrever, os:ler]
+      responses:
+        '200':
+          description: Mecânico atualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nome: { type: string }
+                  email: { type: string, format: email }
+                  ativo: { type: boolean }
+                  escopos:
+                    type: array
+                    items:
+                      type: string
+                  version: { type: integer }
+        '400': { description: Identificador, corpo, e-mail, If-Match ou escopo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo mecanicos:escrever }
+        '404': { description: Mecânico não encontrado }
+        '409': { description: E-mail já cadastrado para outro usuário }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match ausente }
   /veiculos:
     get:
       tags: [Veículos]
@@ -410,6 +654,188 @@ paths:
         '403': { description: Usuário sem o escopo clientes:escrever }
         '404': { description: Cliente não encontrado }
         '409': { description: Cliente já ativo ou CPF/CNPJ usado por outro cliente ativo }
+  /estoque/pecas:
+    get:
+      tags: [Estoque]
+      summary: Consulta peças com saldo físico, reservado e disponível
+      description: Exige o escopo `estoque:ler`. Informe ao menos `codigo` ou `descricao`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: codigo
+          in: query
+          schema: { type: string }
+          description: Filtro exato pelo código funcional, por exemplo `PEC-000001`.
+        - name: descricao
+          in: query
+          schema: { type: string, minLength: 2 }
+          description: Filtro parcial pela descrição.
+        - name: categoriaId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: fabricante
+          in: query
+          schema: { type: string }
+          description: Filtro parcial pelo fabricante.
+        - name: quantidadeDesejada
+          in: query
+          schema: { type: integer, minimum: 1 }
+          description: Quando informada, a resposta indica se cada peça atende a quantidade.
+        - name: somenteDisponiveis
+          in: query
+          schema: { type: boolean, default: false }
+          description: Aceita apenas `true` ou `false`; outro valor devolve 400.
+        - name: incluirInativos
+          in: query
+          schema: { type: boolean, default: false }
+          description: Aceita apenas `true` ou `false`; outro valor devolve 400.
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Consulta realizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaPecas' }
+        '400':
+          description: Filtros, booleanos ou paginação inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:ler }
+        '404': { description: Nenhuma peça corresponde aos parâmetros }
+    post:
+      tags: [Estoque]
+      summary: Cadastra uma nova peça no catálogo
+      description: >-
+        Exige o escopo `estoque:escrever`. O `codigo` é gerado pelo sistema no formato
+        `PEC-000001`. O cadastro não aceita saldo inicial: todo saldo entra por
+        movimentação de entrada.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarPeca' }
+      responses:
+        '201':
+          description: Peça cadastrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Peca' }
+        '400':
+          description: Dados inválidos, ou categoria inexistente ou inativa
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '409':
+          description: Já existe peça ativa com a mesma descrição na categoria
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/pecas/{pecaId}:
+    get:
+      tags: [Estoque]
+      summary: Consulta uma peça específica, com version para o If-Match
+      description: Exige o escopo `estoque:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pecaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: quantidadeDesejada
+          in: query
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Peça encontrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Peca' }
+        '400':
+          description: Identificador ou quantidade inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:ler }
+        '404': { description: Peça não encontrada }
+    delete:
+      tags: [Estoque]
+      summary: Desativa a peça (exclusão lógica)
+      description: >-
+        Exige o escopo `estoque:escrever`. A peça não é removida: fica inativa, com data e
+        usuário responsável registrados. Bloqueado com saldo reservado em OS ativa ou com a
+        peça em orçamento no status CRIADO.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pecaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Peça desativada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PecaDesativada' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '404': { description: Peça não encontrada }
+        '409':
+          description: Peça já inativa, com saldo reservado em OS ou em orçamento
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/insumos:
+    post:
+      tags: [Estoque]
+      summary: Cadastra um novo insumo no catálogo
+      description: >-
+        Exige o escopo `estoque:escrever`. O `codigo` é gerado pelo sistema no formato
+        `INS-000001`. Insumo admite quantidade fracionada, diferente da peça. Não há
+        conversão entre unidades: cada unidade é um item independente.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarInsumo' }
+      responses:
+        '201':
+          description: Insumo cadastrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Insumo' }
+        '400':
+          description: Dados inválidos, unidade fora do enum, ou categoria inexistente ou inativa
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '409':
+          description: Já existe insumo ativo com a mesma descrição na categoria e unidade
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -450,6 +876,154 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    Problema:
+      type: object
+      description: Resposta de erro no formato application/problem+json.
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        erros:
+          type: array
+          description: Presente quando a falha pode ser atribuída a um parâmetro específico.
+          items:
+            type: object
+            properties:
+              campo: { type: string }
+              mensagem: { type: string }
+    CadastrarPeca:
+      type: object
+      required: [nome, descricao, categoriaId]
+      properties:
+        nome: { type: string, minLength: 2, maxLength: 150 }
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Usada na regra de duplicidade, após normalização.
+        categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fabricante: { type: string, maxLength: 150, nullable: true }
+        precoVenda: { type: number, format: double, minimum: 0, nullable: true }
+        estoqueMinimo: { type: integer, minimum: 0, default: 0 }
+    Peca:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string, example: PEC-000001 }
+        tipo: { type: string, enum: [PECA] }
+        nome: { type: string }
+        descricao: { type: string }
+        categoriaId: { type: string, format: uuid }
+        categoria: { type: string }
+        fabricante: { type: string, nullable: true }
+        unidadeMedida: { type: string, example: UN }
+        precoVenda: { type: number, format: double, nullable: true }
+        saldoFisico: { type: integer }
+        saldoReservado: { type: integer }
+        saldoDisponivel: { type: integer, description: Saldo físico menos o reservado. }
+        quantidadeDesejada: { type: integer, description: Presente apenas quando informada na consulta. }
+        quantidadeDisponivel: { type: boolean, description: Presente apenas quando quantidadeDesejada é informada. }
+        estoqueMinimo: { type: integer }
+        disponivel: { type: boolean }
+        abaixoDoMinimo: { type: boolean }
+        possuiPedidoEmAberto: { type: boolean }
+        ativo: { type: boolean }
+        version: { type: integer }
+        dataCriacao:
+          type: string
+          format: date-time
+          description: Devolvida apenas no cadastro.
+    ListaPecas:
+      type: object
+      description: Envelope paginado padrão da API.
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Peca' }
+        pagina: { type: integer }
+        tamanho: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
+    PecaDesativada:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string }
+        nome: { type: string }
+        ativo: { type: boolean, example: false }
+        dataDesativacao: { type: string, format: date-time, nullable: true }
+        usuarioDesativacao: { type: string, format: uuid, nullable: true }
+    CadastrarInsumo:
+      type: object
+      required: [nome, descricao, categoriaId, unidadeMedida, custoUnitario]
+      properties:
+        nome: { type: string, minLength: 2, maxLength: 150 }
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 500
+          description: Usada na regra de duplicidade, junto da categoria e da unidade.
+        categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
+        custoUnitario: { type: number, format: double, minimum: 0 }
+        estoqueMinimo:
+          type: number
+          format: double
+          minimum: 0
+          default: 0
+          description: Aceita casas decimais, diferente da peça.
+    Insumo:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string, example: INS-000001 }
+        tipo: { type: string, enum: [INSUMO] }
+        nome: { type: string }
+        descricao: { type: string }
+        categoriaId: { type: string, format: uuid }
+        categoria: { type: string }
+        unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
+        custoUnitario: { type: number, format: double, nullable: true }
+        saldoFisico: { type: number, format: double }
+        saldoReservado: { type: number, format: double }
+        estoqueMinimo: { type: number, format: double }
+        ativo: { type: boolean }
+        version: { type: integer }
+        dataCriacao:
+          type: string
+          format: date-time
+          description: Devolvida apenas no cadastro.
+    CadastrarFornecedor:
+      type: object
+      required: [razaoSocial, documento, tipoDocumento]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        documento: { type: string }
+        tipoDocumento: { type: string, enum: [CPF, CNPJ] }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365, default: 7 }
+    AtualizarFornecedor:
+      type: object
+      required: [razaoSocial]
+      properties:
+        razaoSocial: { type: string, minLength: 3, maxLength: 120 }
+        nomeFantasia: { type: string, maxLength: 120 }
+        telefone: { type: string }
+        email: { type: string, format: email }
+        prazoEntregaDias: { type: integer, minimum: 1, maximum: 365 }
+    Fornecedor:
+      allOf:
+        - $ref: '#/components/schemas/CadastrarFornecedor'
+        - type: object
+          required: [id, ativo, version, dataCriacao]
+          properties:
+            id: { type: string, format: uuid }
+            ativo: { type: boolean }
+            version: { type: integer }
+            dataCriacao: { type: string, format: date-time }
     CadastrarVeiculo:
       type: object
       required: [placa, marca, modelo, ano]

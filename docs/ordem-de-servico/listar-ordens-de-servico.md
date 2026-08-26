@@ -115,7 +115,7 @@ GET /ordens-servico
 | `status` | enum | Filtra por status da OS |
 | `documento` | string | Filtra pelo CPF/CNPJ do cliente |
 | `placa` | string | Filtra pela placa do veículo |
-| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 100 |
+| `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 50 |
 
 Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACAO`,
 `AGUARDANDO_EXECUCAO`, `EM_EXECUCAO`, `FINALIZADA`, `ENTREGUE`, `CANCELADA`.

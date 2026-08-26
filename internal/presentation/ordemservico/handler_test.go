@@ -1,59 +1,111 @@
 package ordemservico
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
-	"time"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
 )
 
-type criarFake struct {
-	ordem domain.OrdemDeServico
-	err   error
+type handlerRepositoryStub struct {
+	resultado application.ResultadoRegistroProblema
+	err       error
 }
 
-func (fake criarFake) Execute(context.Context, application.CriarInput) (domain.OrdemDeServico, error) {
-	return fake.ordem, fake.err
+type servicosHandlerRepositoryStub struct {
+	resultado application.ResultadoRegistroServicos
+	err       error
 }
 
-func TestCriarHandler(t *testing.T) {
-	validUseCase := criarFake{ordem: domain.OrdemDeServico{
-		ID: "os", ClienteID: "cliente", VeiculoID: "veiculo", Status: domain.StatusRecebida,
-		CriadaEm: time.Date(2026, 8, 22, 10, 30, 0, 0, time.FixedZone("BRT", -3*60*60)),
-	}}
-	body := `{"clienteId":"00000000-0000-0000-0000-000000000001","veiculoId":"00000000-0000-0000-0000-000000000002"}`
-	cases := []struct {
-		name    string
-		body    string
-		useCase criarFake
-		status  int
-		out     string
-	}{
-		{"json inválido", `{`, validUseCase, http.StatusBadRequest, ""},
-		{"campo desconhecido", `{"clienteId":"id","veiculoId":"id","problema":"x"}`, validUseCase, http.StatusBadRequest, ""},
-		{"id inválido", body, criarFake{err: application.ErrClienteIDInvalido}, http.StatusBadRequest, ""},
-		{"cliente inexistente", body, criarFake{err: application.ErrClienteNaoEncontrado}, http.StatusNotFound, ""},
-		{"veículo inexistente", body, criarFake{err: application.ErrVeiculoNaoEncontrado}, http.StatusNotFound, ""},
-		{"vínculo inválido", body, criarFake{err: application.ErrVeiculoNaoVinculadoCliente}, http.StatusConflict, ""},
-		{"erro interno", body, criarFake{err: errors.New("db")}, http.StatusInternalServerError, ""},
-		{"sucesso", body, validUseCase, http.StatusCreated, `"status":"RECEBIDA"`},
+func (stub servicosHandlerRepositoryStub) RegistrarServicos(context.Context, string, []domain.ServicoCadastro) (application.ResultadoRegistroServicos, error) {
+	return stub.resultado, stub.err
+}
+
+func (stub handlerRepositoryStub) RegistrarProblema(context.Context, string, domain.ProblemaCadastro) (application.ResultadoRegistroProblema, error) {
+	return stub.resultado, stub.err
+}
+
+func TestRegistrarProblemaHandler(t *testing.T) {
+	ok := application.ResultadoRegistroProblema{
+		Problema:  domain.Problema{ID: "10000000-0000-0000-0000-000000000001", Descricao: "freio", Observacoes: "urgente"},
+		Orcamento: domain.Orcamento{ID: "20000000-0000-0000-0000-000000000001", Tipo: domain.OrcamentoPrincipal, Status: domain.OrcamentoCriado},
 	}
-	for _, test := range cases {
+	tests := []struct {
+		name, id, body string
+		err            error
+		want           int
+	}{
+		{"id invalido", "invalido", `{}`, nil, http.StatusBadRequest},
+		{"json invalido", "10000000-0000-0000-0000-000000000001", `{`, nil, http.StatusBadRequest},
+		{"campo desconhecido", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio","x":true}`, nil, http.StatusBadRequest},
+		{"descricao vazia", "10000000-0000-0000-0000-000000000001", `{"descricao":" "}`, nil, http.StatusBadRequest},
+		{"os ausente", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, application.ErrOrdemServicoNaoEncontrada, http.StatusNotFound},
+		{"status invalido", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrStatusNaoPermiteProblema, http.StatusConflict},
+		{"orcamento fechado", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrOrcamentoFechado, http.StatusConflict},
+		{"principal ausente", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, domain.ErrOrcamentoPrincipalNaoEncontrado, http.StatusConflict},
+		{"erro interno", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio"}`, errors.New("falhou"), http.StatusInternalServerError},
+		{"sucesso", "10000000-0000-0000-0000-000000000001", `{"descricao":"freio","observacoes":"urgente"}`, nil, http.StatusCreated},
+	}
+	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/ordens-servico", strings.NewReader(test.body))
-			response := httptest.NewRecorder()
-			NewCriarHandler(test.useCase)(response, request)
-			if response.Code != test.status {
-				t.Fatalf("status %d: %s", response.Code, response.Body.String())
+			handler := NewRegistrarProblemaHandler(application.NewRegistrarProblema(handlerRepositoryStub{resultado: ok, err: test.err}))
+			request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+test.id+"/problemas", bytes.NewBufferString(test.body))
+			request.SetPathValue("osId", test.id)
+			writer := httptest.NewRecorder()
+			handler(writer, request)
+			if writer.Code != test.want {
+				t.Fatalf("status=%d body=%s", writer.Code, writer.Body.String())
 			}
-			if test.out != "" && !strings.Contains(response.Body.String(), test.out) {
-				t.Fatalf("body: %s", response.Body.String())
+			if test.want == http.StatusCreated && !bytes.Contains(writer.Body.Bytes(), []byte(`"problemaId"`)) {
+				t.Fatalf("resposta=%s", writer.Body.String())
+			}
+		})
+	}
+}
+
+func TestRegistrarServicosHandler(t *testing.T) {
+	const id = "10000000-0000-0000-0000-000000000001"
+	ok := application.ResultadoRegistroServicos{
+		Orcamento: domain.Orcamento{ID: "20000000-0000-0000-0000-000000000001", Tipo: domain.OrcamentoPrincipal, Status: domain.OrcamentoCriado, ValorTotal: 150},
+		Servicos:  []domain.ServicoRegistrado{{ServicoID: id, Descricao: "Troca de oleo", ValorUnitario: 150, Observacao: "urgente"}},
+	}
+	tests := []struct {
+		name, osID, body string
+		err              error
+		want             int
+	}{
+		{"os invalida", "invalido", `{}`, nil, http.StatusBadRequest},
+		{"json invalido", id, `{`, nil, http.StatusBadRequest},
+		{"campo desconhecido", id, `{"servicos":[],"x":true}`, nil, http.StatusBadRequest},
+		{"lista vazia", id, `{"servicos":[]}`, nil, http.StatusBadRequest},
+		{"servico invalido", id, `{"servicos":[{"servicoId":"invalido"}]}`, nil, http.StatusBadRequest},
+		{"duplicado no corpo", id, `{"servicos":[{"servicoId":"` + id + `"},{"servicoId":"` + id + `"}]}`, nil, http.StatusBadRequest},
+		{"os ausente", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, application.ErrOrdemServicoNaoEncontrada, http.StatusNotFound},
+		{"servico ausente", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, domain.ErrServicoNaoEncontrado, http.StatusNotFound},
+		{"status invalido", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, domain.ErrStatusNaoPermiteServico, http.StatusConflict},
+		{"orcamento ausente", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, domain.ErrOrcamentoAplicavelNaoEncontrado, http.StatusConflict},
+		{"servico inativo", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, domain.ErrServicoInativo, http.StatusConflict},
+		{"servico duplicado", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, domain.ErrServicoDuplicado, http.StatusConflict},
+		{"erro interno", id, `{"servicos":[{"servicoId":"` + id + `"}]}`, errors.New("falhou"), http.StatusInternalServerError},
+		{"sucesso", id, `{"servicos":[{"servicoId":"` + id + `","observacao":"urgente"}]}`, nil, http.StatusCreated},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			handler := NewRegistrarServicosHandler(application.NewRegistrarServicos(servicosHandlerRepositoryStub{resultado: ok, err: test.err}))
+			request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+test.osID+"/servicos", bytes.NewBufferString(test.body))
+			request.SetPathValue("osId", test.osID)
+			writer := httptest.NewRecorder()
+			handler(writer, request)
+			if writer.Code != test.want {
+				t.Fatalf("status=%d body=%s", writer.Code, writer.Body.String())
+			}
+			if test.want == http.StatusCreated && !bytes.Contains(writer.Body.Bytes(), []byte(`"servicoId"`)) {
+				t.Fatalf("resposta=%s", writer.Body.String())
 			}
 		})
 	}
