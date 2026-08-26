@@ -15,6 +15,8 @@ var (
 	ErrValorInvalido         = errors.New("valor deve ser maior ou igual a zero")
 	ErrTempoEstimadoInvalido = errors.New("tempoEstimadoMinutos deve ser maior ou igual a 1")
 	ErrAtualizacaoVazia      = errors.New("ao menos um campo deve ser informado")
+	ErrServicoJaInativo      = errors.New("serviço já está inativo")
+	ErrServicoJaAtivo        = errors.New("serviço já está ativo")
 )
 
 type NovoServicoInput struct {
@@ -38,6 +40,24 @@ type Servico struct {
 	DataAtualizacao      *time.Time
 	UsuarioCriacao       string
 	UsuarioAtualizacao   string
+	DataDesativacao      *time.Time
+	UsuarioDesativacao   string
+}
+
+func (servico Servico) Desativar() (Servico, error) {
+	if !servico.Ativo {
+		return Servico{}, ErrServicoJaInativo
+	}
+	servico.Ativo = false
+	return servico, nil
+}
+
+func (servico Servico) Reativar() (Servico, error) {
+	if servico.Ativo {
+		return Servico{}, ErrServicoJaAtivo
+	}
+	servico.Ativo = true
+	return servico, nil
 }
 
 type Atualizacao struct {

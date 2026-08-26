@@ -87,5 +87,23 @@ func TestAtualizar(t *testing.T) {
 	}
 }
 
+func TestAlterarSituacao(t *testing.T) {
+	ativo := Servico{ID: "id", Ativo: true}
+	inativo, err := ativo.Desativar()
+	if err != nil || inativo.Ativo {
+		t.Fatalf("serviço: %+v, erro: %v", inativo, err)
+	}
+	if _, err := inativo.Desativar(); !errors.Is(err, ErrServicoJaInativo) {
+		t.Fatalf("erro ao desativar novamente: %v", err)
+	}
+	reativado, err := inativo.Reativar()
+	if err != nil || !reativado.Ativo {
+		t.Fatalf("serviço: %+v, erro: %v", reativado, err)
+	}
+	if _, err := ativo.Reativar(); !errors.Is(err, ErrServicoJaAtivo) {
+		t.Fatalf("erro ao reativar novamente: %v", err)
+	}
+}
+
 func stringPointer(value string) *string { return &value }
 func intPointer(value int) *int          { return &value }
