@@ -55,6 +55,10 @@ func main() {
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
 	servicoRepository := servicoInfrastructure.NewPostgresRepository(db)
 	cadastrarServico := servicoApplication.NewCadastrar(servicoRepository)
+	consultarServico := servicoApplication.NewConsultar(servicoRepository)
+	atualizarServico := servicoApplication.NewAtualizar(servicoRepository)
+	desativarServico := servicoApplication.NewDesativar(servicoRepository)
+	reativarServico := servicoApplication.NewReativar(servicoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
@@ -91,6 +95,11 @@ func main() {
 	mux.Handle("DELETE /clientes/{clienteId}", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewInativarHandler(inativarCliente)))
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
 	mux.Handle("POST /servicos", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewCadastrarHandler(cadastrarServico)))
+	mux.Handle("GET /servicos", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewListarHandler(consultarServico)))
+	mux.Handle("GET /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:ler", servicoPresentation.NewConsultarHandler(consultarServico)))
+	mux.Handle("PATCH /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewAtualizarHandler(atualizarServico)))
+	mux.Handle("DELETE /servicos/{servicoId}", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewDesativarHandler(desativarServico)))
+	mux.Handle("POST /servicos/{servicoId}/reativacao", segurancaPresentation.RequireScope(jwt, "servicos:escrever", servicoPresentation.NewReativarHandler(reativarServico)))
 
 	server := &http.Server{
 		Addr:    ":8080",
