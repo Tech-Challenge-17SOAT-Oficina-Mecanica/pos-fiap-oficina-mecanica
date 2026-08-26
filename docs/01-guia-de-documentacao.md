@@ -253,6 +253,7 @@ documentos: `Ordem de Serviço`, nunca "chamado", "ticket" ou "pedido".
 - Escopo no formato `recurso:acao`, escolhido da **lista oficial** logo abaixo — escopo novo só entra depois de acrescentado a ela
 - **Recurso único devolve o objeto direto, sem envelope.** O envelope é só de listagem
 - Envelope paginado: `data`, `pagina`, `tamanho`, `totalElementos`, `totalPaginas`
+- **Limites da paginação (D-26)**, iguais em todos os contextos: `pagina` inicia em zero, padrão `0`; `tamanho` tem padrão `20` e teto `50`. Fora da faixa é `400`
 - Lista vazia é `200` com `"data": []`, **nunca** `404`
 - **O `422` não existe nesta API (D-01).** `400` é entrada inválida — formato, campo obrigatório ausente, item de tipo errado — e `409` é qualquer conflito com o estado atual: duplicidade, saldo insuficiente, status incompatível, registro inativo
 - `400` entrada inválida · `401` token ausente/expirado · `403` sem escopo · `404` recurso inexistente

@@ -143,7 +143,7 @@ A primeira rota pesquisa e lista insumos; a segunda consulta um item específico
 | Query | `somenteDisponiveis` | boolean | Quando `true`, exige `quantidadeDesejada` e filtra saldo suficiente. Padrão `false`. |
 | Query | `incluirInativos` | boolean | Inclui insumos inativos. Padrão `false`. |
 | Query | `pagina` | inteiro | Página iniciada em zero. Padrão `0`. |
-| Query | `tamanho` | inteiro | Itens por página. Padrão `20`, máximo `100`. |
+| Query | `tamanho` | inteiro | Itens por página. Padrão `20`, máximo `50`. |
 
 Exemplos:
 
@@ -163,7 +163,7 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
 - `quantidadeDesejada` deve ser maior que zero, quando informada.
 - `somenteDisponiveis: true` exige `quantidadeDesejada`.
 - `pagina` deve ser maior ou igual a zero.
-- `tamanho` deve estar entre 1 e 100.
+- `tamanho` deve estar entre 1 e 50.
 - `insumoId` deve ser um UUID válido na consulta individual.
 
 *Negócio*

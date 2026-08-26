@@ -109,7 +109,7 @@ os tempos das OS finalizadas, com o tempo médio do conjunto filtrado.
 | Path | `osId` | uuid | Identificador da OS, na consulta individual. |
 | Query | `dataInicio` | date | Opcional; início do período. |
 | Query | `dataFim` | date | Opcional; fim do período. |
-| Query | `pagina` / `tamanho` | inteiro | Paginação da listagem; `pagina` inicia em zero e `tamanho` tem máximo de 100. |
+| Query | `pagina` / `tamanho` | inteiro | Paginação da listagem; `pagina` inicia em zero e `tamanho` tem máximo de 50. |
 
 **Validações**
 

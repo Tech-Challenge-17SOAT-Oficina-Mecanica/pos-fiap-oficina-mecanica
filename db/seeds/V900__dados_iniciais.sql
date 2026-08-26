@@ -15,6 +15,8 @@ INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'veiculos:ler'),
     ('90000000-0000-0000-0000-000000000001', 'compras:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'compras:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'estoque:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'estoque:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:escrever'),
@@ -161,5 +163,19 @@ INSERT INTO chave_idempotencia (id, chave, operacao, hash_requisicao, status_res
     ('85000000-0000-0000-0000-000000000001', 'seed-reserva-os-001', 'RESERVA_ESTOQUE', 'seed-hash-reserva-001', 201, '{"reservaId":"82000000-0000-0000-0000-000000000001"}', CURRENT_TIMESTAMP - INTERVAL '1 day'),
     ('85000000-0000-0000-0000-000000000002', 'seed-entrada-001', 'ENTRADA_ESTOQUE', 'seed-hash-entrada-001', 201, '{"documentoOrigem":"NF-1002"}', CURRENT_TIMESTAMP - INTERVAL '1 day')
 ON CONFLICT (operacao, chave) DO NOTHING;
+
+-- O seed grava codigos de peca fixos (PEC-000001, PEC-000002). Avanca a sequencia para
+-- alem deles, senao o primeiro cadastro pela API colidiria no indice unico de codigo.
+SELECT setval(
+    'seq_peca_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'PECA';
+
+SELECT setval(
+    'seq_insumo_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'INSUMO';
 
 COMMIT;

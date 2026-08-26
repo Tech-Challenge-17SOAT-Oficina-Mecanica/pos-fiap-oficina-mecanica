@@ -41,6 +41,14 @@ func (service JWT) GerarCliente(clienteID, ordemServicoID string) (string, error
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.secret)
 }
 
+func (service JWT) Autenticar(raw string) (string, []string, error) {
+	claims, err := service.Validar(raw)
+	if err != nil {
+		return "", nil, err
+	}
+	return claims.UsuarioID, claims.Escopos, nil
+}
+
 func (service JWT) Validar(raw string) (seguranca.Claims, error) {
 	claims := jwtClaims{}
 	token, err := jwt.ParseWithClaims(raw, &claims, func(token *jwt.Token) (any, error) {
