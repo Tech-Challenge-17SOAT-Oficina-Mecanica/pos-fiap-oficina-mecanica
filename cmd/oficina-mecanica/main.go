@@ -64,6 +64,7 @@ func main() {
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoInfrastructure.NewPostgresRepository(db))
+	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoInfrastructure.NewPostgresRepository(db))
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
 
 	mux := http.NewServeMux()
@@ -91,6 +92,7 @@ func main() {
 	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
+	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{"os:ler", "orcamentos:ler"}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewAtualizarHandler(atualizar)))
