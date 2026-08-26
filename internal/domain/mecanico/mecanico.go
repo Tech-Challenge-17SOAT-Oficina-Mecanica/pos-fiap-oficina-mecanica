@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
@@ -34,26 +35,6 @@ type NovoMecanicoInput struct {
 	Email   string
 	Senha   string
 	Escopos []string
-}
-
-var escoposOficiais = map[string]struct{}{
-	"mecanicos:escrever":  {},
-	"clientes:ler":        {},
-	"clientes:escrever":   {},
-	"veiculos:ler":        {},
-	"veiculos:escrever":   {},
-	"os:ler":              {},
-	"os:escrever":         {},
-	"orcamentos:ler":      {},
-	"orcamentos:escrever": {},
-	"orcamentos:decidir":  {},
-	"servicos:ler":        {},
-	"servicos:escrever":   {},
-	"estoque:ler":         {},
-	"estoque:escrever":    {},
-	"estoque:movimentar":  {},
-	"compras:ler":         {},
-	"compras:escrever":    {},
 }
 
 func Novo(input NovoMecanicoInput) (Mecanico, string, error) {
@@ -94,7 +75,7 @@ func escoposValidos(escopos []string) []string {
 	validos := make([]string, 0, len(escopos))
 	for _, escopo := range escopos {
 		escopo = strings.TrimSpace(escopo)
-		if _, ok := escoposOficiais[escopo]; !ok {
+		if !seguranca.EscopoValido(escopo) {
 			continue
 		}
 		if _, ok := seen[escopo]; ok {
@@ -108,10 +89,9 @@ func escoposValidos(escopos []string) []string {
 
 func todosEscoposOficiais(escopos []string) bool {
 	for _, escopo := range escopos {
-		if _, ok := escoposOficiais[strings.TrimSpace(escopo)]; !ok {
+		if !seguranca.EscopoValido(strings.TrimSpace(escopo)) {
 			return false
 		}
 	}
 	return true
 }
-
