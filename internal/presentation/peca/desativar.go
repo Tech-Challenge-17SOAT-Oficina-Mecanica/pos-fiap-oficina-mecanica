@@ -50,16 +50,16 @@ func responderErroDesativacao(writer http.ResponseWriter, err error) {
 
 	switch {
 	case errors.Is(err, peca.ErrIdentificadorInvalido):
-		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "pecaId")
 	case errors.Is(err, peca.ErrNaoEncontrada):
-		problema(writer, http.StatusNotFound, "Não encontrado", "peca inexistente")
+		problema(writer, http.StatusNotFound, "Não encontrado", "peca inexistente", "")
 	case errors.Is(err, pecaDomain.ErrJaInativa):
-		problema(writer, http.StatusConflict, "Conflito", err.Error())
+		problema(writer, http.StatusConflict, "Conflito", err.Error(), "")
 	case errors.As(err, &saldoReservado):
-		problema(writer, http.StatusConflict, "Conflito", saldoReservado.Error())
+		problema(writer, http.StatusConflict, "Conflito", saldoReservado.Error(), "")
 	case errors.As(err, &emOrcamento):
-		problema(writer, http.StatusConflict, "Conflito", emOrcamento.Error())
+		problema(writer, http.StatusConflict, "Conflito", emOrcamento.Error(), "")
 	default:
-		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao desativar peça")
+		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao desativar peça", "")
 	}
 }

@@ -9,6 +9,8 @@ type Usuario struct {
 }
 
 type Claims struct {
-	UsuarioID string
-	Escopos   []string
+	UsuarioID      string
+	ClienteID      string
+	OrdemServicoID string
+	Escopos        []string
 }

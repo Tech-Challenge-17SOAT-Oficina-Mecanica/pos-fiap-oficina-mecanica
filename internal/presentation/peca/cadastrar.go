@@ -22,7 +22,7 @@ func NewCadastrarPecaHandler(useCase peca.CadastrarPeca) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var corpo cadastroRequest
 		if err := json.NewDecoder(request.Body).Decode(&corpo); err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido")
+			problema(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido", "")
 			return
 		}
 
@@ -37,7 +37,7 @@ func NewCadastrarPecaHandler(useCase peca.CadastrarPeca) http.HandlerFunc {
 			corpo.Fabricante, precoVenda, corpo.EstoqueMinimo,
 		)
 		if err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
 			return
 		}
 
@@ -57,10 +57,10 @@ func responderErroCadastro(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, peca.ErrCategoriaInvalida),
 		errors.Is(err, peca.ErrIdentificadorInvalido):
-		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "categoriaId")
 	case errors.Is(err, peca.ErrDescricaoDuplicada):
-		problema(writer, http.StatusConflict, "Conflito", err.Error())
+		problema(writer, http.StatusConflict, "Conflito", err.Error(), "descricao")
 	default:
-		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao cadastrar peça")
+		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao cadastrar peça", "")
 	}
 }

@@ -129,3 +129,76 @@ func TestConsultarNaoDevolveDataCriacao(t *testing.T) {
 		t.Fatalf("dataCriacao vazou para a consulta: %s", corpo)
 	}
 }
+
+// Regressão dos apontamentos de revisão: booleano inválido não pode virar false
+// silenciosamente, e o erro precisa apontar o parâmetro culpado.
+func TestConsultarRejeitaBooleanoInvalido(t *testing.T) {
+	for _, parametro := range []string{"somenteDisponiveis", "incluirInativos"} {
+		t.Run(parametro, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodGet, "/estoque/pecas?descricao=filtro&"+parametro+"=abc", nil)
+			NewConsultarPecasHandler(peca.NewConsultarPecas(consultaRepositorioVazio{})).ServeHTTP(response, request)
+
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, esperado 400. corpo=%s", response.Code, response.Body.String())
+			}
+			var problem struct {
+				Erros []struct {
+					Campo string `json:"campo"`
+				} `json:"erros"`
+			}
+			if err := json.Unmarshal(response.Body.Bytes(), &problem); err != nil {
+				t.Fatal(err)
+			}
+			if len(problem.Erros) != 1 || problem.Erros[0].Campo != parametro {
+				t.Fatalf("erros = %+v, esperado apontar %q", problem.Erros, parametro)
+			}
+		})
+	}
+}
+
+func TestConsultarAceitaBooleanoValido(t *testing.T) {
+	for _, valor := range []string{"true", "false"} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/estoque/pecas?descricao=filtro&incluirInativos="+valor, nil)
+		NewConsultarPecasHandler(peca.NewConsultarPecas(consultaRepositorioVazio{})).ServeHTTP(response, request)
+		if response.Code != http.StatusOK {
+			t.Fatalf("valor %q: status = %d", valor, response.Code)
+		}
+	}
+}
+
+func TestPaginacaoInvalidaApontaCampo(t *testing.T) {
+	response := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/estoque/pecas?descricao=filtro&tamanho=51", nil)
+	NewConsultarPecasHandler(peca.NewConsultarPecas(consultaRepositorioVazio{})).ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, esperado 400", response.Code)
+	}
+	if !strings.Contains(response.Body.String(), `"campo":"tamanho"`) {
+		t.Fatalf("erro deveria apontar o campo tamanho: %s", response.Body.String())
+	}
+}
+
+func TestCadastroInvalidoApontaCampo(t *testing.T) {
+	response := cadastrar(t, `{"nome":"","descricao":"Valida","categoriaId":"7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94"}`,
+		&cadastrarRepositorioFake{})
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d", response.Code)
+	}
+	if !strings.Contains(response.Body.String(), `"campo":"nome"`) {
+		t.Fatalf("erro deveria apontar o campo nome: %s", response.Body.String())
+	}
+}
+
+type consultaRepositorioVazio struct{}
+
+func (consultaRepositorioVazio) BuscarPorFiltro(context.Context, peca.Filtros, int, int) ([]pecaDomain.Peca, int, error) {
+	return nil, 0, nil
+}
+
+func (consultaRepositorioVazio) BuscarPorID(context.Context, string) (pecaDomain.Peca, error) {
+	return pecaDomain.Peca{}, nil
+}

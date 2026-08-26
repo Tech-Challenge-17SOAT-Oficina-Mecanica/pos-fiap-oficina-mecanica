@@ -44,13 +44,25 @@ func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
 
 		paginacao, err := sharedhttp.LerPaginacao(query)
 		if err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
 			return
 		}
 
 		quantidade, err := lerQuantidade(query.Get("quantidadeDesejada"))
 		if err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "quantidadeDesejada")
+			return
+		}
+
+		somenteDisponiveis, err := sharedhttp.LerBooleano(query, "somenteDisponiveis")
+		if err != nil {
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
+			return
+		}
+
+		incluirInativos, err := sharedhttp.LerBooleano(query, "incluirInativos")
+		if err != nil {
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
 			return
 		}
 
@@ -59,8 +71,8 @@ func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
 			Descricao:          query.Get("descricao"),
 			CategoriaID:        query.Get("categoriaId"),
 			Fabricante:         query.Get("fabricante"),
-			SomenteDisponiveis: query.Get("somenteDisponiveis") == "true",
-			IncluirInativos:    query.Get("incluirInativos") == "true",
+			SomenteDisponiveis: somenteDisponiveis,
+			IncluirInativos:    incluirInativos,
 			QuantidadeDesejada: quantidade,
 		}
 
@@ -82,7 +94,7 @@ func NewConsultarPecaPorIDHandler(useCase peca.ConsultarPecas) http.HandlerFunc 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		quantidade, err := lerQuantidade(request.URL.Query().Get("quantidadeDesejada"))
 		if err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "quantidadeDesejada")
 			return
 		}
 
@@ -145,22 +157,34 @@ func lerQuantidade(valor string) (*int64, error) {
 func responderErro(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, peca.ErrNaoEncontrada):
-		problema(writer, http.StatusNotFound, "Não encontrado", err.Error())
-	case errors.Is(err, peca.ErrFiltroObrigatorio),
-		errors.Is(err, peca.ErrDescricaoCurta),
-		errors.Is(err, peca.ErrQuantidadeInvalida),
-		errors.Is(err, peca.ErrIdentificadorInvalido):
-		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+		problema(writer, http.StatusNotFound, "Não encontrado", err.Error(), "")
+	case errors.Is(err, peca.ErrFiltroObrigatorio):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "descricao")
+	case errors.Is(err, peca.ErrDescricaoCurta):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "descricao")
+	case errors.Is(err, peca.ErrQuantidadeInvalida):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "quantidadeDesejada")
+	case errors.Is(err, peca.ErrIdentificadorInvalido):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "pecaId")
 	default:
-		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao consultar peças")
+		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao consultar peças", "")
 	}
 }
 
-func problema(writer http.ResponseWriter, status int, title, detail string) {
-	sharedhttp.WriteProblem(writer, sharedhttp.Problem{
+func problema(writer http.ResponseWriter, status int, title, detail, campo string) {
+	problem := sharedhttp.Problem{
 		Type:   "https://api.oficina-mecanica.dev/errors/estoque",
 		Title:  title,
 		Status: status,
 		Detail: detail,
-	})
+	}
+	if campo != "" {
+		problem.Erros = []sharedhttp.FieldError{{Campo: campo, Mensagem: detail}}
+	}
+	sharedhttp.WriteProblem(writer, problem)
+}
+
+// problemaDeErro usa o campo que o proprio erro carrega, quando ele carrega.
+func problemaDeErro(writer http.ResponseWriter, status int, title string, err error) {
+	problema(writer, status, title, err.Error(), sharedhttp.CampoDoErro(err))
 }

@@ -176,14 +176,15 @@ antes, no registro do problema encontrado.
 **Persistência**
 
 - Consulta: `ordem_servico` (status e vínculo), `servico` (catálogo).
-- Altera: `orcamento_servico` (insert dos serviços vinculados), `orcamento` (`valor_total`, `updated_at`).
+- Altera: `orcamento_item` (insert dos serviços vinculados) e `orcamento` (`data_atualizacao`).
 
-Campos de `orcamento_servico`: `id`, `orcamento_id`, `servico_id`, `descricao`, `valor_unitario`,
-`observacao`, `created_at`, `updated_at`.
+Campos usados de `orcamento_item`: `id`, `orcamento_id`, `servico_id`, `tipo_item`, `descricao`,
+`quantidade`, `valor_unitario`, `valor_total` e `observacao`.
 
 Regras de persistência: o serviço deve pertencer ao orçamento identificado para a OS; não é
 permitida duplicidade de `servico_id` dentro do mesmo orçamento; a inclusão dos serviços e a
-atualização do valor total ocorrem na mesma transação; em caso de erro, nenhuma alteração parcial
+atualização da data do orçamento ocorrem na mesma transação; o valor total é calculado pela soma
+dos itens; em caso de erro, nenhuma alteração parcial
 permanece salva.
 
 **Saída da API**
@@ -294,8 +295,8 @@ Durante a execução, o mesmo contrato responde com o orçamento complementar:
 
 **Repositório**
 
-- [ ] Persistir os registros em `orcamento_servico`
-- [ ] Persistir o novo valor total do orçamento
+- [ ] Persistir os registros em `orcamento_item`
+- [ ] Calcular o novo valor total do orçamento
 
 **Transação**
 

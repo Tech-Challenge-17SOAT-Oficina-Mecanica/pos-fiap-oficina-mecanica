@@ -1,9 +1,10 @@
 package peca
 
 import (
-	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const (
@@ -16,29 +17,27 @@ const (
 	TipoPeca            = "PECA"
 )
 
-var removedorAcentos = strings.NewReplacer(
-	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a",
-	"é", "e", "è", "e", "ê", "e", "ë", "e",
-	"í", "i", "ì", "i", "î", "i", "ï", "i",
-	"ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
-	"ú", "u", "ù", "u", "û", "u", "ü", "u",
-	"ç", "c", "ñ", "n",
-	"Á", "A", "À", "A", "Â", "A", "Ã", "A", "Ä", "A",
-	"É", "E", "È", "E", "Ê", "E", "Ë", "E",
-	"Í", "I", "Ì", "I", "Î", "I", "Ï", "I",
-	"Ó", "O", "Ò", "O", "Ô", "O", "Õ", "O", "Ö", "O",
-	"Ú", "U", "Ù", "U", "Û", "U", "Ü", "U",
-	"Ç", "C", "Ñ", "N",
+// Os erros carregam o parametro que os causou, para a resposta preencher o bloco `erros`
+// do problem+json alem do `detail`.
+var (
+	ErrNomeInvalido          = ErroValidacao{"nome", "nome deve ter entre 2 e 150 caracteres"}
+	ErrDescricaoInvalida     = ErroValidacao{"descricao", "descricao deve ter entre 3 e 500 caracteres"}
+	ErrCategoriaObrigatoria  = ErroValidacao{"categoriaId", "categoriaId e obrigatorio"}
+	ErrFabricanteInvalido    = ErroValidacao{"fabricante", "fabricante deve ter no maximo 150 caracteres"}
+	ErrPrecoVendaInvalido    = ErroValidacao{"precoVenda", "precoVenda deve ser maior ou igual a zero"}
+	ErrEstoqueMinimoInvalido = ErroValidacao{"estoqueMinimo", "estoqueMinimo deve ser maior ou igual a zero"}
 )
 
-var (
-	ErrNomeInvalido          = errors.New("nome deve ter entre 2 e 150 caracteres")
-	ErrDescricaoInvalida     = errors.New("descricao deve ter entre 3 e 500 caracteres")
-	ErrCategoriaObrigatoria  = errors.New("categoriaId e obrigatorio")
-	ErrFabricanteInvalido    = errors.New("fabricante deve ter no maximo 150 caracteres")
-	ErrPrecoVendaInvalido    = errors.New("precoVenda deve ser maior ou igual a zero")
-	ErrEstoqueMinimoInvalido = errors.New("estoqueMinimo deve ser maior ou igual a zero")
-)
+// ErroValidacao e comparavel, entao errors.Is continua funcionando por identidade.
+type ErroValidacao struct {
+	Campo    string
+	Mensagem string
+}
+
+func (erro ErroValidacao) Error() string { return erro.Mensagem }
+
+// CampoInvalido permite a camada HTTP apontar o parametro culpado na resposta.
+func (erro ErroValidacao) CampoInvalido() string { return erro.Campo }
 
 // Cadastro reune os dados que o cliente informa. O codigo, o id, o saldo e a data de
 // criacao nao entram aqui: sao gerados pelo sistema ou por outros fluxos.
@@ -53,21 +52,14 @@ type Cadastro struct {
 	UnidadeMedida        string
 }
 
-// NormalizarDescricao devolve a forma usada na regra de duplicidade: sem acento, sem
-// espaco duplo e em minusculas.
-func NormalizarDescricao(valor string) string {
-	semAcento := removedorAcentos.Replace(valor)
-	return strings.ToLower(strings.Join(strings.Fields(semAcento), " "))
-}
-
 func NovoCadastro(nome, descricao, categoriaID string, fabricante, precoVenda *string, estoqueMinimo *int64) (Cadastro, error) {
 	cadastro := Cadastro{
 		Nome:          strings.TrimSpace(nome),
-		Descricao:     strings.Join(strings.Fields(descricao), " "),
+		Descricao:     validation.ColapsarEspacos(descricao),
 		CategoriaID:   strings.TrimSpace(categoriaID),
 		UnidadeMedida: UnidadeMedidaPadrao,
 	}
-	cadastro.DescricaoNormalizada = NormalizarDescricao(cadastro.Descricao)
+	cadastro.DescricaoNormalizada = validation.NormalizarDescricao(cadastro.Descricao)
 
 	if tamanho := len([]rune(cadastro.Nome)); tamanho < nomeMinimo || tamanho > nomeMaximo {
 		return Cadastro{}, ErrNomeInvalido

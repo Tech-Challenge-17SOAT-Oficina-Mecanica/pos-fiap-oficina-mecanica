@@ -24,3 +24,18 @@ func TestIsDocumento(t *testing.T) {
 		}
 	}
 }
+
+func TestMascararDocumento(t *testing.T) {
+	for _, test := range []struct {
+		documento, tipo, want string
+	}{
+		{"390.533.447-05", "CPF", "***.***.***-05"},
+		{"04.252.011/0001-10", "CNPJ", "**.***.***/****-10"},
+		{"1", "CPF", "*"},
+		{"12", "outro", "**"},
+	} {
+		if got := MascararDocumento(test.documento, test.tipo); got != test.want {
+			t.Fatalf("MascararDocumento(%q, %q)=%q", test.documento, test.tipo, got)
+		}
+	}
+}

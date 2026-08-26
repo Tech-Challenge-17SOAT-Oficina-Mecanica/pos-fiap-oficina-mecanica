@@ -4,9 +4,11 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
-func TestNormalizarDescricao(t *testing.T) {
+func TestNormalizarDescricaoAplicadaNoCadastro(t *testing.T) {
 	casos := []struct {
 		entrada  string
 		esperado string
@@ -20,7 +22,7 @@ func TestNormalizarDescricao(t *testing.T) {
 
 	for _, caso := range casos {
 		t.Run(caso.entrada, func(t *testing.T) {
-			if obtido := NormalizarDescricao(caso.entrada); obtido != caso.esperado {
+			if obtido := validation.NormalizarDescricao(caso.entrada); obtido != caso.esperado {
 				t.Fatalf("NormalizarDescricao(%q) = %q, esperado %q", caso.entrada, obtido, caso.esperado)
 			}
 		})

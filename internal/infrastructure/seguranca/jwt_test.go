@@ -24,6 +24,14 @@ func TestJWT(t *testing.T) {
 	if err != nil || claims.UsuarioID != "usuario" || len(claims.Escopos) != 1 {
 		t.Fatalf("claims: %#v, %v", claims, err)
 	}
+	clienteRaw, err := service.GerarCliente("cliente", "ordem-servico")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clienteClaims, err := service.Validar(clienteRaw)
+	if err != nil || clienteClaims.ClienteID != "cliente" || clienteClaims.OrdemServicoID != "ordem-servico" || len(clienteClaims.Escopos) != 1 || clienteClaims.Escopos[0] != "orcamentos:ler" {
+		t.Fatalf("claims cliente: %#v, %v", clienteClaims, err)
+	}
 	if _, err := service.Validar("invalido"); err == nil {
 		t.Fatal("esperava token inválido")
 	}
