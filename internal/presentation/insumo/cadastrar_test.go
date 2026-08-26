@@ -122,3 +122,28 @@ func TestCadastrarInsumoErros(t *testing.T) {
 		})
 	}
 }
+
+// Regressão do apontamento de revisão: o erro precisa apontar o parâmetro culpado.
+func TestCadastroInvalidoApontaCampo(t *testing.T) {
+	casos := []struct {
+		nome  string
+		corpo string
+		campo string
+	}{
+		{"nome", `{"nome":"","descricao":"Valida","categoriaId":"e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724","unidadeMedida":"L","custoUnitario":1}`, "nome"},
+		{"unidadeMedida", `{"nome":"Item","descricao":"Valida","categoriaId":"e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724","unidadeMedida":"CX","custoUnitario":1}`, "unidadeMedida"},
+		{"custoUnitario", `{"nome":"Item","descricao":"Valida","categoriaId":"e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724","unidadeMedida":"L"}`, "custoUnitario"},
+	}
+
+	for _, caso := range casos {
+		t.Run(caso.nome, func(t *testing.T) {
+			response := cadastrar(t, caso.corpo, &cadastrarRepositorioFake{})
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d", response.Code)
+			}
+			if !strings.Contains(response.Body.String(), `"campo":"`+caso.campo+`"`) {
+				t.Fatalf("erro deveria apontar %q: %s", caso.campo, response.Body.String())
+			}
+		})
+	}
+}

@@ -1,7 +1,6 @@
 package peca
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 
@@ -18,14 +17,27 @@ const (
 	TipoPeca            = "PECA"
 )
 
+// Os erros carregam o parametro que os causou, para a resposta preencher o bloco `erros`
+// do problem+json alem do `detail`.
 var (
-	ErrNomeInvalido          = errors.New("nome deve ter entre 2 e 150 caracteres")
-	ErrDescricaoInvalida     = errors.New("descricao deve ter entre 3 e 500 caracteres")
-	ErrCategoriaObrigatoria  = errors.New("categoriaId e obrigatorio")
-	ErrFabricanteInvalido    = errors.New("fabricante deve ter no maximo 150 caracteres")
-	ErrPrecoVendaInvalido    = errors.New("precoVenda deve ser maior ou igual a zero")
-	ErrEstoqueMinimoInvalido = errors.New("estoqueMinimo deve ser maior ou igual a zero")
+	ErrNomeInvalido          = ErroValidacao{"nome", "nome deve ter entre 2 e 150 caracteres"}
+	ErrDescricaoInvalida     = ErroValidacao{"descricao", "descricao deve ter entre 3 e 500 caracteres"}
+	ErrCategoriaObrigatoria  = ErroValidacao{"categoriaId", "categoriaId e obrigatorio"}
+	ErrFabricanteInvalido    = ErroValidacao{"fabricante", "fabricante deve ter no maximo 150 caracteres"}
+	ErrPrecoVendaInvalido    = ErroValidacao{"precoVenda", "precoVenda deve ser maior ou igual a zero"}
+	ErrEstoqueMinimoInvalido = ErroValidacao{"estoqueMinimo", "estoqueMinimo deve ser maior ou igual a zero"}
 )
+
+// ErroValidacao e comparavel, entao errors.Is continua funcionando por identidade.
+type ErroValidacao struct {
+	Campo    string
+	Mensagem string
+}
+
+func (erro ErroValidacao) Error() string { return erro.Mensagem }
+
+// CampoInvalido permite a camada HTTP apontar o parametro culpado na resposta.
+func (erro ErroValidacao) CampoInvalido() string { return erro.Campo }
 
 // Cadastro reune os dados que o cliente informa. O codigo, o id, o saldo e a data de
 // criacao nao entram aqui: sao gerados pelo sistema ou por outros fluxos.

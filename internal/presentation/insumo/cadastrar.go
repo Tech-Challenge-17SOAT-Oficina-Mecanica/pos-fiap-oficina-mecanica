@@ -42,7 +42,7 @@ func NewCadastrarInsumoHandler(useCase insumo.CadastrarInsumo) http.HandlerFunc 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var corpo cadastroRequest
 		if err := json.NewDecoder(request.Body).Decode(&corpo); err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido")
+			problema(writer, http.StatusBadRequest, "Dados inválidos", "corpo da requisição inválido", "")
 			return
 		}
 
@@ -51,7 +51,7 @@ func NewCadastrarInsumoHandler(useCase insumo.CadastrarInsumo) http.HandlerFunc 
 			texto(corpo.CustoUnitario), texto(corpo.EstoqueMinimo),
 		)
 		if err != nil {
-			problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
 			return
 		}
 
@@ -103,19 +103,28 @@ func responderErroCadastro(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, insumo.ErrCategoriaInvalida),
 		errors.Is(err, insumo.ErrIdentificadorInvalido):
-		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error())
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "categoriaId")
 	case errors.Is(err, insumo.ErrDescricaoDuplicada):
-		problema(writer, http.StatusConflict, "Conflito", err.Error())
+		problema(writer, http.StatusConflict, "Conflito", err.Error(), "descricao")
 	default:
-		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao cadastrar insumo")
+		problema(writer, http.StatusInternalServerError, "Erro interno", "falha ao cadastrar insumo", "")
 	}
 }
 
-func problema(writer http.ResponseWriter, status int, title, detail string) {
-	sharedhttp.WriteProblem(writer, sharedhttp.Problem{
+func problema(writer http.ResponseWriter, status int, title, detail, campo string) {
+	problem := sharedhttp.Problem{
 		Type:   "https://api.oficina-mecanica.dev/errors/estoque",
 		Title:  title,
 		Status: status,
 		Detail: detail,
-	})
+	}
+	if campo != "" {
+		problem.Erros = []sharedhttp.FieldError{{Campo: campo, Mensagem: detail}}
+	}
+	sharedhttp.WriteProblem(writer, problem)
+}
+
+// problemaDeErro usa o campo que o próprio erro carrega, quando ele carrega.
+func problemaDeErro(writer http.ResponseWriter, status int, title string, err error) {
+	problema(writer, status, title, err.Error(), sharedhttp.CampoDoErro(err))
 }

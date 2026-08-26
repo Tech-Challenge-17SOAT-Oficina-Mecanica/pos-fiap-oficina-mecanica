@@ -1,7 +1,6 @@
 package http
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -14,8 +13,8 @@ const (
 )
 
 var (
-	ErrPaginaInvalida  = errors.New("pagina deve ser maior ou igual a zero")
-	ErrTamanhoInvalido = fmt.Errorf("tamanho deve estar entre 1 e %d", TamanhoMaximo)
+	ErrPaginaInvalida  = NovoErroCampo("pagina", "pagina deve ser maior ou igual a zero")
+	ErrTamanhoInvalido = NovoErroCampo("tamanho", fmt.Sprintf("tamanho deve estar entre 1 e %d", TamanhoMaximo))
 )
 
 type Paginacao struct {

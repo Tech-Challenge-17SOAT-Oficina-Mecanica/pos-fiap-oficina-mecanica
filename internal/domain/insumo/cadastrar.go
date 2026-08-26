@@ -1,7 +1,6 @@
 package insumo
 
 import (
-	"errors"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,14 +19,27 @@ const (
 // item independente no catalogo.
 var UnidadesMedida = []string{"UN", "L", "ML", "KG", "G", "M"}
 
+// Os erros carregam o parametro que os causou, para a resposta preencher o bloco `erros`
+// do problem+json alem do `detail`.
 var (
-	ErrNomeInvalido          = errors.New("nome deve ter entre 2 e 150 caracteres")
-	ErrDescricaoInvalida     = errors.New("descricao deve ter entre 3 e 500 caracteres")
-	ErrCategoriaObrigatoria  = errors.New("categoriaId e obrigatorio")
-	ErrUnidadeInvalida       = errors.New("unidadeMedida deve ser uma de: UN, L, ML, KG, G, M")
-	ErrCustoInvalido         = errors.New("custoUnitario e obrigatorio e nao pode ser negativo")
-	ErrEstoqueMinimoInvalido = errors.New("estoqueMinimo nao pode ser negativo")
+	ErrNomeInvalido          = ErroValidacao{"nome", "nome deve ter entre 2 e 150 caracteres"}
+	ErrDescricaoInvalida     = ErroValidacao{"descricao", "descricao deve ter entre 3 e 500 caracteres"}
+	ErrCategoriaObrigatoria  = ErroValidacao{"categoriaId", "categoriaId e obrigatorio"}
+	ErrUnidadeInvalida       = ErroValidacao{"unidadeMedida", "unidadeMedida deve ser uma de: UN, L, ML, KG, G, M"}
+	ErrCustoInvalido         = ErroValidacao{"custoUnitario", "custoUnitario e obrigatorio e nao pode ser negativo"}
+	ErrEstoqueMinimoInvalido = ErroValidacao{"estoqueMinimo", "estoqueMinimo nao pode ser negativo"}
 )
+
+// ErroValidacao e comparavel, entao errors.Is continua funcionando por identidade.
+type ErroValidacao struct {
+	Campo    string
+	Mensagem string
+}
+
+func (erro ErroValidacao) Error() string { return erro.Mensagem }
+
+// CampoInvalido permite a camada HTTP apontar o parametro culpado na resposta.
+func (erro ErroValidacao) CampoInvalido() string { return erro.Campo }
 
 type Cadastro struct {
 	Nome                 string

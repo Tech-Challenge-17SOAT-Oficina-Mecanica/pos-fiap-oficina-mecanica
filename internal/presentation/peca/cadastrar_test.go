@@ -129,3 +129,26 @@ func TestConsultarNaoDevolveDataCriacao(t *testing.T) {
 		t.Fatalf("dataCriacao vazou para a consulta: %s", corpo)
 	}
 }
+
+// Regressão do apontamento de revisão: o erro precisa apontar o parâmetro culpado.
+func TestCadastroInvalidoApontaCampo(t *testing.T) {
+	response := cadastrar(t, `{"nome":"","descricao":"Valida","categoriaId":"7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94"}`,
+		&cadastrarRepositorioFake{})
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d", response.Code)
+	}
+	if !strings.Contains(response.Body.String(), `"campo":"nome"`) {
+		t.Fatalf("erro deveria apontar o campo nome: %s", response.Body.String())
+	}
+}
+
+type consultaRepositorioVazio struct{}
+
+func (consultaRepositorioVazio) BuscarPorFiltro(context.Context, peca.Filtros, int, int) ([]pecaDomain.Peca, int, error) {
+	return nil, 0, nil
+}
+
+func (consultaRepositorioVazio) BuscarPorID(context.Context, string) (pecaDomain.Peca, error) {
+	return pecaDomain.Peca{}, nil
+}
