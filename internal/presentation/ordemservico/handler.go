@@ -5,22 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
-	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 )
 
-const escopoCriarOrdemServico = "os:escrever"
-
 type CriarUseCase interface {
 	Execute(context.Context, application.CriarInput) (domain.OrdemDeServico, error)
-}
-
-type TokenValidator interface {
-	Validar(string) (seguranca.Claims, error)
 }
 
 type criarRequest struct {
@@ -36,11 +28,8 @@ type criarResponse struct {
 	CriadaEm       string `json:"criadaEm"`
 }
 
-func NewCriarHandler(useCase CriarUseCase, token TokenValidator) http.HandlerFunc {
+func NewCriarHandler(useCase CriarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if !autorizado(writer, request, token) {
-			return
-		}
 		var input criarRequest
 		decoder := json.NewDecoder(request.Body)
 		decoder.DisallowUnknownFields()
@@ -63,27 +52,6 @@ func NewCriarHandler(useCase CriarUseCase, token TokenValidator) http.HandlerFun
 			CriadaEm:       ordem.CriadaEm.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
-}
-
-func autorizado(writer http.ResponseWriter, request *http.Request, token TokenValidator) bool {
-	header := request.Header.Get("Authorization")
-	raw := strings.TrimSpace(strings.TrimPrefix(header, "Bearer "))
-	if raw == "" || raw == header {
-		problem(writer, http.StatusUnauthorized, "Não autorizado", "token ausente ou expirado")
-		return false
-	}
-	claims, err := token.Validar(raw)
-	if err != nil {
-		problem(writer, http.StatusUnauthorized, "Não autorizado", "token ausente ou expirado")
-		return false
-	}
-	for _, escopo := range claims.Escopos {
-		if escopo == escopoCriarOrdemServico {
-			return true
-		}
-	}
-	problem(writer, http.StatusForbidden, "Acesso negado", "usuário sem o escopo "+escopoCriarOrdemServico)
-	return false
 }
 
 func writeError(writer http.ResponseWriter, err error) {

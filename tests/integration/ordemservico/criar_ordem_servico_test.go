@@ -13,6 +13,7 @@ import (
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	presentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/ordemservico"
+	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
 
@@ -33,7 +34,7 @@ type criarResponse struct {
 
 func TestCriarOrdemServico(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.Open(ctx)
+	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
@@ -50,12 +51,12 @@ func TestCriarOrdemServico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewCriarHandler(application.NewCriar(infrastructure.NewPostgresRepository(db)), jwt)
+	handler := segurancaPresentation.RequireScope(jwt, "os:escrever", presentation.NewCriarHandler(application.NewCriar(infrastructure.NewPostgresRepository(db))))
 
 	request := httptest.NewRequest(http.MethodPost, "/ordens-servico", strings.NewReader(`{"clienteId":"`+clienteAna+`","veiculoId":"`+veiculoAna+`"}`))
 	request.Header.Set("Authorization", "Bearer "+token)
 	response := httptest.NewRecorder()
-	handler(response, request)
+	handler.ServeHTTP(response, request)
 	if response.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}

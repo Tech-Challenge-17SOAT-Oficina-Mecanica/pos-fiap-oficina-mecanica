@@ -11,6 +11,7 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'mecanicos:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'veiculos:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:escrever')

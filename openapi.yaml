@@ -4,12 +4,14 @@ info:
   version: 1.0.0
 servers:
   - url: http://localhost:8080
+tags:
+  - name: Veículos
 paths:
   /ordens-servico:
     post:
       tags: [Ordem de Serviço]
       summary: Cria uma Ordem de Serviço
-      description: Cria a OS com status RECEBIDA para um veículo vinculado ao cliente informado.
+      description: Cria a OS com status RECEBIDA para um veículo vinculado ao cliente informado. Exige o escopo `os:escrever`.
       security:
         - bearerAuth: []
       requestBody:
@@ -21,14 +23,8 @@ paths:
               required: [clienteId, veiculoId]
               additionalProperties: false
               properties:
-                clienteId:
-                  type: string
-                  format: uuid
-                  example: 10000000-0000-0000-0000-000000000001
-                veiculoId:
-                  type: string
-                  format: uuid
-                  example: 20000000-0000-0000-0000-000000000001
+                clienteId: { type: string, format: uuid, example: 20000000-0000-0000-0000-000000000001 }
+                veiculoId: { type: string, format: uuid, example: 30000000-0000-0000-0000-000000000001 }
       responses:
         '201':
           description: Ordem de Serviço criada
@@ -36,7 +32,6 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [ordemServicoId, clienteId, veiculoId, status, criadaEm]
                 properties:
                   ordemServicoId: { type: string, format: uuid }
                   clienteId: { type: string, format: uuid }
@@ -49,6 +44,52 @@ paths:
         '404': { description: Cliente ou veículo não encontrado }
         '409': { description: Veículo não vinculado ao cliente informado }
         '500': { description: Erro inesperado ao criar a Ordem de Serviço }
+  /veiculos:
+    get:
+      tags: [Veículos]
+      summary: Consulta um veículo pela placa
+      description: Exige o escopo `veiculos:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: placa
+          in: query
+          required: true
+          schema: { type: string, example: ABC1D23 }
+        - name: incluirInativos
+          in: query
+          required: true
+          schema: { type: boolean }
+      responses:
+        '200': { description: Veículo encontrado }
+        '400': { description: Parâmetros inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:ler }
+        '404': { description: Veículo não encontrado }
+  /clientes/{clienteId}/veiculos:
+    post:
+      tags: [Veículos]
+      summary: Cadastra um veículo e o vincula ao cliente
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: clienteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '201': { description: Veículo cadastrado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Cliente não encontrado }
+        '409': { description: Cliente inativo ou placa já cadastrada }
   /clientes:
     get:
       tags: [Cliente]
@@ -269,6 +310,74 @@ paths:
                       properties:
                         ordemServicoId: { type: string, format: uuid }
                         status: { type: string, example: EM_EXECUCAO }
+  /veiculos/{veiculoId}:
+    put:
+      tags: [Veículos]
+      summary: Atualiza os dados de um veículo
+      description: Exige o escopo `veiculos:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CadastrarVeiculo' }
+      responses:
+        '200': { description: Veículo atualizado }
+        '400': { description: Dados inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Placa já cadastrada }
+        '412': { description: Versão divergente }
+        '428': { description: If-Match ausente }
+    delete:
+      tags: [Veículos]
+      summary: Inativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: motivo
+          in: query
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200': { description: Veículo inativado }
+        '204': { description: Veículo já inativo }
+        '400': { description: Identificador ou motivo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo possui OS em aberto }
+  /veiculos/{veiculoId}/reativacao:
+    post:
+      tags: [Veículos]
+      summary: Reativa um veículo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: veiculoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Veículo reativado }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo veiculos:escrever }
+        '404': { description: Veículo não encontrado }
+        '409': { description: Veículo ativo, placa em uso ou cliente inativo }
   /clientes/{clienteId}/reativacao:
     post:
       tags: [Cliente]
@@ -340,3 +449,12 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    CadastrarVeiculo:
+      type: object
+      required: [placa, marca, modelo, ano]
+      properties:
+        placa: { type: string, example: ABC1D23 }
+        marca: { type: string, example: Toyota }
+        modelo: { type: string, example: Corolla }
+        ano: { type: integer, example: 2024 }

@@ -2,23 +2,18 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func Open(ctx context.Context) (*pgxpool.Pool, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", env("DB_USER", "oficina"), env("DB_PASSWORD", "oficina"), env("DB_HOST", "localhost"), env("DB_PORT", "5432"), env("DB_NAME", "oficina"))
-	}
-	return pgxpool.New(ctx, dsn)
+func OpenPool() (*pgxpool.Pool, error) {
+	return pgxpool.New(context.Background(), dsn())
 }
 
-func env(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
+func dsn() string {
+	if value := os.Getenv("DATABASE_URL"); value != "" {
 		return value
 	}
-	return fallback
+	return "postgres://" + os.Getenv("DB_USER") + ":" + os.Getenv("DB_PASSWORD") + "@" + os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT") + "/" + os.Getenv("DB_NAME") + "?sslmode=disable"
 }

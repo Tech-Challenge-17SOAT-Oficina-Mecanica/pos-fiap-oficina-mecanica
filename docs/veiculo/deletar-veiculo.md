@@ -55,7 +55,7 @@ quando, e que sustenta qualquer discussão de garantia.
 | RNF-VEI-10 | A operação deve ser feita por API RESTful. |
 | RNF-VEI-11 | A operação deve ser acessível somente por usuário autorizado. |
 | RNF-VEI-12 | A exclusão deve ser lógica, nunca física — o registro permanece no banco. |
-| RNF-VEI-13 | A operação deve ser auditável, com registro de responsável, data e motivo. |
+| RNF-VEI-13 | A inativação registra responsável, data e motivo no próprio veículo. |
 | RNF-VEI-14 | A operação não deve alterar nenhuma Ordem de Serviço já emitida. |
 | RNF-VEI-15 | A operação deve ser idempotente: inativar um veículo já inativo não gera erro nem efeito adicional. |
 | RNF-VEI-16 | A unicidade de placa deve valer apenas entre veículos ativos. |
@@ -67,7 +67,7 @@ quando, e que sustenta qualquer discussão de garantia.
 3. O sistema verifica se o usuário está autorizado.
 4. O sistema verifica se o veículo possui OS em aberto.
 5. O sistema inativa o veículo.
-6. O sistema registra a operação na trilha de auditoria.
+6. O sistema registra responsável, data e motivo no veículo.
 
 **Fluxos Alternativos / Exceções**
 
@@ -92,7 +92,7 @@ quando, e que sustenta qualquer discussão de garantia.
 - As Ordens de Serviço históricas permanecem íntegras e continuam referenciando o veículo.
 - Não é possível abrir nova OS para esse veículo enquanto ele estiver inativo.
 - A placa fica liberada para um novo cadastro.
-- A operação está registrada na trilha de auditoria.
+- O veículo mantém responsável, data e motivo da inativação.
 
 ---
 
@@ -152,9 +152,7 @@ Nenhuma das duas operações tem corpo na requisição.
 4. Havendo OS em aberto, abortar com `409` e a lista das OS.
 5. Abrir transação.
 6. Marcar `veiculo.ativo = false` e gravar `inativadoEm`, `inativadoPor` e `motivoInativacao`.
-7. Registrar na trilha de auditoria.
-8. Registrar a inativação na trilha de auditoria.
-9. Commit.
+7. Commit.
 
 *Reativação (`POST /reativacao`)*
 
@@ -162,7 +160,6 @@ Nenhuma das duas operações tem corpo na requisição.
 2. Verificar que não existe outro veículo ativo com a mesma placa; havendo, retornar `409`.
 3. Verificar que o cliente proprietário está ativo; caso contrário, retornar `409`.
 4. Marcar `ativo = true` e limpar os campos de inativação.
-5. Registrar a reativação na trilha de auditoria.
 
 *Inativação em cascata, chamada por Cliente*
 
@@ -177,7 +174,7 @@ Nenhuma das duas operações tem corpo na requisição.
 
 - Consulta: `veiculo`, `cliente`, módulo de Ordem de Serviço (OS em aberto).
 - Altera: `veiculo.ativo`, `veiculo.inativado_em`, `veiculo.inativado_por`,
-  `veiculo.motivo_inativacao`, `auditoria` (insert).
+  `veiculo.motivo_inativacao`.
 - Não altera: nenhuma tabela de Ordem de Serviço, Orçamento ou financeiro.
 
 Índices e constraints:
@@ -251,9 +248,7 @@ Conflito por OS em aberto — `409`:
 
 - `VeiculoRepository`.
 - `ClienteRepository` (verificação da situação do proprietário na reativação).
-- `AuditoriaRepository`.
 - Módulo Ordem de Serviço — consulta de OS em aberto.
-- Trilha de auditoria.
 - Caso de uso Deletar Cliente — aciona este caso de uso via política de cascata.
 - Caso de uso Consultar Veículo (não deve retornar inativos).
 - Caso de uso Cadastrar Veículo (depende do índice parcial para permitir recadastro).
@@ -337,10 +332,6 @@ Conflito por OS em aberto — `409`:
 - [ ] Bloquear reativação quando houver outro veículo ativo com a mesma placa
 - [ ] Bloquear reativação quando o cliente proprietário estiver inativo
 - [ ] Restringir a operação ao escopo `veiculos:escrever`
-
-**Auditoria**
-
-- [ ] Registrar a inativação e a reativação na trilha de auditoria
 
 **Testes unitários**
 
