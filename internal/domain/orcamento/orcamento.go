@@ -1,12 +1,15 @@
 package orcamento
 
+import "time"
+
 const (
 	TipoPrincipal    = "PRINCIPAL"
 	TipoComplementar = "COMPLEMENTAR"
 	StatusCriado     = "CRIADO"
 )
 
-type Item struct {
+// ItemRegistrado é o item devolvido pelo registro de peças/insumos na OS.
+type ItemRegistrado struct {
 	ItemID        string  `json:"itemId"`
 	Codigo        string  `json:"codigo"`
 	Descricao     string  `json:"descricao"`
@@ -16,14 +19,59 @@ type Item struct {
 	ValorItem     float64 `json:"valorItem"`
 }
 
+// Resultado é a resposta do registro de peças/insumos: o orçamento afetado e seus itens.
 type Resultado struct {
-	OrdemServicoID    string  `json:"ordemServicoId"`
-	OrcamentoID       string  `json:"orcamentoId"`
-	OrcamentoOriginal string  `json:"orcamentoOriginalId,omitempty"`
-	TipoOrcamento     string  `json:"tipoOrcamento"`
-	StatusOrcamento   string  `json:"statusOrcamento"`
-	ItensRegistrados  []Item  `json:"itensRegistrados"`
-	ValorOrcamento    float64 `json:"valorOrcamento"`
-	ValorTotalGeral   float64 `json:"valorTotalGeral"`
-	RegistradoPor     string  `json:"registradoPor,omitempty"`
+	OrdemServicoID    string           `json:"ordemServicoId"`
+	OrcamentoID       string           `json:"orcamentoId"`
+	OrcamentoOriginal string           `json:"orcamentoOriginalId,omitempty"`
+	TipoOrcamento     string           `json:"tipoOrcamento"`
+	StatusOrcamento   string           `json:"statusOrcamento"`
+	ItensRegistrados  []ItemRegistrado `json:"itensRegistrados"`
+	ValorOrcamento    float64          `json:"valorOrcamento"`
+	ValorTotalGeral   float64          `json:"valorTotalGeral"`
+	RegistradoPor     string           `json:"registradoPor,omitempty"`
+}
+
+// Item, Orcamento, Problema, Cliente e Consulta sustentam GET /ordens-servico/{osId}/orcamento.
+type Item struct {
+	Tipo          string
+	Descricao     string
+	Quantidade    float64
+	ValorUnitario float64
+	ValorTotal    float64
+}
+
+type Orcamento struct {
+	ID             string
+	OriginalID     string
+	Tipo           string
+	Status         string
+	EstimativaDias *int
+	DataGeracao    time.Time
+	Itens          []Item
+	Problemas      []Problema
+	ValorTotal     float64
+}
+
+type Problema struct {
+	ID           string
+	Descricao    string
+	Observacoes  string
+	RegistradoEm time.Time
+}
+
+type Cliente struct {
+	ID            string
+	Nome          string
+	Documento     string
+	TipoDocumento string
+}
+
+type Consulta struct {
+	Cliente               Cliente
+	OrdemServicoID        string
+	StatusOrdemServico    string
+	Orcamentos            []Orcamento
+	ValorTotalGeral       float64
+	EstimativaEntregaDias *int
 }

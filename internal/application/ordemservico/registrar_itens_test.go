@@ -7,18 +7,14 @@ import (
 	domainOrcamento "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
 )
 
-type repositoryFake struct{}
+type registrarItensRepositoryFake struct{}
 
-func (repositoryFake) RegistrarItens(context.Context, RegistrarInput) (domainOrcamento.Resultado, error) {
+func (registrarItensRepositoryFake) RegistrarItens(context.Context, RegistrarInput) (domainOrcamento.Resultado, error) {
 	return domainOrcamento.Resultado{}, nil
 }
 
-func (repositoryFake) ConsultarOrcamentos(context.Context, string) ([]domainOrcamento.Resultado, error) {
-	return nil, nil
-}
-
 func TestRegistrarItensRejeitaItemRepetido(t *testing.T) {
-	useCase := NewRegistrarItens(repositoryFake{})
+	useCase := NewRegistrarItens(registrarItensRepositoryFake{})
 	_, err := useCase.Execute(context.Background(), RegistrarInput{
 		Tipo:  "PECA",
 		Itens: []ItemInput{{ItemID: "item-1", Quantidade: 1}, {ItemID: "item-1", Quantidade: 2}},
@@ -29,7 +25,7 @@ func TestRegistrarItensRejeitaItemRepetido(t *testing.T) {
 }
 
 func TestRegistrarItensRejeitaQuantidadeFracionadaDePeca(t *testing.T) {
-	useCase := NewRegistrarItens(repositoryFake{})
+	useCase := NewRegistrarItens(registrarItensRepositoryFake{})
 	_, err := useCase.Execute(context.Background(), RegistrarInput{
 		Tipo:  "PECA",
 		Itens: []ItemInput{{ItemID: "item-1", Quantidade: 1.5}},

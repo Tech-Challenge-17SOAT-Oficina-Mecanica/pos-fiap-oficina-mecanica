@@ -60,6 +60,7 @@ pauta, estão na tabela **Decisões já tomadas**, no fim do documento.
 | D-23 | Escopos de decisão do cliente                           | Média      | `orcamentos:decidir` nas duas rotas                               |
 | D-24 | Controle otimista com `If-Match`                        | Média      | Obrigatório em toda atualização de cadastro                       |
 | D-25 | Pagamento no MVP                                        | Média      | Fora do MVP; a entrega não bloqueia por pagamento                 |
+| D-26 | Limites de `pagina` e `tamanho`                         | Média      | `pagina` padrão `0`; `tamanho` padrão `20`, teto `50` em toda a API |
 
 ---
 
@@ -672,6 +673,41 @@ sistema.
 
 ---
 
+## D-26 · Limites de `pagina` e `tamanho`
+
+**Prioridade:** Média · **Afeta:** todos os contextos
+
+**Situação.** A D-21 padronizou os **nomes** do envelope paginado, mas não fixou os limites. Os
+documentos ficaram com dois tetos diferentes para `tamanho`: **100** em Peças, Insumos e nas três
+listagens de Ordem de Serviço, e **50** em Serviços (DT-23) e em Fornecedores. O padrão `20` e a
+`pagina` iniciada em zero, por outro lado, já eram unânimes em todos os contextos. Como a
+implementação do envelope é compartilhada, o teto variável exigiria passar o limite em cada
+chamada e abriria espaço para um contexto herdar o teto errado por descuido.
+
+**Opções**
+
+| Opção | Regra | Consequência |
+| ----- | ----- | ------------ |
+| A     | Teto único de **50** para toda a API | Uma constante compartilhada; alinha 5 documentos ao teto que Serviços e Fornecedores já usavam |
+| B     | Teto por contexto: 100 na maioria, 50 em Serviços e Fornecedores | Fiel ao que estava escrito; cada handler precisa declarar seu teto, e esquecer significa servir 100 onde deveria ser 50 |
+
+**Recomendação: A.** O teto existe para limitar o custo da consulta, e não há caso de uso no
+projeto que precise de mais de 50 itens por página — a diferença entre 50 e 100 não muda nenhuma
+tela, mas dobra o pior caso de cada listagem.
+
+**Decisão:** opção A. Para **toda listagem da API**: `pagina` inicia em zero, com padrão `0`;
+`tamanho` tem padrão `20` e teto `50`, devolvendo `400` fora da faixa. Os cinco documentos que
+declaravam teto 100 — [consultar-pecas.md](pecas/consultar-pecas.md),
+[consultar-insumos.md](insumos/consultar-insumos.md),
+[consultar-fila-de-atendimento.md](ordem-de-servico/consultar-fila-de-atendimento.md),
+[listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) e
+[monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) —
+foram alinhados. Os limites vivem em constantes únicas no pacote de HTTP compartilhado, e a
+validação é feita uma vez, junto do envelope.
+**Data:** 2026-08-24
+
+---
+
 ---
 
 ## Decisões já tomadas
@@ -703,7 +739,7 @@ documentos de contexto e nas tabelas de pontos em aberto.
 | DT-20 | O `codigo` do serviço segue `SER-000001`, em sequência global, sem reset, com seis dígitos. | [cadastrar-servico.md](servicos/cadastrar-servico.md) |
 | DT-21 | `tempoEstimadoMinutos` é obrigatório, com mínimo de 1 minuto. | [cadastrar-servico.md](servicos/cadastrar-servico.md) |
 | DT-22 | `id`, `codigo` e `dataCriacao` são imutáveis; enviados no corpo do `PATCH`, retornam `400`. `PATCH` é atualização parcial de verdade. | [atualizar-servico.md](servicos/atualizar-servico.md) |
-| DT-23 | Serviços inativos ficam fora da listagem por padrão; aparecem com `incluirInativos=true`. O teto de `tamanho` na paginação é **50**. | [consultar-servicos.md](servicos/consultar-servicos.md) |
+| DT-23 | Serviços inativos ficam fora da listagem por padrão; aparecem com `incluirInativos=true`. O teto de `tamanho` na paginação é **50** — teto que a D-26 estendeu depois a toda a API. | [consultar-servicos.md](servicos/consultar-servicos.md) e D-26 |
 | DT-24 | O catálogo de serviços é restrito à oficina, perfil `MECANICO`. O cliente vê os serviços pelo orçamento. | [consultar-servicos.md](servicos/consultar-servicos.md) |
 | DT-25 | Path param padronizado como `{servicoId}`, alinhado a `{clienteId}`, `{veiculoId}` e `{pecaId}`. | Todas as tarefas de Serviços |
 | DT-26 | **Peças & Insumos virou dois contextos**: `docs/pecas/` e `docs/insumos/`, com prefixos de requisito `RF-PEC` e `RF-INS`. Os documentos que serviam aos dois tipos — entrada de estoque e retorno na recusa — foram duplicados e adaptados. | [00-resumo.md](pecas/00-resumo.md) e [00-resumo.md](insumos/00-resumo.md) |

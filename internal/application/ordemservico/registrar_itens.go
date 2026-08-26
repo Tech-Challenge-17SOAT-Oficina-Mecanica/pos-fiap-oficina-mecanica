@@ -32,14 +32,13 @@ type RegistrarInput struct {
 	UsuarioID string
 }
 
-type Repository interface {
+type ItensRepository interface {
 	RegistrarItens(context.Context, RegistrarInput) (domainOrcamento.Resultado, error)
-	ConsultarOrcamentos(context.Context, string) ([]domainOrcamento.Resultado, error)
 }
 
-type RegistrarItens struct{ repository Repository }
+type RegistrarItens struct{ repository ItensRepository }
 
-func NewRegistrarItens(repository Repository) RegistrarItens {
+func NewRegistrarItens(repository ItensRepository) RegistrarItens {
 	return RegistrarItens{repository: repository}
 }
 
@@ -58,8 +57,4 @@ func (useCase RegistrarItens) Execute(ctx context.Context, input RegistrarInput)
 		}
 	}
 	return useCase.repository.RegistrarItens(ctx, input)
-}
-
-func (useCase RegistrarItens) Consultar(ctx context.Context, osID string) ([]domainOrcamento.Resultado, error) {
-	return useCase.repository.ConsultarOrcamentos(ctx, osID)
 }

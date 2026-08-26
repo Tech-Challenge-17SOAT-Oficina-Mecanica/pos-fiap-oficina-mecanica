@@ -12,14 +12,17 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'mecanicos:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'veiculos:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'veiculos:ler'),
     ('90000000-0000-0000-0000-000000000001', 'compras:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'compras:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'estoque:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'estoque:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
-    ('90000000-0000-0000-0000-000000000001', 'servicos:ler'),
-    ('90000000-0000-0000-0000-000000000001', 'servicos:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'os:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:ler'),
-    ('90000000-0000-0000-0000-000000000001', 'os:escrever')
+    ('90000000-0000-0000-0000-000000000001', 'servicos:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'servicos:escrever')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categoria (id, nome, ativa) VALUES
@@ -77,12 +80,6 @@ INSERT INTO ordem_servico (
     ('70000000-0000-0000-0000-000000000003', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '90000000-0000-0000-0000-000000000002', 'ABC1D23', 'ENTREGUE', 18.00, 270.00, CURRENT_TIMESTAMP - INTERVAL '10 days', CURRENT_TIMESTAMP - INTERVAL '9 days')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO problema_ordem_servico (id, ordem_servico_id, descricao, registrado_em) VALUES
-    ('71000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', 'Motor com ruido e troca de oleo pendente.', CURRENT_TIMESTAMP - INTERVAL '2 days'),
-    ('71000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000002', 'Correia dentada com desgaste identificado.', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-    ('71000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000003', 'Limpeza do sistema de admissao.', CURRENT_TIMESTAMP - INTERVAL '10 days')
-ON CONFLICT (id) DO NOTHING;
-
 INSERT INTO ordem_servico_servico (id, ordem_servico_id, servico_id, descricao, valor_unitario, status) VALUES
     ('72000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'Troca de oleo e filtro', 150.00, 'EM_EXECUCAO'),
     ('72000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000002', '40000000-0000-0000-0000-000000000002', 'Troca da correia dentada', 450.00, 'NECESSARIO'),
@@ -101,6 +98,12 @@ INSERT INTO orcamento (id, ordem_servico_id, orcamento_original_id, tipo_orcamen
     ('74000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000001', '74000000-0000-0000-0000-000000000001', 'COMPLEMENTAR', 'CRIADO', 3, CURRENT_TIMESTAMP - INTERVAL '1 day', NULL),
     ('74000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000002', NULL, 'PRINCIPAL', 'APROVADO', 7, CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP - INTERVAL '1 day'),
     ('74000000-0000-0000-0000-000000000004', '70000000-0000-0000-0000-000000000003', NULL, 'PRINCIPAL', 'APROVADO', 1, CURRENT_TIMESTAMP - INTERVAL '10 days', CURRENT_TIMESTAMP - INTERVAL '10 days')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO problema_ordem_servico (id, ordem_servico_id, orcamento_id, descricao, registrado_em) VALUES
+    ('71000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '74000000-0000-0000-0000-000000000002', 'Motor com ruido e troca de oleo pendente.', CURRENT_TIMESTAMP - INTERVAL '2 days'),
+    ('71000000-0000-0000-0000-000000000002', '70000000-0000-0000-0000-000000000002', '74000000-0000-0000-0000-000000000003', 'Correia dentada com desgaste identificado.', CURRENT_TIMESTAMP - INTERVAL '1 day'),
+    ('71000000-0000-0000-0000-000000000003', '70000000-0000-0000-0000-000000000003', '74000000-0000-0000-0000-000000000004', 'Limpeza do sistema de admissao.', CURRENT_TIMESTAMP - INTERVAL '10 days')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO orcamento_item (id, orcamento_id, servico_id, item_estoque_id, tipo_item, descricao, quantidade, valor_unitario, valor_total) VALUES
@@ -160,5 +163,19 @@ INSERT INTO chave_idempotencia (id, chave, operacao, hash_requisicao, status_res
     ('85000000-0000-0000-0000-000000000001', 'seed-reserva-os-001', 'RESERVA_ESTOQUE', 'seed-hash-reserva-001', 201, '{"reservaId":"82000000-0000-0000-0000-000000000001"}', CURRENT_TIMESTAMP - INTERVAL '1 day'),
     ('85000000-0000-0000-0000-000000000002', 'seed-entrada-001', 'ENTRADA_ESTOQUE', 'seed-hash-entrada-001', 201, '{"documentoOrigem":"NF-1002"}', CURRENT_TIMESTAMP - INTERVAL '1 day')
 ON CONFLICT (operacao, chave) DO NOTHING;
+
+-- O seed grava codigos de peca fixos (PEC-000001, PEC-000002). Avanca a sequencia para
+-- alem deles, senao o primeiro cadastro pela API colidiria no indice unico de codigo.
+SELECT setval(
+    'seq_peca_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'PECA';
+
+SELECT setval(
+    'seq_insumo_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'INSUMO';
 
 COMMIT;
