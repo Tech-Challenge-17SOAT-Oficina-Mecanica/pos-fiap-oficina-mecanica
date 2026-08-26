@@ -27,7 +27,7 @@ problema encontrado. Este contexto cuida do que acontece depois.
 | # | Tarefa | Rota | Escopo | Arquivo |
 |---|---|---|---|---|
 | 1 | Calcular Orçamento | `POST /orcamentos/{orcamentoId}/calcular` | `orcamentos:escrever` | [calcular-orcamento.md](calcular-orcamento.md) |
-| 2 | Consultar Orçamento | `GET /orcamentos` | `orcamentos:ler` | [consultar-orcamento.md](consultar-orcamento.md) |
+| 2 | Consultar Orçamento | `GET /ordens-servico/{osId}/orcamento` | `os:ler` ou `orcamentos:ler` | [consultar-orcamento.md](consultar-orcamento.md) |
 | 3 | Aprovar Orçamento | `POST /orcamentos/{orcamentoId}/aprovar` | `orcamentos:decidir` | [aprovar-orcamento.md](aprovar-orcamento.md) |
 | 4 | Recusar Orçamento | `POST /orcamentos/{orcamentoId}/recusar` | `orcamentos:decidir` | [recusar-orcamento.md](recusar-orcamento.md) |
 

@@ -11,6 +11,22 @@ func OnlyDigits(value string) string {
 	}, value)
 }
 
+func MascararDocumento(documento, tipo string) string {
+	ultimosDigitos := OnlyDigits(documento)
+	if len(ultimosDigitos) < 2 {
+		return strings.Repeat("*", len(ultimosDigitos))
+	}
+	ultimosDigitos = ultimosDigitos[len(ultimosDigitos)-2:]
+	switch strings.ToUpper(strings.TrimSpace(tipo)) {
+	case "CPF":
+		return "***.***.***-" + ultimosDigitos
+	case "CNPJ":
+		return "**.***.***/****-" + ultimosDigitos
+	default:
+		return strings.Repeat("*", len(OnlyDigits(documento)))
+	}
+}
+
 func IsDocumento(documento, tipo string) bool {
 	switch strings.ToUpper(strings.TrimSpace(tipo)) {
 	case "CPF":

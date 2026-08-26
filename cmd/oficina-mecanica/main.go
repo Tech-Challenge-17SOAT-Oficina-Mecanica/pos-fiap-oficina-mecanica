@@ -8,6 +8,7 @@ import (
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
+	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	ordemServicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
@@ -15,6 +16,7 @@ import (
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
+	orcamentoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/orcamento"
 	ordemServicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
@@ -22,6 +24,7 @@ import (
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
+	orcamentoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/orcamento"
 	ordemServicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/ordemservico"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
@@ -61,6 +64,8 @@ func main() {
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoInfrastructure.NewPostgresRepository(db))
+	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoInfrastructure.NewPostgresRepository(db))
+	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -87,6 +92,8 @@ func main() {
 	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
+	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
+	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{"os:ler", "orcamentos:ler"}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewAtualizarHandler(atualizar)))
 	mux.Handle("DELETE /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewInativarHandler(inativar)))
