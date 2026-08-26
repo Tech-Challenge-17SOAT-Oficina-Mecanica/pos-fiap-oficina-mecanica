@@ -133,6 +133,88 @@ paths:
         '403': { description: Usuário sem o escopo servicos:ler }
         '404': { description: Serviço não encontrado }
         '500': { description: Falha inesperada }
+    patch:
+      tags: [Serviço]
+      summary: Atualiza parcialmente um serviço
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: servicoId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: header
+          name: If-Match
+          required: true
+          description: Version atual do serviço para controle otimista.
+          schema: { type: string, example: '1' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                nome: { type: string, example: Troca de óleo e filtro }
+                descricao: { type: string, example: Troca de óleo, filtro e inspeção }
+                valor: { type: number, format: double, minimum: 0, example: 180.00 }
+                tempoEstimadoMinutos: { type: integer, minimum: 1, example: 75 }
+      responses:
+        '200':
+          description: Serviço atualizado
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ServicoLista'
+                  - type: object
+                    properties:
+                      version: { type: integer, example: 2 }
+                      dataAtualizacao: { type: string, format: date-time }
+        '400': { description: Identificador, If-Match, corpo ou dados inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '404': { description: Serviço não encontrado }
+        '409': { description: Nome usado por outro serviço ativo }
+        '412': { description: If-Match divergente }
+        '428': { description: If-Match não informado }
+        '500': { description: Falha inesperada }
+    delete:
+      tags: [Serviço]
+      summary: Desativa logicamente um serviço
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: servicoId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Serviço desativado }
+        '400': { description: servicoId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '404': { description: Serviço não encontrado }
+        '409': { description: Serviço já inativo }
+  /servicos/{servicoId}/reativacao:
+    post:
+      tags: [Serviço]
+      summary: Reativa um serviço
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: servicoId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Serviço reativado }
+        '400': { description: servicoId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '404': { description: Serviço não encontrado }
+        '409': { description: Serviço já ativo ou nome usado por outro serviço ativo }
   /fornecedores:
     get:
       tags: [Fornecedores]

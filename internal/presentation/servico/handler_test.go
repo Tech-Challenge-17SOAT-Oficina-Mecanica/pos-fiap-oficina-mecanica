@@ -28,6 +28,33 @@ type consultarFake struct {
 	err     error
 }
 
+type atualizarFake struct {
+	servico domain.Servico
+	err     error
+}
+
+type desativarFake struct {
+	servico domain.Servico
+	err     error
+}
+
+func (fake desativarFake) Execute(context.Context, string, string) (domain.Servico, error) {
+	return fake.servico, fake.err
+}
+
+type reativarFake struct {
+	servico domain.Servico
+	err     error
+}
+
+func (fake reativarFake) Execute(context.Context, string) (domain.Servico, error) {
+	return fake.servico, fake.err
+}
+
+func (fake atualizarFake) Execute(context.Context, string, int, domain.Atualizacao, string) (domain.Servico, error) {
+	return fake.servico, fake.err
+}
+
 func (fake consultarFake) Listar(context.Context, application.Filtros) (application.Pagina, error) {
 	return fake.pagina, fake.err
 }
@@ -114,6 +141,103 @@ func TestConsultarHandler(t *testing.T) {
 			}
 			if test.campo != "" && !strings.Contains(response.Body.String(), `"campo":"`+test.campo+`"`) {
 				t.Fatalf("campo ausente: %s", response.Body.String())
+			}
+		})
+	}
+}
+
+func TestAtualizarHandler(t *testing.T) {
+	const id = "40000000-0000-0000-0000-000000000001"
+	now := time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC)
+	validUseCase := atualizarFake{servico: domain.Servico{
+		ID: id, Codigo: "SER-000001", Nome: "Revisão completa", Valor: "180.00",
+		TempoEstimadoMinutos: 40, Ativo: true, Version: 2, DataAtualizacao: &now,
+	}}
+	cases := []struct {
+		name, id, body, ifMatch string
+		useCase                 atualizarFake
+		status                  int
+		responseBody            string
+	}{
+		{"uuid inválido", "abc", `{"nome":"Revisão"}`, "1", validUseCase, http.StatusBadRequest, ""},
+		{"sem If-Match", id, `{"nome":"Revisão"}`, "", validUseCase, http.StatusPreconditionRequired, ""},
+		{"If-Match inválido", id, `{"nome":"Revisão"}`, "x", validUseCase, http.StatusBadRequest, ""},
+		{"json inválido", id, `{`, "1", validUseCase, http.StatusBadRequest, ""},
+		{"campo imutável", id, `{"codigo":"SER-999999"}`, "1", validUseCase, http.StatusBadRequest, ""},
+		{"campo desconhecido", id, `{"extra":true}`, "1", validUseCase, http.StatusBadRequest, ""},
+		{"dados inválidos", id, `{}`, "1", atualizarFake{err: domain.ErrAtualizacaoVazia}, http.StatusBadRequest, ""},
+		{"duplicado", id, `{"nome":"Alinhamento"}`, "1", atualizarFake{err: application.ErrServicoDuplicado}, http.StatusConflict, ""},
+		{"não encontrado", id, `{"nome":"Revisão"}`, "1", atualizarFake{err: application.ErrServicoNaoEncontrado}, http.StatusNotFound, ""},
+		{"versão divergente", id, `{"nome":"Revisão"}`, "1", atualizarFake{err: application.ErrVersaoDivergente}, http.StatusPreconditionFailed, ""},
+		{"erro interno", id, `{"nome":"Revisão"}`, "1", atualizarFake{err: errors.New("db")}, http.StatusInternalServerError, ""},
+		{"sucesso", id, `{"nome":"Revisão completa","valor":180.00}`, "1", validUseCase, http.StatusOK, `"version":2`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPatch, "/servicos/"+test.id, strings.NewReader(test.body))
+			request.SetPathValue("servicoId", test.id)
+			if test.ifMatch != "" {
+				request.Header.Set("If-Match", test.ifMatch)
+			}
+			response := httptest.NewRecorder()
+			NewAtualizarHandler(test.useCase)(response, request)
+			if response.Code != test.status || test.responseBody != "" && !strings.Contains(response.Body.String(), test.responseBody) {
+				t.Fatalf("status %d, body: %s", response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestDesativarHandler(t *testing.T) {
+	const id = "40000000-0000-0000-0000-000000000001"
+	now := time.Date(2026, 8, 25, 12, 0, 0, 0, time.UTC)
+	valid := desativarFake{servico: domain.Servico{ID: id, Codigo: "SER-000001", Nome: "Revisão",
+		Ativo: false, DataDesativacao: &now, UsuarioDesativacao: "usuario"}}
+	cases := []struct {
+		name, id string
+		useCase  desativarFake
+		status   int
+		body     string
+	}{
+		{"uuid inválido", "abc", valid, http.StatusBadRequest, ""},
+		{"não encontrado", id, desativarFake{err: application.ErrServicoNaoEncontrado}, http.StatusNotFound, ""},
+		{"já inativo", id, desativarFake{err: domain.ErrServicoJaInativo}, http.StatusConflict, ""},
+		{"sucesso", id, valid, http.StatusOK, `"ativo":false`},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodDelete, "/servicos/"+test.id, nil)
+			request.SetPathValue("servicoId", test.id)
+			response := httptest.NewRecorder()
+			NewDesativarHandler(test.useCase)(response, request)
+			if response.Code != test.status || test.body != "" && !strings.Contains(response.Body.String(), test.body) {
+				t.Fatalf("status %d, body: %s", response.Code, response.Body.String())
+			}
+		})
+	}
+}
+
+func TestReativarHandler(t *testing.T) {
+	const id = "40000000-0000-0000-0000-000000000001"
+	valid := reativarFake{servico: domain.Servico{ID: id, Codigo: "SER-000001", Nome: "Revisão", Ativo: true}}
+	cases := []struct {
+		name, id string
+		useCase  reativarFake
+		status   int
+	}{
+		{"uuid inválido", "abc", valid, http.StatusBadRequest},
+		{"já ativo", id, reativarFake{err: domain.ErrServicoJaAtivo}, http.StatusConflict},
+		{"nome duplicado", id, reativarFake{err: application.ErrServicoDuplicado}, http.StatusConflict},
+		{"sucesso", id, valid, http.StatusOK},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/servicos/"+test.id+"/reativacao", nil)
+			request.SetPathValue("servicoId", test.id)
+			response := httptest.NewRecorder()
+			NewReativarHandler(test.useCase)(response, request)
+			if response.Code != test.status {
+				t.Fatalf("status %d, body: %s", response.Code, response.Body.String())
 			}
 		})
 	}

@@ -26,6 +26,14 @@ func (repository PostgresRepository) ExisteAtivoPorNomeNormalizado(ctx context.C
 	return existe, err
 }
 
+func (repository PostgresRepository) ExisteAtivoPorNomeNormalizadoExcetoID(ctx context.Context, nome, id string) (bool, error) {
+	var existe bool
+	err := repository.db.QueryRow(ctx, `SELECT EXISTS(
+		SELECT 1 FROM servico WHERE nome_normalizado = $1 AND id <> $2 AND ativo
+	)`, nome, id).Scan(&existe)
+	return existe, err
+}
+
 func (repository PostgresRepository) Salvar(ctx context.Context, servico domain.Servico) (domain.Servico, error) {
 	const query = `INSERT INTO servico
 		(codigo, nome, nome_normalizado, descricao, valor, tempo_estimado_minutos, ativo, version, usuario_criacao)
@@ -90,6 +98,65 @@ func (repository PostgresRepository) BuscarPorID(ctx context.Context, id string)
 		&servico.Ativo, &servico.Version, &servico.DataCriacao, &servico.UsuarioCriacao)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Servico{}, application.ErrServicoNaoEncontrado
+	}
+	return servico, err
+}
+
+func (repository PostgresRepository) Atualizar(ctx context.Context, servico domain.Servico, version int, usuarioID string) (domain.Servico, error) {
+	const query = `UPDATE servico SET nome = $2, nome_normalizado = $3, descricao = NULLIF($4, ''),
+		valor = $5::numeric, tempo_estimado_minutos = $6, data_atualizacao = CURRENT_TIMESTAMP,
+		usuario_atualizacao = $7, version = version + 1
+		WHERE id = $1 AND version = $8
+		RETURNING id, codigo, nome, nome_normalizado, COALESCE(descricao, ''), valor::text,
+			tempo_estimado_minutos, ativo, version, data_criacao, data_atualizacao, usuario_atualizacao::text`
+	err := repository.db.QueryRow(ctx, query, servico.ID, servico.Nome, servico.NomeNormalizado,
+		servico.Descricao, servico.Valor, servico.TempoEstimadoMinutos, usuarioID, version).Scan(
+		&servico.ID, &servico.Codigo, &servico.Nome, &servico.NomeNormalizado, &servico.Descricao,
+		&servico.Valor, &servico.TempoEstimadoMinutos, &servico.Ativo, &servico.Version,
+		&servico.DataCriacao, &servico.DataAtualizacao, &servico.UsuarioAtualizacao)
+	if violacaoUnica(err) {
+		return domain.Servico{}, application.ErrServicoDuplicado
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		var versionAtual int
+		err = repository.db.QueryRow(ctx, `SELECT version FROM servico WHERE id = $1`, servico.ID).Scan(&versionAtual)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Servico{}, application.ErrServicoNaoEncontrado
+		}
+		if err != nil {
+			return domain.Servico{}, err
+		}
+		return domain.Servico{}, application.ErrVersaoDivergente
+	}
+	return servico, err
+}
+
+func (repository PostgresRepository) Desativar(ctx context.Context, id, usuarioID string) (domain.Servico, error) {
+	const query = `UPDATE servico SET ativo = FALSE, data_desativacao = CURRENT_TIMESTAMP,
+		usuario_desativacao = $2, version = version + 1 WHERE id = $1 AND ativo
+		RETURNING id, codigo, nome, nome_normalizado, COALESCE(descricao, ''), valor::text,
+			tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, usuario_desativacao::text`
+	return repository.alterarSituacao(ctx, query, domain.ErrServicoJaInativo, id, usuarioID)
+}
+
+func (repository PostgresRepository) Reativar(ctx context.Context, id string) (domain.Servico, error) {
+	const query = `UPDATE servico SET ativo = TRUE, data_desativacao = NULL,
+		usuario_desativacao = NULL, version = version + 1 WHERE id = $1 AND NOT ativo
+		RETURNING id, codigo, nome, nome_normalizado, COALESCE(descricao, ''), valor::text,
+			tempo_estimado_minutos, ativo, version, data_criacao, data_desativacao, COALESCE(usuario_desativacao::text, '')`
+	return repository.alterarSituacao(ctx, query, domain.ErrServicoJaAtivo, id)
+}
+
+func (repository PostgresRepository) alterarSituacao(ctx context.Context, query string, conflito error, argumentos ...any) (domain.Servico, error) {
+	var servico domain.Servico
+	err := repository.db.QueryRow(ctx, query, argumentos...).Scan(&servico.ID, &servico.Codigo, &servico.Nome,
+		&servico.NomeNormalizado, &servico.Descricao, &servico.Valor, &servico.TempoEstimadoMinutos,
+		&servico.Ativo, &servico.Version, &servico.DataCriacao, &servico.DataDesativacao, &servico.UsuarioDesativacao)
+	if violacaoUnica(err) {
+		return domain.Servico{}, application.ErrServicoDuplicado
+	}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Servico{}, conflito
 	}
 	return servico, err
 }
