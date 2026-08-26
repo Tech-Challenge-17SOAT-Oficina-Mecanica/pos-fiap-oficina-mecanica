@@ -7,18 +7,21 @@ import (
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
+	insumoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
+	insumoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/insumo"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
 	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
+	insumoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/insumo"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
 	pecaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/peca"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
@@ -52,6 +55,7 @@ func main() {
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
+	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoInfrastructure.NewPostgresRepository(db))
 	desativarPeca := pecaApplication.NewDesativarPeca(pecaRepository)
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
@@ -96,6 +100,8 @@ func main() {
 	mux.Handle("POST /clientes/{clienteId}/reativacao", segurancaPresentation.RequireScope(jwt, "clientes:escrever", clientePresentation.NewReativarHandler(reativarCliente)))
 	mux.Handle("POST /estoque/pecas", segurancaPresentation.RequireScope(jwt, escopoEstoqueEscrever,
 		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
+	mux.Handle("POST /estoque/insumos", segurancaPresentation.RequireScope(jwt, escopoEstoqueEscrever,
+		insumoPresentation.NewCadastrarInsumoHandler(cadastrarInsumo)))
 	mux.Handle("GET /estoque/pecas", segurancaPresentation.RequireScope(jwt, escopoEstoqueLer,
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, escopoEstoqueLer,

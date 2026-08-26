@@ -160,4 +160,10 @@ SELECT setval(
     FALSE
 ) FROM item_estoque WHERE tipo = 'PECA';
 
+SELECT setval(
+    'seq_insumo_codigo',
+    COALESCE(MAX(SUBSTRING(codigo FROM 5)::BIGINT), 0) + 1,
+    FALSE
+) FROM item_estoque WHERE tipo = 'INSUMO';
+
 COMMIT;
