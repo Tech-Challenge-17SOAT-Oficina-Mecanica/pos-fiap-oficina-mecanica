@@ -44,3 +44,18 @@ func lerInteiro(valor string, padrao int) (int, error) {
 	}
 	return strconv.Atoi(valor)
 }
+
+// LerBooleano aceita apenas "true" ou "false". Um valor ausente cai no padrão; qualquer
+// outro texto é erro, e não silenciosamente false.
+func LerBooleano(query url.Values, nome string) (bool, error) {
+	switch query.Get(nome) {
+	case "":
+		return false, nil
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, NovoErroCampo(nome, nome+" deve ser true ou false")
+	}
+}

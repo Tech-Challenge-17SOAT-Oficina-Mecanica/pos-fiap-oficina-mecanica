@@ -54,13 +54,25 @@ func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
 			return
 		}
 
+		somenteDisponiveis, err := sharedhttp.LerBooleano(query, "somenteDisponiveis")
+		if err != nil {
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
+			return
+		}
+
+		incluirInativos, err := sharedhttp.LerBooleano(query, "incluirInativos")
+		if err != nil {
+			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
+			return
+		}
+
 		filtros := peca.Filtros{
 			Codigo:             query.Get("codigo"),
 			Descricao:          query.Get("descricao"),
 			CategoriaID:        query.Get("categoriaId"),
 			Fabricante:         query.Get("fabricante"),
-			SomenteDisponiveis: query.Get("somenteDisponiveis") == "true",
-			IncluirInativos:    query.Get("incluirInativos") == "true",
+			SomenteDisponiveis: somenteDisponiveis,
+			IncluirInativos:    incluirInativos,
 			QuantidadeDesejada: quantidade,
 		}
 
