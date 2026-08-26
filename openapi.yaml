@@ -11,6 +11,31 @@ tags:
   - name: Mecânico
   - name: Serviço
 paths:
+  /ordens-servico:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Cria uma ordem de serviço
+      description: Cria a OS com status RECEBIDA para um veículo ativo vinculado ao cliente informado. Exige o escopo `os:escrever`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [clienteId, veiculoId]
+              additionalProperties: false
+              properties:
+                clienteId: { type: string, format: uuid }
+                veiculoId: { type: string, format: uuid }
+      responses:
+        '201': { description: Ordem de serviço criada }
+        '400': { description: Corpo ou identificadores inválidos }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Cliente ou veículo não encontrado }
+        '409': { description: Veículo não vinculado ao cliente informado }
   /health:
     get:
       summary: Verifica a disponibilidade da API
