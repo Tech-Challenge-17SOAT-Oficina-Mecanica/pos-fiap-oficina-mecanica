@@ -3,6 +3,7 @@ package orcamento
 import "time"
 
 type Item struct {
+	ID            string
 	Tipo          string
 	Descricao     string
 	Quantidade    float64
