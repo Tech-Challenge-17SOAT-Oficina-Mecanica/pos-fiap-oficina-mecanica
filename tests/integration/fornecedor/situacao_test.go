@@ -1,6 +1,7 @@
 package integration_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +27,7 @@ func TestDesativarEReativarFornecedor(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	ctx := context.Background()
 
 	jwt, err := segurancaInfrastructure.NewJWT("segredo-de-teste")
 	if err != nil {
@@ -107,6 +109,7 @@ func TestDesativarFornecedorComPedidoAberto(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	ctx := context.Background()
 
 	jwt, err := segurancaInfrastructure.NewJWT("segredo-de-teste")
 	if err != nil {

@@ -10,13 +10,14 @@ import (
 const senhaMinima = 15
 
 var (
-	ErrNomeObrigatorio    = errors.New("nome é obrigatório")
-	ErrEmailObrigatorio   = errors.New("email é obrigatório")
-	ErrSenhaObrigatoria   = errors.New("senha é obrigatória")
-	ErrSenhaCurta         = errors.New("senha deve possuir no mínimo 15 caracteres")
-	ErrEscoposObrigatorio = errors.New("escopos são obrigatórios")
-	ErrEmailInvalido      = errors.New("email inválido")
-	ErrEscopoInvalido     = errors.New("escopo desconhecido")
+	ErrNomeObrigatorio       = errors.New("nome é obrigatório")
+	ErrMecanicoIDObrigatorio = errors.New("mecanicoId é obrigatório")
+	ErrEmailObrigatorio      = errors.New("email é obrigatório")
+	ErrSenhaObrigatoria      = errors.New("senha é obrigatória")
+	ErrSenhaCurta            = errors.New("senha deve possuir no mínimo 15 caracteres")
+	ErrEscoposObrigatorio    = errors.New("escopos são obrigatórios")
+	ErrEmailInvalido         = errors.New("email inválido")
+	ErrEscopoInvalido        = errors.New("escopo desconhecido")
 )
 
 type Mecanico struct {
@@ -33,6 +34,12 @@ type NovoMecanicoInput struct {
 	Nome    string
 	Email   string
 	Senha   string
+	Escopos []string
+}
+
+type AtualizarMecanicoInput struct {
+	Nome    string
+	Email   string
 	Escopos []string
 }
 
@@ -89,6 +96,31 @@ func Novo(input NovoMecanicoInput) (Mecanico, string, error) {
 	return mecanico, senha, nil
 }
 
+func (mecanico Mecanico) Atualizar(input AtualizarMecanicoInput) (Mecanico, error) {
+	mecanico.Nome = strings.TrimSpace(input.Nome)
+	mecanico.Email = strings.TrimSpace(input.Email)
+	mecanico.Escopos = escoposValidos(input.Escopos)
+	if mecanico.ID == "" {
+		return Mecanico{}, ErrMecanicoIDObrigatorio
+	}
+	if mecanico.Nome == "" {
+		return Mecanico{}, ErrNomeObrigatorio
+	}
+	if mecanico.Email == "" {
+		return Mecanico{}, ErrEmailObrigatorio
+	}
+	if !validation.IsEmail(mecanico.Email) {
+		return Mecanico{}, ErrEmailInvalido
+	}
+	if len(input.Escopos) == 0 {
+		return Mecanico{}, ErrEscoposObrigatorio
+	}
+	if !todosEscoposOficiais(input.Escopos) {
+		return Mecanico{}, ErrEscopoInvalido
+	}
+	return mecanico, nil
+}
+
 func escoposValidos(escopos []string) []string {
 	seen := map[string]struct{}{}
 	validos := make([]string, 0, len(escopos))
@@ -114,4 +146,3 @@ func todosEscoposOficiais(escopos []string) bool {
 	}
 	return true
 }
-
