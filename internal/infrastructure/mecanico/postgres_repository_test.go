@@ -38,6 +38,16 @@ func (row fakeRow) Scan(dest ...any) error {
 		*target = row.mecanico.Ativo
 		return nil
 	}
+	if len(dest) == 7 {
+		*(dest[0].(*string)) = row.mecanico.ID
+		*(dest[1].(*string)) = row.mecanico.UsuarioID
+		*(dest[2].(*string)) = row.mecanico.Nome
+		*(dest[3].(*string)) = row.mecanico.Email
+		*(dest[4].(*bool)) = row.mecanico.Ativo
+		*(dest[5].(*[]string)) = row.mecanico.Escopos
+		*(dest[6].(*int)) = row.mecanico.Version
+		return nil
+	}
 	*(dest[0].(*string)) = row.mecanico.ID
 	*(dest[1].(*string)) = row.mecanico.Nome
 	*(dest[2].(*int)) = row.mecanico.Version
@@ -47,6 +57,7 @@ func (row fakeRow) Scan(dest ...any) error {
 type fakeTx struct {
 	rows      []fakeRow
 	execErr   error
+	execErrs  []error
 	commitErr error
 	queries   int
 	execs     int
@@ -61,8 +72,14 @@ func (fake *fakeTx) QueryRow(context.Context, string, ...any) pgx.Row {
 }
 
 func (fake *fakeTx) Exec(context.Context, string, ...any) (pgconn.CommandTag, error) {
+	var err error
+	if len(fake.execErrs) > fake.execs {
+		err = fake.execErrs[fake.execs]
+	} else {
+		err = fake.execErr
+	}
 	fake.execs++
-	return pgconn.CommandTag{}, fake.execErr
+	return pgconn.CommandTag{}, err
 }
 
 func (fake *fakeTx) Commit(context.Context) error {
@@ -116,6 +133,33 @@ func TestEmailExiste(t *testing.T) {
 		t.Fatalf("exists: %v, erro: %v", got, err)
 	}
 	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).EmailExiste(context.Background(), "m@oficina.local")
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+}
+
+func TestEmailExisteExcetoMecanico(t *testing.T) {
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{exists: true}}}).EmailExisteExcetoMecanico(context.Background(), "m@oficina.local", "m1")
+	if err != nil || !got {
+		t.Fatalf("exists: %v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).EmailExisteExcetoMecanico(context.Background(), "m@oficina.local", "m1")
+	if err == nil {
+		t.Fatal("esperava erro")
+	}
+}
+
+func TestBuscarPorID(t *testing.T) {
+	expected := domain.Mecanico{ID: "m1", UsuarioID: "u1", Nome: "Maria", Email: "m@oficina.local", Ativo: true, Escopos: []string{"os:ler"}, Version: 2}
+	got, err := (PostgresRepository{db: fakeDB{row: fakeRow{mecanico: expected}}}).BuscarPorID(context.Background(), expected.ID)
+	if err != nil || got.ID != expected.ID || len(got.Escopos) != 1 {
+		t.Fatalf("mecanico: %#v, erro: %v", got, err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: pgx.ErrNoRows}}}).BuscarPorID(context.Background(), expected.ID)
+	if !errors.Is(err, application.ErrMecanicoNaoEncontrado) {
+		t.Fatalf("erro nao encontrado: %v", err)
+	}
+	_, err = (PostgresRepository{db: fakeDB{row: fakeRow{err: errors.New("db")}}}).BuscarPorID(context.Background(), expected.ID)
 	if err == nil {
 		t.Fatal("esperava erro")
 	}
@@ -186,6 +230,81 @@ func TestSalvarMecanico(t *testing.T) {
 		}}
 		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
 		_, err := repository.SalvarMecanico(context.Background(), mecanico, "hash")
+		if err == nil || tx.commits != 1 {
+			t.Fatalf("erro: %v, commits: %d", err, tx.commits)
+		}
+	})
+}
+
+func TestAtualizarMecanico(t *testing.T) {
+	mecanico := domain.Mecanico{ID: "m1", UsuarioID: "u1", Nome: "Maria Souza", Email: "maria@oficina.local", Ativo: true, Escopos: []string{"os:ler"}}
+	t.Run("sucesso", func(t *testing.T) {
+		tx := &fakeTx{rows: []fakeRow{{mecanico: domain.Mecanico{ID: "m1", Nome: "Maria Souza", Version: 3}}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		got, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err != nil || got.Version != 3 || tx.execs != 3 || tx.commits != 1 || tx.rollbacks != 1 {
+			t.Fatalf("mecanico: %#v, tx: %#v, erro: %v", got, tx, err)
+		}
+	})
+	t.Run("erro ao abrir transacao", func(t *testing.T) {
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return nil, errors.New("begin") }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err == nil {
+			t.Fatal("esperava erro")
+		}
+	})
+	t.Run("email duplicado", func(t *testing.T) {
+		tx := &fakeTx{execErr: &pgconn.PgError{Code: "23505"}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if !errors.Is(err, application.ErrEmailDuplicado) || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("erro ao atualizar usuario", func(t *testing.T) {
+		tx := &fakeTx{execErr: errors.New("db")}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err == nil || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("versao divergente", func(t *testing.T) {
+		tx := &fakeTx{rows: []fakeRow{{err: pgx.ErrNoRows}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if !errors.Is(err, application.ErrVersaoDivergente) || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("erro ao atualizar mecanico", func(t *testing.T) {
+		tx := &fakeTx{rows: []fakeRow{{err: errors.New("db")}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err == nil || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("erro ao apagar escopos", func(t *testing.T) {
+		tx := &fakeTx{execErrs: []error{nil, errors.New("db")}, rows: []fakeRow{{mecanico: domain.Mecanico{ID: "m1", Nome: "Maria Souza", Version: 3}}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err == nil || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("erro ao inserir escopo", func(t *testing.T) {
+		tx := &fakeTx{execErrs: []error{nil, nil, errors.New("db")}, rows: []fakeRow{{mecanico: domain.Mecanico{ID: "m1", Nome: "Maria Souza", Version: 3}}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
+		if err == nil || tx.rollbacks != 1 {
+			t.Fatalf("erro: %v, rollbacks: %d", err, tx.rollbacks)
+		}
+	})
+	t.Run("erro no commit", func(t *testing.T) {
+		tx := &fakeTx{commitErr: errors.New("commit"), rows: []fakeRow{{mecanico: domain.Mecanico{ID: "m1", Nome: "Maria Souza", Version: 3}}}}
+		repository := PostgresRepository{begin: func(context.Context) (transaction, error) { return tx, nil }}
+		_, err := repository.AtualizarMecanico(context.Background(), mecanico, 2)
 		if err == nil || tx.commits != 1 {
 			t.Fatalf("erro: %v, commits: %d", err, tx.commits)
 		}

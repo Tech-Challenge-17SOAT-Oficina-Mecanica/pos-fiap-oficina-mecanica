@@ -41,8 +41,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
+	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
+	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
+	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
+	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
+	atualizarMecanico := mecanicoApplication.NewAtualizar(mecanicoRepository)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
@@ -60,7 +63,6 @@ func main() {
 	inativarCliente := clienteApplication.NewInativar(clienteRepository)
 	reativarCliente := clienteApplication.NewReativar(clienteRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
-	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoInfrastructure.NewPostgresRepository(db))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -84,6 +86,7 @@ func main() {
 	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoMecanicosEscrever, mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))
+	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoMecanicosEscrever, mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewAtualizarHandler(atualizar)))
