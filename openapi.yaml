@@ -6,6 +6,7 @@ servers:
   - url: http://localhost:8080
 tags:
   - name: Veículos
+  - name: Orçamento
   - name: Fornecedores
   - name: Estoque
   - name: Mecânico
@@ -811,6 +812,43 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /orcamentos/{orcamentoId}/calcular:
+    post:
+      tags: [Orçamento]
+      summary: Calcula os itens e o valor total geral do orçamento
+      description: >-
+        Exige o escopo `orcamentos:escrever`. Recalcula `valorTotal` de cada item como
+        `quantidade x valorUnitario` e devolve o `valorTotalGeral` da OS, somando o
+        orçamento principal e os complementares com status `CRIADO` ou `APROVADO`.
+        Orçamentos `RECUSADO` ficam de fora. Não altera o status do orçamento.
+        A estimativa de entrega ainda não é calculada — depende da modelagem de
+        capacidade diária e do prazo de entrega por item.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orcamentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento calculado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CalculoOrcamento' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:escrever }
+        '404': { description: Orçamento não encontrado }
+        '409':
+          description: Orçamento não está em CRIADO, é complementar sem principal, ou não tem itens válidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -867,6 +905,19 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
+    CalculoOrcamento:
+      type: object
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        valorTotal:
+          type: number
+          format: double
+          description: Soma dos itens deste orçamento.
+        valorTotalGeral:
+          type: number
+          format: double
+          description: Soma dos orçamentos CRIADO e APROVADO da OS.
     CadastrarPeca:
       type: object
       required: [nome, descricao, categoriaId]
