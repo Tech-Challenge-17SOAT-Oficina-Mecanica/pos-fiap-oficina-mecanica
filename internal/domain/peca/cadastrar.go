@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const (
@@ -14,21 +16,6 @@ const (
 	fabricanteMaximo    = 150
 	UnidadeMedidaPadrao = "UN"
 	TipoPeca            = "PECA"
-)
-
-var removedorAcentos = strings.NewReplacer(
-	"á", "a", "à", "a", "â", "a", "ã", "a", "ä", "a",
-	"é", "e", "è", "e", "ê", "e", "ë", "e",
-	"í", "i", "ì", "i", "î", "i", "ï", "i",
-	"ó", "o", "ò", "o", "ô", "o", "õ", "o", "ö", "o",
-	"ú", "u", "ù", "u", "û", "u", "ü", "u",
-	"ç", "c", "ñ", "n",
-	"Á", "A", "À", "A", "Â", "A", "Ã", "A", "Ä", "A",
-	"É", "E", "È", "E", "Ê", "E", "Ë", "E",
-	"Í", "I", "Ì", "I", "Î", "I", "Ï", "I",
-	"Ó", "O", "Ò", "O", "Ô", "O", "Õ", "O", "Ö", "O",
-	"Ú", "U", "Ù", "U", "Û", "U", "Ü", "U",
-	"Ç", "C", "Ñ", "N",
 )
 
 var (
@@ -53,21 +40,14 @@ type Cadastro struct {
 	UnidadeMedida        string
 }
 
-// NormalizarDescricao devolve a forma usada na regra de duplicidade: sem acento, sem
-// espaco duplo e em minusculas.
-func NormalizarDescricao(valor string) string {
-	semAcento := removedorAcentos.Replace(valor)
-	return strings.ToLower(strings.Join(strings.Fields(semAcento), " "))
-}
-
 func NovoCadastro(nome, descricao, categoriaID string, fabricante, precoVenda *string, estoqueMinimo *int64) (Cadastro, error) {
 	cadastro := Cadastro{
 		Nome:          strings.TrimSpace(nome),
-		Descricao:     strings.Join(strings.Fields(descricao), " "),
+		Descricao:     validation.ColapsarEspacos(descricao),
 		CategoriaID:   strings.TrimSpace(categoriaID),
 		UnidadeMedida: UnidadeMedidaPadrao,
 	}
-	cadastro.DescricaoNormalizada = NormalizarDescricao(cadastro.Descricao)
+	cadastro.DescricaoNormalizada = validation.NormalizarDescricao(cadastro.Descricao)
 
 	if tamanho := len([]rune(cadastro.Nome)); tamanho < nomeMinimo || tamanho > nomeMaximo {
 		return Cadastro{}, ErrNomeInvalido
