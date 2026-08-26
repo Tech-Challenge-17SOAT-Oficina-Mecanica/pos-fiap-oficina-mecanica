@@ -1,6 +1,10 @@
 package insumo
 
-import "time"
+import (
+	"math/big"
+	"strings"
+	"time"
+)
 
 const Tipo = "INSUMO"
 
@@ -26,4 +30,47 @@ type Insumo struct {
 	PossuiPedidoEmAberto bool
 	// DataCriacao so e carregada no cadastro.
 	DataCriacao *time.Time
+}
+
+func (insumo Insumo) SaldoDisponivel() string {
+	return subtrair(insumo.SaldoFisico, insumo.SaldoReservado)
+}
+
+func (insumo Insumo) Disponivel() bool {
+	return comparar(insumo.SaldoDisponivel(), "0") > 0
+}
+
+func (insumo Insumo) AbaixoDoMinimo() bool {
+	return comparar(insumo.SaldoDisponivel(), insumo.EstoqueMinimo) < 0
+}
+
+func (insumo Insumo) AtendeQuantidade(quantidade string) bool {
+	return comparar(insumo.SaldoDisponivel(), quantidade) >= 0
+}
+
+func subtrair(a, b string) string {
+	decimalA := decimal(a)
+	decimalA.Sub(decimalA, decimal(b))
+	return normalizarDecimal(decimalA.FloatString(3))
+}
+
+func comparar(a, b string) int {
+	return decimal(a).Cmp(decimal(b))
+}
+
+func decimal(valor string) *big.Rat {
+	numero, ok := new(big.Rat).SetString(strings.TrimSpace(valor))
+	if !ok {
+		return new(big.Rat)
+	}
+	return numero
+}
+
+func normalizarDecimal(valor string) string {
+	valor = strings.TrimRight(valor, "0")
+	valor = strings.TrimRight(valor, ".")
+	if valor == "" || valor == "-0" {
+		return "0"
+	}
+	return valor
 }
