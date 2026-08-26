@@ -809,8 +809,119 @@ paths:
                   expiresIn: { type: integer, example: 3600 }
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
+  /ordens-servico/{osId}/pecas:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra peças necessárias na OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarItensOS'
+      responses:
+        '201': { description: Peças registradas e orçamento atualizado }
+        '400': { description: Dados inválidos ou tipo de item divergente }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS ou item não encontrado }
+        '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/insumos:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra insumos necessários na OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarItensOS'
+      responses:
+        '201': { description: Insumos registrados e orçamento atualizado }
+        '400': { description: Dados inválidos ou tipo de item divergente }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS ou item não encontrado }
+        '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/orcamento:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Consulta os orçamentos da OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamentos principal e complementares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrcamentoOS'
+        '400': { description: osId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:ler }
+        '404': { description: OS não encontrada }
 components:
   schemas:
+    RegistrarItensOS:
+      type: object
+      required: [itens]
+      additionalProperties: false
+      properties:
+        itens:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, exclusiveMinimum: 0 }
+    OrcamentoOS:
+      type: object
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        orcamentoId: { type: string, format: uuid }
+        orcamentoOriginalId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        statusOrcamento: { type: string, enum: [CRIADO, APROVADO, RECUSADO] }
+        itensRegistrados:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrcamentoOS'
+        valorOrcamento: { type: number, format: double }
+        valorTotalGeral: { type: number, format: double }
+    ItemOrcamentoOS:
+      type: object
+      properties:
+        itemId: { type: string, format: uuid }
+        codigo: { type: string }
+        descricao: { type: string }
+        tipo: { type: string, enum: [PECA, INSUMO] }
+        quantidade: { type: number }
+        valorUnitario: { type: number, format: double }
+        valorItem: { type: number, format: double }
     ServicoLista:
       type: object
       properties:
@@ -821,12 +932,6 @@ components:
         valor: { type: number, format: double }
         tempoEstimadoMinutos: { type: integer }
         ativo: { type: boolean }
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-  schemas:
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
@@ -865,3 +970,8 @@ components:
         marca: { type: string, example: Toyota }
         modelo: { type: string, example: Corolla }
         ano: { type: integer, example: 2024 }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

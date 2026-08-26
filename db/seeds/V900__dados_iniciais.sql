@@ -17,7 +17,9 @@ INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'servicos:ler'),
-    ('90000000-0000-0000-0000-000000000001', 'servicos:escrever')
+    ('90000000-0000-0000-0000-000000000001', 'servicos:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'os:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'os:escrever')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categoria (id, nome, ativa) VALUES

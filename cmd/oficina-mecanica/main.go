@@ -8,18 +8,21 @@ import (
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
+	osApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	segurancaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/seguranca"
 	servicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/servico"
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
+	osInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	segurancaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
+	osPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/ordemservico"
 	segurancaPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	servicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/servico"
 	veiculoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/veiculo"
@@ -60,12 +63,17 @@ func main() {
 	desativarServico := servicoApplication.NewDesativar(servicoRepository)
 	reativarServico := servicoApplication.NewReativar(servicoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
+	osRepository := osInfrastructure.NewPostgresRepository(db)
+	registrarItensOS := osApplication.NewRegistrarItens(osRepository)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
 	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:escrever", fornecedorPresentation.NewCadastrarHandler(
 		fornecedorApplication.NewCadastrar(fornecedorRepository),
 	)))
+	mux.Handle("POST /ordens-servico/{osId}/pecas", segurancaPresentation.RequireScope(jwt, "os:escrever", osPresentation.NewRegistrarPecasHandler(registrarItensOS)))
+	mux.Handle("POST /ordens-servico/{osId}/insumos", segurancaPresentation.RequireScope(jwt, "os:escrever", osPresentation.NewRegistrarInsumosHandler(registrarItensOS)))
+	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireScope(jwt, "os:ler", osPresentation.NewConsultarOrcamentoHandler(registrarItensOS)))
 	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, "compras:ler", fornecedorPresentation.NewListarHandler(
 		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
 	)))
