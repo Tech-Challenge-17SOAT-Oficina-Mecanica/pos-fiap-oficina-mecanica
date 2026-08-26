@@ -11,13 +11,20 @@ import (
 )
 
 type mecanicoRepositoryFake struct {
-	exists      bool
-	errExists   error
-	saved       domain.Mecanico
-	errSave     error
-	senhaHash   string
-	saveCalled  bool
-	existsEmail string
+	exists          bool
+	errExists       error
+	saved           domain.Mecanico
+	errSave         error
+	senhaHash       string
+	saveCalled      bool
+	existsEmail     string
+	existsExcept    bool
+	errExistsExcept error
+	found           domain.Mecanico
+	errFind         error
+	updated         domain.Mecanico
+	errUpdate       error
+	updateCalled    bool
 }
 
 func (fake *mecanicoRepositoryFake) EmailExiste(_ context.Context, email string) (bool, error) {
@@ -32,6 +39,19 @@ func (fake *mecanicoRepositoryFake) SalvarMecanico(_ context.Context, mecanico d
 		return domain.Mecanico{}, fake.errSave
 	}
 	return fake.saved, nil
+}
+
+func (fake *mecanicoRepositoryFake) EmailExisteExcetoMecanico(context.Context, string, string) (bool, error) {
+	return fake.existsExcept, fake.errExistsExcept
+}
+
+func (fake *mecanicoRepositoryFake) BuscarPorID(context.Context, string) (domain.Mecanico, error) {
+	return fake.found, fake.errFind
+}
+
+func (fake *mecanicoRepositoryFake) AtualizarMecanico(_ context.Context, _ domain.Mecanico, _ int) (domain.Mecanico, error) {
+	fake.updateCalled = true
+	return fake.updated, fake.errUpdate
 }
 
 func TestCadastrarMecanico(t *testing.T) {
@@ -79,6 +99,55 @@ func TestCadastrarMecanico(t *testing.T) {
 		})
 		if err == nil {
 			t.Fatal("esperava erro do hash")
+		}
+	})
+}
+
+func TestAtualizarMecanico(t *testing.T) {
+	atual := domain.Mecanico{ID: "m1", UsuarioID: "u1", Nome: "Maria", Email: "maria@oficina.local", Ativo: true, Version: 2, Escopos: []string{"clientes:ler"}}
+	input := AtualizarInput{MecanicoID: "m1", Version: 2, Dados: domain.AtualizarMecanicoInput{Nome: "Maria Souza", Email: "maria.souza@oficina.local", Escopos: []string{"os:ler"}}}
+	t.Run("atualiza", func(t *testing.T) {
+		repository := &mecanicoRepositoryFake{found: atual, updated: domain.Mecanico{ID: "m1", Nome: "Maria Souza", Email: "maria.souza@oficina.local", Version: 3}}
+		got, err := NewAtualizar(repository).Execute(context.Background(), input)
+		if err != nil || got.Version != 3 || !repository.updateCalled {
+			t.Fatalf("mecanico: %#v, erro: %v", got, err)
+		}
+	})
+	t.Run("nao encontrado", func(t *testing.T) {
+		_, err := NewAtualizar(&mecanicoRepositoryFake{errFind: ErrMecanicoNaoEncontrado}).Execute(context.Background(), input)
+		if !errors.Is(err, ErrMecanicoNaoEncontrado) {
+			t.Fatalf("erro: %v", err)
+		}
+	})
+	t.Run("versao divergente", func(t *testing.T) {
+		repository := &mecanicoRepositoryFake{found: atual}
+		_, err := NewAtualizar(repository).Execute(context.Background(), AtualizarInput{MecanicoID: "m1", Version: 1, Dados: input.Dados})
+		if !errors.Is(err, ErrVersaoDivergente) || repository.updateCalled {
+			t.Fatalf("erro: %v, update: %v", err, repository.updateCalled)
+		}
+	})
+	t.Run("escopo invalido", func(t *testing.T) {
+		repository := &mecanicoRepositoryFake{found: atual}
+		_, err := NewAtualizar(repository).Execute(context.Background(), AtualizarInput{MecanicoID: "m1", Version: 2, Dados: domain.AtualizarMecanicoInput{Nome: "Maria", Email: "maria@oficina.local", Escopos: []string{"x"}}})
+		if !errors.Is(err, domain.ErrEscopoInvalido) || repository.updateCalled {
+			t.Fatalf("erro: %v, update: %v", err, repository.updateCalled)
+		}
+	})
+	t.Run("email duplicado", func(t *testing.T) {
+		repository := &mecanicoRepositoryFake{found: atual, existsExcept: true}
+		_, err := NewAtualizar(repository).Execute(context.Background(), input)
+		if !errors.Is(err, ErrEmailDuplicado) || repository.updateCalled {
+			t.Fatalf("erro: %v, update: %v", err, repository.updateCalled)
+		}
+	})
+	t.Run("propaga erros", func(t *testing.T) {
+		_, err := NewAtualizar(&mecanicoRepositoryFake{found: atual, errExistsExcept: errors.New("db")}).Execute(context.Background(), input)
+		if err == nil {
+			t.Fatal("esperava erro de exists")
+		}
+		_, err = NewAtualizar(&mecanicoRepositoryFake{found: atual, errUpdate: errors.New("db")}).Execute(context.Background(), input)
+		if err == nil {
+			t.Fatal("esperava erro de update")
 		}
 	})
 }

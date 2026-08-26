@@ -37,8 +37,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	login := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt)
+	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
+	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
+	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
+	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
+	atualizarMecanico := mecanicoApplication.NewAtualizar(mecanicoRepository)
 	cadastrar := veiculoApplication.NewCadastrar(veiculo.NewPostgresRepository(db))
 	consultar := veiculoApplication.NewConsultar(veiculo.NewPostgresRepository(db))
 	atualizar := veiculoApplication.NewAtualizar(veiculo.NewPostgresRepository(db))
@@ -76,6 +79,7 @@ func main() {
 	)))
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))
+	mux.Handle("PUT /mecanicos/{mecanicoId}", segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", mecanicoPresentation.NewAtualizarHandler(atualizarMecanico)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:escrever", veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, "os:escrever", ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, "veiculos:ler", veiculoPresentation.NewConsultaHandler(consultar)))
