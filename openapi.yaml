@@ -9,12 +9,65 @@ tags:
   - name: Fornecedores
   - name: Ordens de Servico
   - name: Mecânico
+  - name: Serviço
 paths:
   /health:
     get:
       summary: Verifica a disponibilidade da API
       responses:
         '200': { description: API disponível }
+  /servicos:
+    post:
+      tags: [Serviço]
+      summary: Cadastra um serviço no catálogo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome, valor, tempoEstimadoMinutos]
+              additionalProperties: false
+              properties:
+                nome:
+                  type: string
+                  example: Troca de óleo
+                descricao:
+                  type: string
+                  example: Troca de óleo e filtro
+                valor:
+                  type: number
+                  format: double
+                  minimum: 0
+                  example: 150.00
+                tempoEstimadoMinutos:
+                  type: integer
+                  minimum: 1
+                  example: 60
+      responses:
+        '201':
+          description: Serviço cadastrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  codigo: { type: string, pattern: '^SER-[0-9]{6}$', example: SER-000004 }
+                  nome: { type: string }
+                  descricao: { type: string }
+                  valor: { type: number, format: double }
+                  tempoEstimadoMinutos: { type: integer }
+                  ativo: { type: boolean, example: true }
+                  version: { type: integer, example: 1 }
+                  dataCriacao: { type: string, format: date-time }
+        '400': { description: Dados obrigatórios ausentes ou inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo servicos:escrever }
+        '409': { description: Serviço ativo com o mesmo nome normalizado }
+        '500': { description: Falha inesperada }
   /fornecedores:
     get:
       tags: [Fornecedores]
