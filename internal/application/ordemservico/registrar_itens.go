@@ -7,11 +7,13 @@ import (
 	domainEstoque "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/estoque"
 	domainOrcamento "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
 	domainOS "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 var (
 	ErrOSNaoEncontrada        = errors.New("ordem de servico nao encontrada")
 	ErrItemNaoEncontrado      = errors.New("item de estoque nao encontrado")
+	ErrItemIDInvalido         = errors.New("itemId invalido")
 	ErrItemInativo            = errors.New("item de estoque inativo")
 	ErrItemSemValor           = errors.New("item de estoque sem valor unitario vigente")
 	ErrOrcamentoNaoEncontrado = errors.New("orcamento nao encontrado")
@@ -48,6 +50,9 @@ func (useCase RegistrarItens) Execute(ctx context.Context, input RegistrarInput)
 	}
 	seen := make(map[string]struct{}, len(input.Itens))
 	for _, item := range input.Itens {
+		if !validation.IsUUID(item.ItemID) {
+			return domainOrcamento.Resultado{}, ErrItemIDInvalido
+		}
 		if _, exists := seen[item.ItemID]; exists {
 			return domainOrcamento.Resultado{}, ErrItemRepetido
 		}

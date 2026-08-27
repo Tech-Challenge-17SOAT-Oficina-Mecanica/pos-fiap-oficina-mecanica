@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domainEstoque "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/estoque"
-	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
 	domainOrcamento "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
+	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
 )
 
 type PostgresRepository struct{ db *pgxpool.Pool }
@@ -95,6 +95,9 @@ func (repository PostgresRepository) RegistrarItens(ctx context.Context, input a
 		if item.tipo != input.Tipo {
 			return domainOrcamento.Resultado{}, domainEstoque.ErrTipoItemInvalido
 		}
+		if err := domainEstoque.QuantidadeCompativelComUnidade(requested.Quantidade, item.unidadeMedida); err != nil {
+			return domainOrcamento.Resultado{}, err
+		}
 		if item.valor == nil {
 			return domainOrcamento.Resultado{}, application.ErrItemSemValor
 		}
@@ -160,15 +163,15 @@ func (repository PostgresRepository) resolveBudget(ctx context.Context, tx pgx.T
 }
 
 type itemRow struct {
-	tipo, codigo, descricao string
-	ativo                   bool
-	valor                   *float64
+	tipo, codigo, descricao, unidadeMedida string
+	ativo                                  bool
+	valor                                  *float64
 }
 
 func (repository PostgresRepository) loadItem(ctx context.Context, tx pgx.Tx, itemID string) (itemRow, error) {
 	var item itemRow
 	var preco, custo sql.NullFloat64
-	err := tx.QueryRow(ctx, "SELECT tipo, codigo, descricao, ativo, preco_venda, custo_unitario FROM item_estoque WHERE id = $1", itemID).Scan(&item.tipo, &item.codigo, &item.descricao, &item.ativo, &preco, &custo)
+	err := tx.QueryRow(ctx, "SELECT tipo, codigo, descricao, unidade_medida, ativo, preco_venda, custo_unitario FROM item_estoque WHERE id = $1", itemID).Scan(&item.tipo, &item.codigo, &item.descricao, &item.unidadeMedida, &item.ativo, &preco, &custo)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return itemRow{}, application.ErrItemNaoEncontrado
 	}
@@ -341,4 +344,3 @@ func obterOuCriarOrcamento(ctx context.Context, tx pgx.Tx, ordemServicoID, tipo 
 	).Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.Status)
 	return orcamento, err
 }
-

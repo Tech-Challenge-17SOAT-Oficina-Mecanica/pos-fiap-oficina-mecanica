@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
+	domainEstoque "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/estoque"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
 	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
@@ -65,11 +66,11 @@ func writeUseCaseError(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, application.ErrOSNaoEncontrada), errors.Is(err, application.ErrItemNaoEncontrado), errors.Is(err, application.ErrOrcamentoNaoEncontrado):
 		status, title = http.StatusNotFound, "Recurso nao encontrado"
-	case errors.Is(err, application.ErrItemInativo), errors.Is(err, application.ErrOrcamentoAprovado):
+	case errors.Is(err, application.ErrItemInativo), errors.Is(err, application.ErrOrcamentoAprovado), errors.Is(err, application.ErrItemSemValor):
 		status, title = http.StatusConflict, "Conflito de estado"
 	case errors.Is(err, application.ErrStatusNaoPermiteItens):
 		status, title = http.StatusConflict, "Conflito de estado"
-	case errors.Is(err, application.ErrItemRepetido):
+	case errors.Is(err, application.ErrItemRepetido), errors.Is(err, application.ErrItemIDInvalido), errors.Is(err, domainEstoque.ErrQuantidadeIncompativelComUnidade):
 		status, title = http.StatusBadRequest, "Dados invalidos"
 	case strings.Contains(err.Error(), "tipo do item divergente"):
 		status, title = http.StatusBadRequest, "Dados invalidos"
