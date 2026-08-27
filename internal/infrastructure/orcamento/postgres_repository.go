@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
+	ordemservicoInfra "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 )
 
 type PostgresRepository struct{ db *pgxpool.Pool }
@@ -158,6 +159,11 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 	if input.ClienteID != "" && input.ClienteID != clienteID {
 		return domain.Decisao{}, application.ErrAcessoNegado
 	}
+	// So o PRINCIPAL exige AGUARDANDO_APROVACAO: o COMPLEMENTAR e criado com a OS em EM_EXECUCAO
+	// e permanece la ate a decisao do cliente, sem transitar para AGUARDANDO_APROVACAO.
+	if tipoOrcamento == domain.TipoPrincipal && statusOS != domain.OSStatusAguardandoAprovacao {
+		return domain.Decisao{}, application.ErrOrdemServicoNaoAguardandoAprovacao
+	}
 
 	novoStatusOS := statusOS
 	if tipoOrcamento == domain.TipoPrincipal {
@@ -194,6 +200,22 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 		}
 	}
 
+	if tipoOrcamento == domain.TipoPrincipal {
+		if _, err = ordemservicoInfra.DevolverItensTx(ctx, tx, ordemServicoID, nil); err != nil {
+			return domain.Decisao{}, err
+		}
+	} else {
+		itemIDs, err := itensDoOrcamentoComplementar(ctx, tx, input.OrcamentoID)
+		if err != nil {
+			return domain.Decisao{}, err
+		}
+		if len(itemIDs) > 0 {
+			if _, err = ordemservicoInfra.DevolverItensTx(ctx, tx, ordemServicoID, itemIDs); err != nil {
+				return domain.Decisao{}, err
+			}
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return domain.Decisao{}, err
 	}
@@ -209,4 +231,28 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 		DecididoEm:          decididoEm,
 		Motivo:              input.Motivo,
 	}, nil
+}
+
+// itensDoOrcamentoComplementar retorna os item_estoque_id registrados num orcamento complementar,
+// usados para restringir a devolucao de estoque apenas aos itens daquele orcamento. Limitacao
+// conhecida: se o mesmo item ja estava reservado pelo principal, ordem_servico_item guarda uma
+// unica linha por item (quantidades somadas), entao a devolucao aqui pode incluir a parcela do
+// principal para esse item especifico.
+func itensDoOrcamentoComplementar(ctx context.Context, tx pgx.Tx, orcamentoID string) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT item_estoque_id FROM orcamento_item
+		WHERE orcamento_id = $1 AND tipo_item IN ('PECA', 'INSUMO') AND item_estoque_id IS NOT NULL`, orcamentoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

@@ -306,6 +306,12 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 > serviço abre sua própria transação, porque `RecusarOrcamento` ainda não existe neste repositório
 > — quando essa integração for feita, a assinatura precisará aceitar uma `pgx.Tx` externa em vez de
 > abrir a própria.
+>
+> **Atualização (2026-08-27).** `RecusarOrcamento` foi implementado e integrado: a devolução agora
+> roda via `DevolverItensTx`, dentro da transação da recusa, sem abrir transação própria. O caso
+> A6 ("item inativado após o vínculo com a OS") também foi coberto: `ItemLiberado`, `ItemRetornado`
+> e `ItemSemDevolucao` agora carregam o campo `Ativo`, refletindo o estado atual do item no momento
+> da devolução.
 
 **Domínio**
 

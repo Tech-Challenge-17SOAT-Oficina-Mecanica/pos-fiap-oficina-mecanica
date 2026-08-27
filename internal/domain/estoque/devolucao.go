@@ -23,6 +23,7 @@ type ItemLiberado struct {
 	UnidadeMedida      string
 	Quantidade         float64
 	SaldoReservadoApos float64
+	Ativo              bool
 }
 
 // ItemRetornado é um item cuja quantidade já baixada voltou ao saldo físico.
@@ -34,6 +35,7 @@ type ItemRetornado struct {
 	UnidadeMedida   string
 	Quantidade      float64
 	SaldoFisicoApos float64
+	Ativo           bool
 }
 
 // ItemSemDevolucao é um item desvinculado da OS sem movimentação de estoque.
@@ -46,6 +48,7 @@ type ItemSemDevolucao struct {
 	Quantidade    float64
 	Motivo        string
 	PedidoID      string
+	Ativo         bool
 }
 
 // ResultadoDevolucao é o retorno de DevolverItensAoEstoque para o caso de uso chamador.

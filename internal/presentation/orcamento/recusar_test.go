@@ -49,6 +49,7 @@ func TestRecusarHandler(t *testing.T) {
 		{"acesso negado", orcamentoID, mecanico, "", application.ErrAcessoNegado, http.StatusForbidden},
 		{"ja decidido", orcamentoID, mecanico, "", application.ErrOrcamentoJaDecidido, http.StatusConflict},
 		{"complementar sem principal", orcamentoID, mecanico, "", application.ErrOrcamentoComplementarSemPrincipal, http.StatusConflict},
+		{"os fora de aguardando aprovacao", orcamentoID, mecanico, "", application.ErrOrdemServicoNaoAguardandoAprovacao, http.StatusConflict},
 		{"motivo invalido", orcamentoID, mecanico, "", application.ErrMotivoInvalido, http.StatusBadRequest},
 		{"erro interno", orcamentoID, mecanico, "", errors.New("falhou"), http.StatusInternalServerError},
 		{"mecanico", orcamentoID, mecanico, `{"motivo":"valor alto"}`, nil, http.StatusOK},

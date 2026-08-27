@@ -355,11 +355,11 @@ type devolucaoItemRow struct {
 	tipo, unidadeMedida string
 	saldoFisico         float64
 	saldoReservado      float64
+	ativo               bool
 }
 
 // DevolverItensAoEstoque libera reservas ativas e retorna ao saldo fisico o que ja foi consumido.
-// A marcacao de devolucao vive na reserva (status LIBERADA) e no zeramento de quantidade_consumida,
-// nao num campo proprio no item da OS: por isso a operacao e naturalmente idempotente.
+// Abre a propria transacao; para chamar dentro de uma transacao existente, use DevolverItensTx.
 func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context, ordemServicoID string) (domainEstoque.ResultadoDevolucao, error) {
 	tx, err := repository.db.Begin(ctx)
 	if err != nil {
@@ -367,14 +367,35 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 	}
 	defer tx.Rollback(ctx)
 
-	rows, err := tx.Query(ctx, `
+	resultado, err := DevolverItensTx(ctx, tx, ordemServicoID, nil)
+	if err != nil {
+		return domainEstoque.ResultadoDevolucao{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domainEstoque.ResultadoDevolucao{}, err
+	}
+	return resultado, nil
+}
+
+// DevolverItensTx e a versao reentrante de DevolverItensAoEstoque, para ser chamada dentro da
+// transacao de outro caso de uso (ex.: RecusarOrcamento). Quando itemEstoqueIDs e nao vazio,
+// restringe a devolucao a esses itens (usado na recusa de um orcamento complementar); nil devolve
+// todos os itens da OS (usado na recusa do orcamento principal, que cancela a OS inteira).
+func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, itemEstoqueIDs []string) (domainEstoque.ResultadoDevolucao, error) {
+	query := `
 		SELECT osi.id, ie.id, osi.quantidade_consumida, ie.codigo, ie.descricao, ie.tipo, ie.unidade_medida,
-		       ie.saldo_fisico, ie.saldo_reservado
+		       ie.saldo_fisico, ie.saldo_reservado, ie.ativo
 		FROM ordem_servico_item osi
 		JOIN item_estoque ie ON ie.id = osi.item_estoque_id
-		WHERE osi.ordem_servico_id = $1
-		ORDER BY ie.id
-		FOR UPDATE OF ie`, ordemServicoID)
+		WHERE osi.ordem_servico_id = $1`
+	args := []any{ordemServicoID}
+	if len(itemEstoqueIDs) > 0 {
+		query += " AND ie.id = ANY($2)"
+		args = append(args, itemEstoqueIDs)
+	}
+	query += " ORDER BY ie.id FOR UPDATE OF ie"
+
+	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		return domainEstoque.ResultadoDevolucao{}, err
 	}
@@ -382,7 +403,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 	for rows.Next() {
 		var item devolucaoItemRow
 		if err = rows.Scan(&item.osItemID, &item.itemEstoqueID, &item.quantidadeConsumida, &item.codigo, &item.descricao,
-			&item.tipo, &item.unidadeMedida, &item.saldoFisico, &item.saldoReservado); err != nil {
+			&item.tipo, &item.unidadeMedida, &item.saldoFisico, &item.saldoReservado, &item.ativo); err != nil {
 			rows.Close()
 			return domainEstoque.ResultadoDevolucao{}, err
 		}
@@ -417,7 +438,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 			}
 			resultado.ReservasLiberadas = append(resultado.ReservasLiberadas, domainEstoque.ItemLiberado{
 				ItemID: item.itemEstoqueID, Codigo: item.codigo, Descricao: item.descricao, Tipo: item.tipo,
-				UnidadeMedida: item.unidadeMedida, Quantidade: quantidadeReservada, SaldoReservadoApos: novoSaldoReservado,
+				UnidadeMedida: item.unidadeMedida, Quantidade: quantidadeReservada, SaldoReservadoApos: novoSaldoReservado, Ativo: item.ativo,
 			})
 			processado = true
 		}
@@ -438,7 +459,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 			}
 			resultado.ItensRetornadosAoEstoque = append(resultado.ItensRetornadosAoEstoque, domainEstoque.ItemRetornado{
 				ItemID: item.itemEstoqueID, Codigo: item.codigo, Descricao: item.descricao, Tipo: item.tipo,
-				UnidadeMedida: item.unidadeMedida, Quantidade: item.quantidadeConsumida, SaldoFisicoApos: novoSaldoFisico,
+				UnidadeMedida: item.unidadeMedida, Quantidade: item.quantidadeConsumida, SaldoFisicoApos: novoSaldoFisico, Ativo: item.ativo,
 			})
 			processado = true
 		}
@@ -451,7 +472,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 			resultado.ItensSemDevolucao = append(resultado.ItensSemDevolucao, domainEstoque.ItemSemDevolucao{
 				ItemID: item.itemEstoqueID, Codigo: item.codigo, Descricao: item.descricao, Tipo: item.tipo,
 				UnidadeMedida: item.unidadeMedida, Quantidade: pendente.quantidade,
-				Motivo: domainEstoque.MotivoPedidoDeCompraNaoRecebido, PedidoID: pendente.pedidoID,
+				Motivo: domainEstoque.MotivoPedidoDeCompraNaoRecebido, PedidoID: pendente.pedidoID, Ativo: item.ativo,
 			})
 			processado = true
 		}
@@ -461,9 +482,6 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 		}
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return domainEstoque.ResultadoDevolucao{}, err
-	}
 	return resultado, nil
 }
 

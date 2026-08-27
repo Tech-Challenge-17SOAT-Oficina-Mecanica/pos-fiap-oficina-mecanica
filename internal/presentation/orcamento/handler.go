@@ -165,7 +165,7 @@ func writeRecusarError(writer http.ResponseWriter, err error) {
 		writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "orcamentoId")
 	case errors.Is(err, application.ErrAcessoNegado):
 		writeProblem(writer, http.StatusForbidden, "Acesso negado", err.Error(), "")
-	case errors.Is(err, application.ErrOrcamentoJaDecidido), errors.Is(err, application.ErrOrcamentoComplementarSemPrincipal):
+	case errors.Is(err, application.ErrOrcamentoJaDecidido), errors.Is(err, application.ErrOrcamentoComplementarSemPrincipal), errors.Is(err, application.ErrOrdemServicoNaoAguardandoAprovacao):
 		writeProblem(writer, http.StatusConflict, "Conflito de estado", err.Error(), "")
 	case errors.Is(err, application.ErrMotivoInvalido):
 		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "motivo")

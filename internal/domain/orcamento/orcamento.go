@@ -8,6 +8,9 @@ const (
 	StatusCriado     = "CRIADO"
 	StatusAprovado   = "APROVADO"
 	StatusRecusado   = "RECUSADO"
+
+	// OSStatusAguardandoAprovacao e o unico status de OS em que um orcamento PRINCIPAL pode ser recusado.
+	OSStatusAguardandoAprovacao = "AGUARDANDO_APROVACAO"
 )
 
 // ItemRegistrado é o item devolvido pelo registro de peças/insumos na OS.
