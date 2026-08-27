@@ -36,6 +36,52 @@ paths:
         '403': { description: Usuário sem o escopo os:escrever }
         '404': { description: Cliente ou veículo não encontrado }
         '409': { description: Veículo não vinculado ao cliente informado }
+  /ordens-servico/{osId}/problema-relatado:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra o problema relatado pelo cliente
+      description: >-
+        Registra o relato inicial em uma OS RECEBIDA e, na mesma operação, altera o status
+        para EM_DIAGNOSTICO e grava a data de início do diagnóstico. Exige o escopo `os:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao]
+              additionalProperties: false
+              properties:
+                descricao: { type: string, minLength: 1, example: Veículo apresenta ruído ao frear }
+                observacoes: { type: string, example: O problema começou há uma semana }
+      responses:
+        '201':
+          description: Problema relatado registrado e diagnóstico iniciado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ordemServicoId: { type: string, format: uuid }
+                  problemaRelatado:
+                    type: object
+                    properties:
+                      descricao: { type: string }
+                      observacoes: { type: string }
+                  status: { type: string, enum: [EM_DIAGNOSTICO] }
+                  dataInicioDiagnostico: { type: string, format: date-time }
+        '400': { description: Identificador ou corpo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Ordem de serviço não encontrada }
+        '409': { description: OS fora de RECEBIDA ou problema relatado já registrado }
   /health:
     get:
       summary: Verifica a disponibilidade da API

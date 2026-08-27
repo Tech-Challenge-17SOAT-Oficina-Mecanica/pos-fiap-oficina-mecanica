@@ -3,6 +3,7 @@ package ordemservico
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,6 +14,50 @@ import (
 type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
+
+func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Context, ordemServicoID string, problema domain.ProblemaRelatado) (resultado domain.OrdemDeServico, err error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return resultado, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var status string
+	var descricaoExistente *string
+	err = tx.QueryRow(ctx, `SELECT status, problema_relatado_descricao
+		FROM ordem_servico WHERE id = $1 FOR UPDATE`, ordemServicoID).Scan(&status, &descricaoExistente)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return resultado, application.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return resultado, err
+	}
+	if descricaoExistente != nil {
+		return resultado, application.ErrProblemaRelatadoJaRegistrado
+	}
+	if status != domain.StatusRecebida {
+		return resultado, application.ErrOrdemServicoForaDeRecebida
+	}
+
+	var inicio time.Time
+	err = tx.QueryRow(ctx, `UPDATE ordem_servico
+		SET problema_relatado_descricao = $2,
+			problema_relatado_observacoes = NULLIF($3, ''),
+			data_inicio_diagnostico = CURRENT_TIMESTAMP,
+			status = $4
+		WHERE id = $1
+		RETURNING id, status, data_inicio_diagnostico`, ordemServicoID, problema.Descricao, problema.Observacoes, domain.StatusEmDiagnostico).
+		Scan(&resultado.ID, &resultado.Status, &inicio)
+	if err != nil {
+		return resultado, err
+	}
+	resultado.ProblemaRelatado = problema
+	resultado.DataInicioDiagnostico = &inicio
+	if err = tx.Commit(ctx); err != nil {
+		return domain.OrdemDeServico{}, err
+	}
+	return resultado, nil
+}
 
 func (repository PostgresRepository) Criar(ctx context.Context, input application.CriarInput) (ordem domain.OrdemDeServico, err error) {
 	tx, err := repository.db.BeginTx(ctx, pgx.TxOptions{})
