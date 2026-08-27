@@ -178,4 +178,10 @@ SELECT setval(
     FALSE
 ) FROM item_estoque WHERE tipo = 'INSUMO';
 
+SELECT setval(
+    'seq_pedido_compra_numero',
+    COALESCE(MAX(SUBSTRING(numero FROM 6)::BIGINT), 0) + 1,
+    FALSE
+) FROM pedido_compra;
+
 COMMIT;
