@@ -3,6 +3,7 @@ package orcamento
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -123,4 +124,89 @@ func problemasDoOrcamento(ctx context.Context, queryer rowQueryer, orcamentoID s
 		problemas = append(problemas, problema)
 	}
 	return problemas, rows.Err()
+}
+
+func (repository PostgresRepository) Recusar(ctx context.Context, input application.RecusarInput) (domain.Decisao, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.Decisao{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var ordemServicoID, tipoOrcamento, status, original string
+	err = tx.QueryRow(ctx, `
+		SELECT ordem_servico_id, tipo_orcamento, status, COALESCE(orcamento_original_id::text, '')
+		FROM orcamento WHERE id = $1 FOR UPDATE`, input.OrcamentoID,
+	).Scan(&ordemServicoID, &tipoOrcamento, &status, &original)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Decisao{}, application.ErrOrcamentoNaoEncontrado
+	}
+	if err != nil {
+		return domain.Decisao{}, err
+	}
+	if input.OrdemServicoID != "" && input.OrdemServicoID != ordemServicoID {
+		return domain.Decisao{}, application.ErrAcessoNegado
+	}
+	if status != domain.StatusCriado {
+		return domain.Decisao{}, application.ErrOrcamentoJaDecidido
+	}
+
+	var clienteID, statusOS string
+	if err = tx.QueryRow(ctx, "SELECT cliente_id, status FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&clienteID, &statusOS); err != nil {
+		return domain.Decisao{}, err
+	}
+	if input.ClienteID != "" && input.ClienteID != clienteID {
+		return domain.Decisao{}, application.ErrAcessoNegado
+	}
+
+	novoStatusOS := statusOS
+	if tipoOrcamento == domain.TipoPrincipal {
+		novoStatusOS = "CANCELADA"
+	} else {
+		if original == "" {
+			return domain.Decisao{}, application.ErrOrcamentoComplementarSemPrincipal
+		}
+		var statusPrincipal string
+		if err = tx.QueryRow(ctx, "SELECT status FROM orcamento WHERE id = $1 FOR UPDATE", original).Scan(&statusPrincipal); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Decisao{}, application.ErrOrcamentoComplementarSemPrincipal
+			}
+			return domain.Decisao{}, err
+		}
+		if statusPrincipal == domain.StatusAprovado {
+			novoStatusOS = "AGUARDANDO_EXECUCAO"
+		}
+	}
+
+	var decididoEm time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE orcamento
+		SET status = $1, recusado_em = CURRENT_TIMESTAMP, cliente_recusador_id = NULLIF($2, '')::uuid, motivo_recusa = NULLIF($3, '')
+		WHERE id = $4
+		RETURNING recusado_em`, domain.StatusRecusado, input.ClienteID, input.Motivo, input.OrcamentoID,
+	).Scan(&decididoEm); err != nil {
+		return domain.Decisao{}, err
+	}
+
+	if novoStatusOS != statusOS {
+		if _, err = tx.Exec(ctx, "UPDATE ordem_servico SET status = $1 WHERE id = $2", novoStatusOS, ordemServicoID); err != nil {
+			return domain.Decisao{}, err
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Decisao{}, err
+	}
+
+	return domain.Decisao{
+		OrcamentoID:         input.OrcamentoID,
+		OrdemServicoID:      ordemServicoID,
+		TipoOrcamento:       tipoOrcamento,
+		OrcamentoOriginalID: original,
+		StatusOrcamento:     domain.StatusRecusado,
+		StatusOrdemServico:  novoStatusOS,
+		ClienteID:           clienteID,
+		DecididoEm:          decididoEm,
+		Motivo:              input.Motivo,
+	}, nil
 }

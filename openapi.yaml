@@ -1018,6 +1018,48 @@ paths:
         '401': { description: Token ausente ou expirado }
         '403': { description: Usuário sem o escopo os:ler }
         '404': { description: OS não encontrada }
+  /orcamentos/{orcamentoId}/recusar:
+    post:
+      tags: [Orçamento]
+      summary: Recusa um orçamento principal ou complementar
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orcamentoId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                motivo: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Orçamento recusado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orcamentoId: { type: string, format: uuid }
+                  ordemServicoId: { type: string, format: uuid }
+                  tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+                  orcamentoOriginalId: { type: string, format: uuid }
+                  statusOrcamento: { type: string, enum: [RECUSADO] }
+                  statusOrdemServico: { type: string }
+                  clienteId: { type: string, format: uuid }
+                  dataRecusa: { type: string, format: date-time }
+                  motivo: { type: string }
+        '400': { description: orcamentoId, corpo ou motivo inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:decidir, ou cliente sem acesso a este orçamento }
+        '404': { description: Orçamento não encontrado }
+        '409': { description: Orçamento já decidido, ou complementar sem orçamento principal vinculado }
 components:
   securitySchemes:
     bearerAuth:
