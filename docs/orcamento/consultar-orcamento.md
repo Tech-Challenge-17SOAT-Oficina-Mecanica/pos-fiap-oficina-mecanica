@@ -105,20 +105,19 @@ status de cada orçamento e a estimativa de entrega, antes de aprová-los ou rec
 **Endpoint**
 
 ```http
-GET /orcamentos
+GET /ordens-servico/{osId}/orcamento
 ```
 
 **Autenticação / Autorização**
 
 - `Bearer <JWT>` obrigatório.
-- Perfis: `CLIENTE`, apenas para os orçamentos da própria OS, e `MECANICO`.
-- Escopo: `orcamentos:ler`.
+- Mecânico: escopo `os:ler`, para consultar qualquer OS da oficina.
+- Cliente: token temporário com escopo `orcamentos:ler`, restrito à própria OS.
 - A operação é somente leitura.
 
-> **Decisão de projeto.** Esta rota devolve **um orçamento isolado**, por identificador ou por
-> documento do cliente. A visão consolidada da OS — principal mais complementares — é
-> `GET /ordens-servico/{osId}/orcamento`, do contexto de Ordem de Serviço. As duas ficam, com esses
-> papéis.
+> **Decisão de projeto.** Esta rota devolve a visão consolidada da OS: orçamento principal,
+> complementares e seus itens. A consulta isolada por identificador e a consulta por documento não
+> fazem parte do MVP.
 
 > **Decisão de projeto.** O cliente se autentica por **token de escopo reduzido**, emitido no envio
 > do orçamento e válido apenas para aquela OS. O mesmo token serve para consultar, aprovar e
@@ -128,19 +127,10 @@ GET /orcamentos
 
 | Local | Parâmetro | Tipo | Obrigatório | Descrição |
 |---|---|---|---|---|
-| Query | `orcamentoId` | uuid | Não* | Identificador do orçamento. |
-| Query | `documento` | string | Não* | CPF ou CNPJ do cliente. |
-| Query | `pagina` | inteiro | Não | Página da consulta por documento. Padrão: `0`. |
-| Query | `tamanho` | inteiro | Não | Quantidade de registros por página. Padrão: `20`. |
-
-*Deve ser informado ao menos um dos parâmetros `orcamentoId` ou `documento`.*
+| Path | `osId` | uuid | Sim | Identificador da Ordem de Serviço. |
 
 ```http
-GET /orcamentos?orcamentoId=uuid-do-orcamento
-```
-
-```http
-GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
+GET /ordens-servico/{osId}/orcamento
 ```
 
 **Validações**
@@ -148,15 +138,10 @@ GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
 *Técnicas*
 
 - `orcamentoId`, quando informado, deve possuir formato UUID válido.
-- `pagina` e `tamanho` devem possuir valores válidos.
-- O CPF/CNPJ deve possuir formato válido, quando informado.
 
 *Negócio*
 
-- Deve ser informado `orcamentoId` ou `documento`.
-- O orçamento deve existir, quando informado.
 - A OS vinculada deve pertencer ao cliente autenticado.
-- O documento informado deve pertencer ao cliente autenticado.
 - `tipoOrcamento` deve ser `PRINCIPAL` ou `COMPLEMENTAR`.
 - `statusOrcamento` deve ser `CRIADO`, `APROVADO` ou `RECUSADO`.
 - Quando existir orçamento complementar, seu vínculo com o orçamento principal da mesma OS deve ser válido.
@@ -164,17 +149,13 @@ GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
 
 **Processamento**
 
-1. Receber os critérios da consulta.
-2. Identificar o cliente autenticado.
-3. Validar os critérios informados.
-4. Consultar os orçamentos pelo identificador ou documento.
-5. Consultar a OS vinculada.
-6. Validar o vínculo entre cliente, OS e orçamento.
-7. Consultar o orçamento principal e os complementares vinculados à mesma OS.
-8. Consultar os itens de cada orçamento.
-9. Consultar `tipoOrcamento`, `statusOrcamento` e `estimativaEntregaDias` de cada orçamento.
-10. Calcular o valor total geral dos orçamentos da OS.
-11. Montar e retornar a resposta com o status atual da OS.
+1. Receber e validar o `osId`.
+2. Identificar o mecânico ou o cliente autenticado.
+3. Para cliente, validar que a OS é a mesma do token temporário.
+4. Consultar a OS, o orçamento principal e os complementares.
+5. Consultar os itens de cada orçamento.
+6. Calcular o valor total de cada orçamento e o valor total geral da OS.
+7. Montar e retornar a resposta com o status atual da OS.
 
 **Persistência**
 
@@ -189,15 +170,17 @@ GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
 
 ```json
 {
-  "data": [
-    {
-      "cliente": {
-        "clienteId": "uuid-do-cliente",
-        "documento": "00000000000"
-      },
-      "ordemServicoId": "uuid-da-os",
-      "statusOrdemServico": "AGUARDANDO_APROVACAO",
-      "orcamentos": [
+  "cliente": {
+    "clienteId": "uuid-do-cliente",
+    "nome": "Ana Silva",
+    "documento": "***.***.***-00",
+    "tipoDocumento": "CPF"
+  },
+  "ordemServicoId": "uuid-da-os",
+  "statusOrdemServico": "AGUARDANDO_APROVACAO",
+  "valorTotalGeral": 350.00,
+  "estimativaEntregaDias": 10,
+  "orcamentos": [
         {
           "orcamentoId": "uuid-orcamento-principal",
           "tipoOrcamento": "PRINCIPAL",
@@ -240,30 +223,21 @@ GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
           "estimativaEntregaDias": 6,
           "dataGeracao": "2026-08-22T11:30:00-03:00"
         }
-      ],
-      "valorTotalGeral": 350.00
-    }
-  ],
-  "pagina": 0,
-  "tamanho": 20,
-  "totalElementos": 1,
-  "totalPaginas": 1
+  ]
 }
 ```
 
-> **Decisão de projeto.** A listagem usa o envelope padrão do projeto — `data`, `pagina`,
-> `tamanho`, `totalElementos` e `totalPaginas`. O envelope `content`/`page`/`size`, herdado de
-> outra convenção, foi abandonado (D-21). Recurso único, quando houver, vai direto, sem envelope.
+> Esta consulta representa uma única OS e, por isso, não usa paginação nem envelope de lista.
 
 **Códigos HTTP / Erros**
 
 | Código | Situação |
 |---|---|
-| 200 OK | Orçamentos consultados com sucesso, inclusive quando a lista estiver vazia. |
-| 400 Bad Request | Nenhum critério informado, documento, identificador ou paginação inválidos. |
-| 401 Unauthorized | Cliente não autenticado. |
+| 200 OK | Orçamentos consultados com sucesso. |
+| 400 Bad Request | `osId` inválido. |
+| 401 Unauthorized | Token ausente, inválido ou expirado. |
 | 403 Forbidden | Cliente sem acesso aos orçamentos. |
-| 404 Not Found | Orçamento ou cliente não encontrado. |
+| 404 Not Found | OS ou orçamento não encontrado. |
 | 500 Internal Server Error | Erro inesperado. |
 
 **Dependências**
@@ -274,8 +248,7 @@ GET /orcamentos?documento=00000000000&pagina=0&tamanho=20
 - `OrcamentoRepository`.
 - `OrcamentoItemRepository`.
 - `OrdemDeServicoRepository`.
-- Validador de CPF/CNPJ.
-- Contexto do cliente autenticado.
+- Contexto do mecânico ou cliente autenticado.
 - Banco de dados.
 
 **Testes**

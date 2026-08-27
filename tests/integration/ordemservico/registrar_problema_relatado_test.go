@@ -1,4 +1,4 @@
-package ordemservico_test
+package integration_test
 
 import (
 	"context"
@@ -55,10 +55,10 @@ func TestRegistrarProblemaRelatado(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertStatus(t, handler, osTeste, "", `{"descricao":"Ruído"}`, http.StatusUnauthorized)
-	assertStatus(t, handler, osTeste, semEscopo, `{"descricao":"Ruído"}`, http.StatusForbidden)
-	assertStatus(t, handler, "76000000-0000-0000-0000-999999999999", token, `{"descricao":"Ruído"}`, http.StatusNotFound)
-	assertStatus(t, handler, "70000000-0000-0000-0000-000000000001", token, `{"descricao":"Ruído"}`, http.StatusConflict)
+	assertProblemaRelatadoStatus(t, handler, osTeste, "", `{"descricao":"Ruído"}`, http.StatusUnauthorized)
+	assertProblemaRelatadoStatus(t, handler, osTeste, semEscopo, `{"descricao":"Ruído"}`, http.StatusForbidden)
+	assertProblemaRelatadoStatus(t, handler, "76000000-0000-0000-0000-999999999999", token, `{"descricao":"Ruído"}`, http.StatusNotFound)
+	assertProblemaRelatadoStatus(t, handler, "70000000-0000-0000-0000-000000000001", token, `{"descricao":"Ruído"}`, http.StatusConflict)
 
 	request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osTeste+"/problema-relatado", strings.NewReader(`{"descricao":"Veículo apresenta ruído ao frear","observacoes":"Há uma semana"}`))
 	request.SetPathValue("osId", osTeste)
@@ -76,13 +76,13 @@ func TestRegistrarProblemaRelatado(t *testing.T) {
 		t.Fatalf("body = %+v, erro = %v", body, err)
 	}
 
-	var status, descricao, observacoes, tipo string
+	var status, descricao, observacoes string
 	var inicio time.Time
-	err = db.QueryRow(ctx, `SELECT os.status, os.iniciada_em, p.tipo, p.descricao, COALESCE(p.observacoes, '')
-		FROM ordem_servico os JOIN problema_ordem_servico p ON p.ordem_servico_id = os.id WHERE os.id = $1`, osTeste).
-		Scan(&status, &inicio, &tipo, &descricao, &observacoes)
-	if err != nil || status != "EM_DIAGNOSTICO" || inicio.IsZero() || tipo != "RELATADO" || descricao != "Veículo apresenta ruído ao frear" || observacoes != "Há uma semana" {
-		t.Fatalf("status=%q início=%v tipo=%q descrição=%q observações=%q erro=%v", status, inicio, tipo, descricao, observacoes, err)
+	err = db.QueryRow(ctx, `SELECT status, data_inicio_diagnostico, problema_relatado_descricao,
+		COALESCE(problema_relatado_observacoes, '') FROM ordem_servico WHERE id = $1`, osTeste).
+		Scan(&status, &inicio, &descricao, &observacoes)
+	if err != nil || status != "EM_DIAGNOSTICO" || inicio.IsZero() || descricao != "Veículo apresenta ruído ao frear" || observacoes != "Há uma semana" {
+		t.Fatalf("status=%q início=%v descrição=%q observações=%q erro=%v", status, inicio, descricao, observacoes, err)
 	}
 
 	duplicate := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osTeste+"/problema-relatado", strings.NewReader(`{"descricao":"Outro relato"}`))
@@ -95,7 +95,7 @@ func TestRegistrarProblemaRelatado(t *testing.T) {
 	}
 }
 
-func assertStatus(t *testing.T, handler http.Handler, osID, token, body string, expected int) {
+func assertProblemaRelatadoStatus(t *testing.T, handler http.Handler, osID, token, body string, expected int) {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osID+"/problema-relatado", strings.NewReader(body))
 	request.SetPathValue("osId", osID)

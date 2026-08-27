@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	ErrOrdemServicoNaoEncontrada    = errors.New("Ordem de Serviço não encontrada")
-	ErrOrdemServicoForaDeRecebida   = errors.New("Ordem de Serviço não está com status RECEBIDA")
+	ErrOrdemServicoForaDeRecebida   = errors.New("ordem de serviço não está com status RECEBIDA")
 	ErrProblemaRelatadoJaRegistrado = errors.New("problema relatado já registrado")
 )
 
@@ -19,13 +18,13 @@ type RegistrarProblemaRelatadoInput struct {
 	Observacoes    string
 }
 
-type Repository interface {
+type ProblemaRelatadoRepository interface {
 	RegistrarProblemaRelatado(context.Context, string, domain.ProblemaRelatado) (domain.OrdemDeServico, error)
 }
 
-type RegistrarProblemaRelatado struct{ repository Repository }
+type RegistrarProblemaRelatado struct{ repository ProblemaRelatadoRepository }
 
-func NewRegistrarProblemaRelatado(repository Repository) RegistrarProblemaRelatado {
+func NewRegistrarProblemaRelatado(repository ProblemaRelatadoRepository) RegistrarProblemaRelatado {
 	return RegistrarProblemaRelatado{repository}
 }
 

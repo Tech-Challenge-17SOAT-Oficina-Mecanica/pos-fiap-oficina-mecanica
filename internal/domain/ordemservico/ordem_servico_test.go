@@ -21,7 +21,7 @@ func TestNovoProblemaRelatadoSemObservacoes(t *testing.T) {
 
 func TestNovoProblemaRelatadoRejeitaDescricaoVazia(t *testing.T) {
 	_, err := NovoProblemaRelatado("  ", "observação")
-	if !errors.Is(err, ErrDescricaoObrigatoria) {
+	if !errors.Is(err, ErrDescricaoProblemaRelatadoObrigatoria) {
 		t.Fatalf("erro = %v", err)
 	}
 }

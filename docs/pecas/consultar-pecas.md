@@ -130,7 +130,7 @@ GET /estoque/pecas/{pecaId}
 | Query | `incluirInativos` | boolean | Inclui peças inativas. Padrão `false`. |
 | Query | `quantidadeDesejada` | number | Quantidade que o mecânico deseja utilizar. |
 | Query | `pagina` | inteiro | Página iniciada em zero. Padrão `0`. |
-| Query | `tamanho` | inteiro | Itens por página. Padrão `20`, máximo `100`. |
+| Query | `tamanho` | inteiro | Itens por página. Padrão `20`, máximo `50`. |
 
 Exemplos:
 
@@ -149,7 +149,7 @@ GET /estoque/pecas/3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4
 - Validar que `descricao` possui no mínimo 2 caracteres, quando informada.
 - Validar que `quantidadeDesejada` é maior que zero, quando informada.
 - Validar que `pagina` é maior ou igual a zero.
-- Validar que `tamanho` não excede 100.
+- Validar que `tamanho` não excede 50.
 - Validar o formato dos filtros informados.
 - Garantir que a consulta não altera o estoque, não cria reserva e não cria pedido de compra.
 

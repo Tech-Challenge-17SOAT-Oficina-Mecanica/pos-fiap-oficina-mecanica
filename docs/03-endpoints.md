@@ -78,7 +78,7 @@ existe? quem é o dono dela? o caminho está no padrão?
 | `GET` | `/ordens-servico` | Lista OS com filtro por status, documento do cliente e placa | `os:ler` | [listar-ordens-de-servico.md](ordem-de-servico/listar-ordens-de-servico.md) |
 | `POST` | `/ordens-servico/{osId}/pecas` | Registra as peças necessárias na OS e no orçamento vigente | `os:escrever` | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
 | `POST` | `/ordens-servico/{osId}/insumos` | Registra os insumos necessários na OS e no orçamento vigente | `os:escrever` | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
-| `GET` | `/ordens-servico/{osId}/orcamento` | Devolve todos os orçamentos da OS — principal e complementares — com seus itens | `os:ler` | [registrar-pecas-e-insumos-necessarios.md](ordem-de-servico/registrar-pecas-e-insumos-necessarios.md) |
+| `GET` | `/ordens-servico/{osId}/orcamento` | Devolve todos os orçamentos da OS — principal e complementares — com seus itens | `os:ler` ou `orcamentos:ler` | [consultar-orcamento.md](orcamento/consultar-orcamento.md) |
 | `GET` | `/ordens-servico/{osId}/tempo-execucao` | Retorna o tempo de execução de uma OS | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 | `GET` | `/ordens-servico/tempos-execucao` | Lista os tempos de execução e o tempo médio do período | `os:ler` | [monitorar-tempo-medio-de-execucao.md](ordem-de-servico/monitorar-tempo-medio-de-execucao.md) |
 
@@ -87,7 +87,6 @@ existe? quem é o dono dela? o caminho está no padrão?
 | Método | Rota | O que faz | Escopo | Documento |
 |---|---|---|---|---|
 | `POST` | `/orcamentos/{orcamentoId}/calcular` | Calcula os itens, o valor total geral e a estimativa de entrega do orçamento | `orcamentos:escrever` | [calcular-orcamento.md](orcamento/calcular-orcamento.md) |
-| `GET` | `/orcamentos` | Consulta orçamentos por identificador ou pelo documento do cliente | `orcamentos:ler` | [consultar-orcamento.md](orcamento/consultar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/aprovar` | Cliente aprova o orçamento, que dispara reserva e compra dos itens | `orcamentos:decidir` | [aprovar-orcamento.md](orcamento/aprovar-orcamento.md) |
 | `POST` | `/orcamentos/{orcamentoId}/recusar` | Cliente recusa o orçamento; o principal cancela a OS, o complementar só é descartado | `orcamentos:decidir` | [recusar-orcamento.md](orcamento/recusar-orcamento.md) |
 
