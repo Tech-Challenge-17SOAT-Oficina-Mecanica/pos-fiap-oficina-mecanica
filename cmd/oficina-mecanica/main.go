@@ -63,6 +63,7 @@ func main() {
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
+	processarPecas := pecaApplication.NewSolicitarCompraEReservarPecas(pecaRepository)
 	insumoRepository := insumoInfrastructure.NewPostgresRepository(db)
 	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoRepository)
 	consultarInsumos := insumoApplication.NewConsultarInsumos(insumoRepository)
@@ -133,6 +134,8 @@ func main() {
 	mux.Handle("POST /servicos/{servicoId}/reativacao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewReativarHandler(reativarServico)))
 	mux.Handle("POST /estoque/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
+	mux.Handle("POST /estoque/solicitacoes-compra-reserva", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
+		pecaPresentation.NewSolicitarCompraEReservarPecasHandler(processarPecas)))
 	mux.Handle("POST /estoque/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		insumoPresentation.NewCadastrarInsumoHandler(cadastrarInsumo)))
 	mux.Handle("POST /estoque/solicitacoes-compra-reserva-insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
