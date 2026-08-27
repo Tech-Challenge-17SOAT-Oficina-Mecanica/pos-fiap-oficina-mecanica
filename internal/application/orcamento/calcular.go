@@ -14,6 +14,7 @@ var ErrIdentificadorInvalido = errors.New("identificador deve ser um UUID valido
 // OrcamentoDaOS e um orcamento irmao, usado apenas para somar o total geral da OS.
 type OrcamentoDaOS struct {
 	ID     string
+	Tipo   string
 	Status string
 	Itens  []orcamento.Item
 }
@@ -51,19 +52,23 @@ func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (Result
 	if err != nil {
 		return ResultadoCalculo{}, err
 	}
-	if err := alvo.ValidarParaCalculo(); err != nil {
+
+	// Toda a leitura vem antes da escrita, de proposito: se qualquer consulta falhar,
+	// nada foi gravado ainda. A escrita e a ultima operacao, e e atomica (RNF-ORC-01).
+	irmaos, err := useCase.repository.OrcamentosDaOrdem(ctx, ordemServicoID)
+	if err != nil {
+		return ResultadoCalculo{}, err
+	}
+
+	vinculos := make([]orcamento.Vinculo, 0, len(irmaos))
+	for _, irmao := range irmaos {
+		vinculos = append(vinculos, orcamento.Vinculo{ID: irmao.ID, Tipo: irmao.Tipo})
+	}
+	if err := alvo.ValidarParaCalculo(vinculos); err != nil {
 		return ResultadoCalculo{}, err
 	}
 
 	itens, total, err := orcamento.Recalcular(alvo.Itens)
-	if err != nil {
-		return ResultadoCalculo{}, err
-	}
-	if err := useCase.repository.SalvarItens(ctx, orcamentoID, itens); err != nil {
-		return ResultadoCalculo{}, err
-	}
-
-	irmaos, err := useCase.repository.OrcamentosDaOrdem(ctx, ordemServicoID)
 	if err != nil {
 		return ResultadoCalculo{}, err
 	}
@@ -81,6 +86,11 @@ func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (Result
 		for _, item := range irmao.Itens {
 			totalGeral += orcamento.TotalItem(item)
 		}
+	}
+
+	// Unica escrita do fluxo, depois de tudo validado e calculado.
+	if err := useCase.repository.SalvarItens(ctx, orcamentoID, itens); err != nil {
+		return ResultadoCalculo{}, err
 	}
 
 	return ResultadoCalculo{

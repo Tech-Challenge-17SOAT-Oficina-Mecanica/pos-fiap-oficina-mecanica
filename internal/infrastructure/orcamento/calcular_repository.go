@@ -41,7 +41,8 @@ func (repository PostgresRepository) BuscarParaCalculo(ctx context.Context, orca
 // no total e o caso de uso; aqui so se carrega o que existe.
 func (repository PostgresRepository) OrcamentosDaOrdem(ctx context.Context, ordemServicoID string) ([]orcamentoApplication.OrcamentoDaOS, error) {
 	linhas, err := repository.db.Query(ctx, `
-		SELECT id, status FROM orcamento WHERE ordem_servico_id = $1 ORDER BY criado_em`, ordemServicoID)
+		SELECT id, tipo_orcamento, status FROM orcamento
+		WHERE ordem_servico_id = $1 ORDER BY criado_em`, ordemServicoID)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func (repository PostgresRepository) OrcamentosDaOrdem(ctx context.Context, orde
 	var orcamentos []orcamentoApplication.OrcamentoDaOS
 	for linhas.Next() {
 		var atual orcamentoApplication.OrcamentoDaOS
-		if err := linhas.Scan(&atual.ID, &atual.Status); err != nil {
+		if err := linhas.Scan(&atual.ID, &atual.Tipo, &atual.Status); err != nil {
 			linhas.Close()
 			return nil, err
 		}

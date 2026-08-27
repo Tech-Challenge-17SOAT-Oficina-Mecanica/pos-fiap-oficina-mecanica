@@ -73,6 +73,7 @@ func TestCalcularErros(t *testing.T) {
 		{"não encontrado", orcamentoID, calcularFake{erro: orcamento.ErrOrcamentoNaoEncontrado}, http.StatusNotFound},
 		{"já aprovado", orcamentoID, calcularFake{alvo: orcamentoDomain.Orcamento{Tipo: orcamentoDomain.TipoPrincipal, Status: orcamentoDomain.StatusAprovado}}, http.StatusConflict},
 		{"complementar sem principal", orcamentoID, calcularFake{alvo: orcamentoDomain.Orcamento{Tipo: orcamentoDomain.TipoComplementar, Status: orcamentoDomain.StatusCriado}}, http.StatusConflict},
+		{"complementar vinculado a outra OS", orcamentoID, calcularFake{alvo: orcamentoDomain.Orcamento{Tipo: orcamentoDomain.TipoComplementar, Status: orcamentoDomain.StatusCriado, OriginalID: "de-outra-os"}}, http.StatusConflict},
 		{"sem itens", orcamentoID, calcularFake{alvo: orcamentoDomain.Orcamento{Tipo: orcamentoDomain.TipoPrincipal, Status: orcamentoDomain.StatusCriado}}, http.StatusConflict},
 		{"falha inesperada", orcamentoID, calcularFake{erro: context.DeadlineExceeded}, http.StatusInternalServerError},
 	}

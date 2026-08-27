@@ -15,6 +15,7 @@ var (
 	ErrStatusNaoCalculavel      = errors.New("apenas orcamento com status CRIADO pode ser calculado")
 	ErrSemItens                 = errors.New("o orcamento nao possui itens para calcular")
 	ErrComplementarSemPrincipal = errors.New("orcamento complementar exige um principal vinculado da mesma ordem de servico")
+	ErrVinculoInvalido          = errors.New("orcamentoOriginalId nao aponta para o orcamento principal desta ordem de servico")
 	ErrItemInvalido             = errors.New("todos os itens precisam de quantidade e valor unitario validos")
 )
 
@@ -55,15 +56,32 @@ func Recalcular(itens []Item) ([]Item, float64, error) {
 	return recalculados, arredondar(total), nil
 }
 
-// ValidarParaCalculo aplica as regras que independem de banco.
-func (orcamento Orcamento) ValidarParaCalculo() error {
+// Vinculo descreve um orcamento irmao — da mesma OS — o suficiente para validar o
+// vinculo do complementar com o principal.
+type Vinculo struct {
+	ID   string
+	Tipo string
+}
+
+// ValidarParaCalculo confere status e, para o complementar, se o orcamentoOriginalId
+// aponta mesmo para um PRINCIPAL da mesma OS. Conferir apenas se o campo esta preenchido
+// deixaria passar vinculo para outra OS ou para outro complementar.
+func (orcamento Orcamento) ValidarParaCalculo(daMesmaOrdem []Vinculo) error {
 	if !orcamento.Calculavel() {
 		return ErrStatusNaoCalculavel
 	}
-	if orcamento.Tipo == TipoComplementar && orcamento.OriginalID == "" {
+	if orcamento.Tipo != TipoComplementar {
+		return nil
+	}
+	if orcamento.OriginalID == "" {
 		return ErrComplementarSemPrincipal
 	}
-	return nil
+	for _, irmao := range daMesmaOrdem {
+		if irmao.ID == orcamento.OriginalID && irmao.Tipo == TipoPrincipal {
+			return nil
+		}
+	}
+	return ErrVinculoInvalido
 }
 
 // arredondar mantem duas casas, a precisao do NUMERIC(12,2) das colunas de valor.

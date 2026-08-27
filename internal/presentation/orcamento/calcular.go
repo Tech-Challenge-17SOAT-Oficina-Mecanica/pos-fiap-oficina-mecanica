@@ -43,7 +43,8 @@ func responderErroCalculo(writer http.ResponseWriter, err error) {
 	case errors.Is(err, orcamento.ErrOrcamentoNaoEncontrado):
 		writeProblem(writer, http.StatusNotFound, "Não encontrado", err.Error(), "")
 	case errors.Is(err, orcamentoDomain.ErrStatusNaoCalculavel),
-		errors.Is(err, orcamentoDomain.ErrComplementarSemPrincipal):
+		errors.Is(err, orcamentoDomain.ErrComplementarSemPrincipal),
+		errors.Is(err, orcamentoDomain.ErrVinculoInvalido):
 		writeProblem(writer, http.StatusConflict, "Conflito", err.Error(), "")
 	case errors.Is(err, orcamentoDomain.ErrSemItens),
 		errors.Is(err, orcamentoDomain.ErrItemInvalido):

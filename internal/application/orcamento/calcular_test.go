@@ -19,20 +19,25 @@ type calcularRepositoryFake struct {
 	alvo        orcamento.Orcamento
 	ordem       string
 	erroBusca   error
+	erroIrmaos  error
 	irmaos      []OrcamentoDaOS
 	itensSalvos []orcamento.Item
 	salvou      bool
+	operacoes   []string
 }
 
 func (fake *calcularRepositoryFake) BuscarParaCalculo(context.Context, string) (orcamento.Orcamento, string, error) {
+	fake.operacoes = append(fake.operacoes, "buscar")
 	return fake.alvo, fake.ordem, fake.erroBusca
 }
 
 func (fake *calcularRepositoryFake) OrcamentosDaOrdem(context.Context, string) ([]OrcamentoDaOS, error) {
-	return fake.irmaos, nil
+	fake.operacoes = append(fake.operacoes, "irmaos")
+	return fake.irmaos, fake.erroIrmaos
 }
 
 func (fake *calcularRepositoryFake) SalvarItens(_ context.Context, _ string, itens []orcamento.Item) error {
+	fake.operacoes = append(fake.operacoes, "salvar")
 	fake.salvou = true
 	fake.itensSalvos = itens
 	return nil
@@ -52,11 +57,11 @@ func TestCalcularSomaPrincipalEComplementarIgnorandoRecusado(t *testing.T) {
 			},
 		},
 		irmaos: []OrcamentoDaOS{
-			{ID: principalID, Status: orcamento.StatusCriado},
-			{ID: complementarID, Status: orcamento.StatusCriado, Itens: []orcamento.Item{
+			{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado},
+			{ID: complementarID, Tipo: orcamento.TipoComplementar, Status: orcamento.StatusCriado, Itens: []orcamento.Item{
 				{ID: "i4", Tipo: "SERVICO", Quantidade: 1, ValorUnitario: 450},
 			}},
-			{ID: recusadoID, Status: orcamento.StatusRecusado, Itens: []orcamento.Item{
+			{ID: recusadoID, Tipo: orcamento.TipoComplementar, Status: orcamento.StatusRecusado, Itens: []orcamento.Item{
 				{ID: "i5", Tipo: "PECA", Quantidade: 1, ValorUnitario: 180},
 			}},
 		},
@@ -105,7 +110,7 @@ func TestCalcularUsaValoresRecalculadosDoAlvo(t *testing.T) {
 			Itens: []orcamento.Item{{ID: "i1", Quantidade: 2, ValorUnitario: 45, ValorTotal: 45}},
 		},
 		irmaos: []OrcamentoDaOS{
-			{ID: principalID, Status: orcamento.StatusCriado, Itens: []orcamento.Item{
+			{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado, Itens: []orcamento.Item{
 				{ID: "i1", Quantidade: 2, ValorUnitario: 45, ValorTotal: 45}, // valor velho
 			}},
 		},
@@ -135,6 +140,7 @@ func TestCalcularPropagaRegrasDeDominio(t *testing.T) {
 	}{
 		{"aprovado", orcamento.Orcamento{Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusAprovado}, orcamento.ErrStatusNaoCalculavel},
 		{"complementar sem principal", orcamento.Orcamento{Tipo: orcamento.TipoComplementar, Status: orcamento.StatusCriado}, orcamento.ErrComplementarSemPrincipal},
+		{"complementar apontando para outra OS", orcamento.Orcamento{Tipo: orcamento.TipoComplementar, Status: orcamento.StatusCriado, OriginalID: "de-outra-os"}, orcamento.ErrVinculoInvalido},
 		{"sem itens", orcamento.Orcamento{Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}, orcamento.ErrSemItens},
 	}
 
@@ -149,5 +155,49 @@ func TestCalcularPropagaRegrasDeDominio(t *testing.T) {
 				t.Fatal("nada deveria ser salvo quando a validação falha")
 			}
 		})
+	}
+}
+
+// RNF-ORC-01: nada pode ficar gravado se qualquer leitura falhar. A escrita é a última
+// operação do fluxo, justamente para isso.
+func TestCalcularNaoGravaQuandoLeituraFalha(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem:      ordemID,
+		erroIrmaos: context.DeadlineExceeded,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+	}
+
+	if _, err := NewCalcular(fake).Execute(context.Background(), principalID); err == nil {
+		t.Fatal("a falha na leitura dos irmãos deveria interromper o cálculo")
+	}
+	if fake.salvou {
+		t.Fatal("nada podia ter sido gravado: a leitura falhou antes da escrita")
+	}
+}
+
+func TestCalcularEscreveDepoisDeTodasAsLeituras(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem: ordemID,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos: []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
+	}
+
+	if _, err := NewCalcular(fake).Execute(context.Background(), principalID); err != nil {
+		t.Fatal(err)
+	}
+	esperado := []string{"buscar", "irmaos", "salvar"}
+	if len(fake.operacoes) != len(esperado) {
+		t.Fatalf("operações = %v, esperado %v", fake.operacoes, esperado)
+	}
+	for indice, operacao := range esperado {
+		if fake.operacoes[indice] != operacao {
+			t.Fatalf("operações = %v, esperado %v (a escrita precisa vir por último)", fake.operacoes, esperado)
+		}
 	}
 }

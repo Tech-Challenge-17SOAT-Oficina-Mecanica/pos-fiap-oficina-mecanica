@@ -71,23 +71,33 @@ func TestEntraNoTotalGeral(t *testing.T) {
 }
 
 // Só CRIADO pode ser calculado: recalcular um aprovado mudaria o valor de algo que o
-// cliente já respondeu.
+// cliente já respondeu. E o complementar precisa apontar para o PRINCIPAL da mesma OS —
+// os vínculos recebidos são, por construção, apenas os orçamentos daquela OS.
 func TestValidarParaCalculo(t *testing.T) {
+	principalDaOS := []Vinculo{
+		{ID: "principal-1", Tipo: TipoPrincipal},
+		{ID: "complementar-1", Tipo: TipoComplementar},
+	}
+
 	casos := []struct {
 		nome      string
 		orcamento Orcamento
+		vinculos  []Vinculo
 		esperado  error
 	}{
-		{"principal criado", Orcamento{Tipo: TipoPrincipal, Status: StatusCriado}, nil},
-		{"complementar com principal", Orcamento{Tipo: TipoComplementar, Status: StatusCriado, OriginalID: "abc"}, nil},
-		{"aprovado", Orcamento{Tipo: TipoPrincipal, Status: StatusAprovado}, ErrStatusNaoCalculavel},
-		{"recusado", Orcamento{Tipo: TipoPrincipal, Status: StatusRecusado}, ErrStatusNaoCalculavel},
-		{"complementar sem principal", Orcamento{Tipo: TipoComplementar, Status: StatusCriado}, ErrComplementarSemPrincipal},
+		{"principal criado", Orcamento{Tipo: TipoPrincipal, Status: StatusCriado}, principalDaOS, nil},
+		{"complementar vinculado ao principal", Orcamento{Tipo: TipoComplementar, Status: StatusCriado, OriginalID: "principal-1"}, principalDaOS, nil},
+		{"aprovado", Orcamento{Tipo: TipoPrincipal, Status: StatusAprovado}, principalDaOS, ErrStatusNaoCalculavel},
+		{"recusado", Orcamento{Tipo: TipoPrincipal, Status: StatusRecusado}, principalDaOS, ErrStatusNaoCalculavel},
+		{"complementar sem vinculo", Orcamento{Tipo: TipoComplementar, Status: StatusCriado}, principalDaOS, ErrComplementarSemPrincipal},
+		{"vinculo de outra OS", Orcamento{Tipo: TipoComplementar, Status: StatusCriado, OriginalID: "principal-de-outra-os"}, principalDaOS, ErrVinculoInvalido},
+		{"vinculo aponta para outro complementar", Orcamento{Tipo: TipoComplementar, Status: StatusCriado, OriginalID: "complementar-1"}, principalDaOS, ErrVinculoInvalido},
+		{"OS sem nenhum principal", Orcamento{Tipo: TipoComplementar, Status: StatusCriado, OriginalID: "principal-1"}, []Vinculo{{ID: "complementar-1", Tipo: TipoComplementar}}, ErrVinculoInvalido},
 	}
 
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
-			if err := caso.orcamento.ValidarParaCalculo(); !errors.Is(err, caso.esperado) {
+			if err := caso.orcamento.ValidarParaCalculo(caso.vinculos); !errors.Is(err, caso.esperado) {
 				t.Fatalf("erro = %v, esperado %v", err, caso.esperado)
 			}
 		})
