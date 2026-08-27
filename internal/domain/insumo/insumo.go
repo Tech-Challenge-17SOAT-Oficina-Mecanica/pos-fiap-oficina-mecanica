@@ -1,6 +1,7 @@
 package insumo
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 	"time"
@@ -30,6 +31,16 @@ type Insumo struct {
 	PossuiPedidoEmAberto bool
 	// DataCriacao so e carregada no cadastro.
 	DataCriacao *time.Time
+}
+
+var ErrInsumoJaInativo = errors.New("insumo já está inativo")
+
+func (item Insumo) Desativar() (Insumo, error) {
+	if !item.Ativo {
+		return Insumo{}, ErrInsumoJaInativo
+	}
+	item.Ativo = false
+	return item, nil
 }
 
 func (insumo Insumo) SaldoDisponivel() string {
