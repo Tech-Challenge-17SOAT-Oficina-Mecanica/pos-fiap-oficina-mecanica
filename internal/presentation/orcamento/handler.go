@@ -12,6 +12,79 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
+type aprovarRequest struct {
+	FornecedorID string `json:"fornecedorId"`
+}
+
+type aprovacaoResponse struct {
+	OrcamentoID            string `json:"orcamentoId"`
+	OrdemServicoID         string `json:"ordemServicoId"`
+	TipoOrcamento          string `json:"tipoOrcamento"`
+	OrcamentoOriginalID    string `json:"orcamentoOriginalId,omitempty"`
+	StatusOrcamento        string `json:"statusOrcamento"`
+	StatusOrdemServico     string `json:"statusOrdemServico"`
+	ClienteID              string `json:"clienteId"`
+	DataAprovacao          string `json:"dataAprovacao"`
+	FornecedorID           string `json:"fornecedorId"`
+	PossuiCompraSolicitada bool   `json:"possuiCompraSolicitada"`
+}
+
+func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		var body aprovarRequest
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "corpo da requisicao invalido", "")
+			return
+		}
+		claims := seguranca.Claims(request.Context())
+		resultado, err := useCase.Execute(request.Context(), application.AprovarInput{
+			OrcamentoID:    request.PathValue("orcamentoId"),
+			ClienteID:      claims.ClienteID,
+			OrdemServicoID: claims.OrdemServicoID,
+			FornecedorID:   body.FornecedorID,
+		})
+		if err != nil {
+			responderErroAprovacao(writer, err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(aprovacaoResponse{
+			OrcamentoID:            resultado.OrcamentoID,
+			OrdemServicoID:         resultado.OrdemServicoID,
+			TipoOrcamento:          resultado.TipoOrcamento,
+			OrcamentoOriginalID:    resultado.OrcamentoOriginalID,
+			StatusOrcamento:        resultado.StatusOrcamento,
+			StatusOrdemServico:     resultado.StatusOrdemServico,
+			ClienteID:              resultado.ClienteID,
+			DataAprovacao:          resultado.DataAprovacao.Format(timeFormat),
+			FornecedorID:           resultado.FornecedorID,
+			PossuiCompraSolicitada: resultado.PossuiCompraSolicitada,
+		})
+	}
+}
+
+func responderErroAprovacao(writer http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, application.ErrIdentificadorInvalido):
+		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "orcamentoId")
+	case errors.Is(err, application.ErrFornecedorIDInvalido):
+		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "fornecedorId")
+	case errors.Is(err, application.ErrFornecedorNaoEncontrado):
+		writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "fornecedorId")
+	case errors.Is(err, application.ErrOrcamentoNaoEncontrado):
+		writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "orcamentoId")
+	case errors.Is(err, application.ErrAcessoNegado):
+		writeProblem(writer, http.StatusForbidden, "Acesso negado", err.Error(), "")
+	case errors.Is(err, application.ErrFornecedorInativo),
+		errors.Is(err, application.ErrOrcamentoJaDecidido),
+		errors.Is(err, application.ErrOrdemServicoStatusInvalido),
+		errors.Is(err, application.ErrOrcamentoComplementarSemPai):
+		writeProblem(writer, http.StatusConflict, "Conflito", err.Error(), "")
+	default:
+		writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao aprovar orcamento", "")
+	}
+}
+
 func NewConsultarHandler(useCase application.Consultar) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")

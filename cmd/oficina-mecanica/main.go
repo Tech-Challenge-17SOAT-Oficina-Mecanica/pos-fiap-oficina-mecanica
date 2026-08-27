@@ -86,7 +86,9 @@ func main() {
 	criarOrdemServico := ordemServicoApplication.NewCriar(ordemServicoRepository)
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
-	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
+	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
+	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
+	aprovarOrcamento := orcamentoApplication.NewAprovar(orcamentoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
@@ -117,6 +119,7 @@ func main() {
 	mux.Handle("POST /ordens-servico", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewCriarHandler(criarOrdemServico)))
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
+	mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewAprovarHandler(aprovarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewAtualizarHandler(atualizar)))
 	mux.Handle("DELETE /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewInativarHandler(inativar)))

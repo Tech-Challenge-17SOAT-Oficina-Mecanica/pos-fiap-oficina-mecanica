@@ -24,6 +24,17 @@ func (stub repositoryStub) Consultar(context.Context, string, string) (domain.Co
 	return stub.result, stub.err
 }
 
+type aprovarStub struct {
+	result domain.Aprovacao
+	err    error
+	input  application.AprovarInput
+}
+
+func (stub *aprovarStub) Aprovar(_ context.Context, input application.AprovarInput) (domain.Aprovacao, error) {
+	stub.input = input
+	return stub.result, stub.err
+}
+
 func TestConsultarHandler(t *testing.T) {
 	const osID = "10000000-0000-0000-0000-000000000001"
 	jwt, err := infrastructure.NewJWT("segredo")
@@ -66,6 +77,62 @@ func TestConsultarHandler(t *testing.T) {
 			}
 			if test.want == http.StatusOK && (!strings.Contains(writer.Body.String(), `"documento":"***.***.***-23"`) || strings.Contains(writer.Body.String(), `"documento":"123"`)) {
 				t.Fatalf("documento exposto: %s", writer.Body.String())
+			}
+		})
+	}
+}
+
+func TestAprovarHandler(t *testing.T) {
+	const (
+		orcamentoID  = "10000000-0000-0000-0000-000000000001"
+		osID         = "20000000-0000-0000-0000-000000000001"
+		clienteID    = "30000000-0000-0000-0000-000000000001"
+		fornecedorID = "40000000-0000-0000-0000-000000000001"
+	)
+	jwt, err := infrastructure.NewJWT("segredo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cliente, _ := jwt.GerarCliente(clienteID, osID)
+	result := domain.Aprovacao{
+		OrcamentoID:        orcamentoID,
+		OrdemServicoID:     osID,
+		TipoOrcamento:      "PRINCIPAL",
+		StatusOrcamento:    "APROVADO",
+		StatusOrdemServico: "AGUARDANDO_EXECUCAO",
+		ClienteID:          clienteID,
+		DataAprovacao:      time.Now(),
+		FornecedorID:       fornecedorID,
+	}
+	tests := []struct {
+		name, id, token, body string
+		err                   error
+		want                  int
+	}{
+		{"sem token", orcamentoID, "", `{"fornecedorId":"` + fornecedorID + `"}`, nil, http.StatusUnauthorized},
+		{"body invalido", orcamentoID, cliente, `{`, nil, http.StatusBadRequest},
+		{"fornecedor invalido", orcamentoID, cliente, `{"fornecedorId":"x"}`, nil, http.StatusBadRequest},
+		{"orcamento ausente", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrOrcamentoNaoEncontrado, http.StatusNotFound},
+		{"acesso negado", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrAcessoNegado, http.StatusForbidden},
+		{"conflito", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrOrcamentoJaDecidido, http.StatusConflict},
+		{"ok", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, nil, http.StatusOK},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stub := &aprovarStub{result: result, err: test.err}
+			mux := http.NewServeMux()
+			mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", seguranca.RequireScope(jwt, "orcamentos:decidir", NewAprovarHandler(application.NewAprovar(stub))))
+			request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+test.id+"/aprovar", strings.NewReader(test.body))
+			if test.token != "" {
+				request.Header.Set("Authorization", "Bearer "+test.token)
+			}
+			writer := httptest.NewRecorder()
+			mux.ServeHTTP(writer, request)
+			if writer.Code != test.want {
+				t.Fatalf("status=%d body=%s", writer.Code, writer.Body.String())
+			}
+			if test.want == http.StatusOK && !strings.Contains(writer.Body.String(), `"statusOrcamento":"APROVADO"`) {
+				t.Fatalf("body=%s", writer.Body.String())
 			}
 		})
 	}
