@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -92,6 +93,40 @@ func (repository PostgresRepository) Desativar(ctx context.Context, insumoID, us
 	return item, nil
 }
 
+func (repository PostgresRepository) BuscarPorFiltro(ctx context.Context, filtros insumoApplication.FiltrosConsulta, limite, deslocamento int) ([]insumo.Insumo, int, error) {
+	condicoes, args := montarCondicoes(filtros)
+
+	var total int
+	contagem := "SELECT COUNT(*) FROM item_estoque i WHERE " + condicoes
+	if err := repository.db.QueryRow(ctx, contagem, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return nil, 0, nil
+	}
+
+	listagem := fmt.Sprintf(`SELECT %s FROM item_estoque i
+		JOIN categoria c ON c.id = i.categoria_id
+		WHERE %s ORDER BY i.codigo LIMIT $%d OFFSET $%d`,
+		colunas, condicoes, len(args)+1, len(args)+2)
+
+	rows, err := repository.db.Query(ctx, listagem, append(args, limite, deslocamento)...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	itens := []insumo.Insumo{}
+	for rows.Next() {
+		item, err := ler(rows)
+		if err != nil {
+			return nil, 0, err
+		}
+		itens = append(itens, item)
+	}
+	return itens, total, rows.Err()
+}
+
 func (repository PostgresRepository) BuscarPorID(ctx context.Context, id string) (insumo.Insumo, error) {
 	consulta := fmt.Sprintf(`SELECT %s FROM item_estoque i
 		JOIN categoria c ON c.id = i.categoria_id
@@ -99,7 +134,7 @@ func (repository PostgresRepository) BuscarPorID(ctx context.Context, id string)
 
 	item, err := ler(repository.db.QueryRow(ctx, consulta, id))
 	if errors.Is(err, pgx.ErrNoRows) {
-		return insumo.Insumo{}, pgx.ErrNoRows
+		return insumo.Insumo{}, insumoApplication.ErrInsumoNaoEncontrado
 	}
 	return item, err
 }
@@ -163,4 +198,31 @@ func ler(linha scanner) (insumo.Insumo, error) {
 		&item.Ativo, &item.Version, &item.PossuiPedidoEmAberto,
 	)
 	return item, err
+}
+
+func montarCondicoes(filtros insumoApplication.FiltrosConsulta) (string, []any) {
+	condicoes := []string{"i.tipo = 'INSUMO'"}
+	var args []any
+
+	adicionar := func(formato string, valor any) {
+		args = append(args, valor)
+		condicoes = append(condicoes, fmt.Sprintf(formato, len(args)))
+	}
+
+	if !filtros.IncluirInativos {
+		condicoes = append(condicoes, "i.ativo")
+	}
+	if filtros.Codigo != "" {
+		adicionar("i.codigo = $%d", filtros.Codigo)
+	}
+	if filtros.Descricao != "" {
+		adicionar("i.descricao ILIKE $%d", "%"+filtros.Descricao+"%")
+	}
+	if filtros.CategoriaID != "" {
+		adicionar("i.categoria_id = $%d", filtros.CategoriaID)
+	}
+	if filtros.SomenteDisponiveis {
+		adicionar("(i.saldo_fisico - i.saldo_reservado) >= $%d::NUMERIC", *filtros.QuantidadeDesejada)
+	}
+	return strings.Join(condicoes, " AND "), args
 }

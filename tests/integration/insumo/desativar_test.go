@@ -1,4 +1,4 @@
-package integration_test
+package insumo_test
 
 import (
 	"context"

@@ -10,7 +10,6 @@ import (
 
 var (
 	ErrDesativacaoInvalida = errors.New("dados de desativação inválidos")
-	ErrInsumoNaoEncontrado = errors.New("insumo não encontrado")
 	ErrInsumoEmUso         = errors.New("insumo possui reserva ou orçamento aguardando aprovação")
 )
 
