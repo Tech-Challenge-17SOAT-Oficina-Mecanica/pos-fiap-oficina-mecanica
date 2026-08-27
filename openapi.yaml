@@ -913,6 +913,38 @@ paths:
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo estoque:ler }
         '404': { description: Insumo não encontrado }
+    delete:
+      tags: [Estoque]
+      summary: Desativa um insumo
+      description: >-
+        Realiza exclusão lógica do insumo. A operação é bloqueada quando houver saldo
+        reservado em ordem de serviço ou orçamento aguardando aprovação.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: insumoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Insumo desativado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InsumoDesativado' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '404': { description: Insumo não encontrado }
+        '409':
+          description: Insumo já inativo, reservado em OS ou presente em orçamento aguardando aprovação
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -1253,6 +1285,17 @@ components:
             disponivel: { type: boolean }
             abaixoDoMinimo: { type: boolean }
             possuiPedidoEmAberto: { type: boolean }
+    InsumoDesativado:
+      type: object
+      required: [id, codigo, nome, unidadeMedida, ativo, dataDesativacao, usuarioDesativacao]
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string, example: INS-000001 }
+        nome: { type: string }
+        unidadeMedida: { type: string, example: L }
+        ativo: { type: boolean, example: false }
+        dataDesativacao: { type: string, format: date-time }
+        usuarioDesativacao: { type: string, format: uuid }
     ListaInsumos:
       type: object
       description: Envelope paginado padrão da API.
