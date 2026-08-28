@@ -41,6 +41,17 @@ func TestRegistrarEntradaRejeitaItemIDInvalido(t *testing.T) {
 	}
 }
 
+func TestRegistrarEntradaRejeitaFornecedorIDInvalido(t *testing.T) {
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
+		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1", FornecedorID: "fornecedor-invalido",
+		Itens: []ItemInput{{ItemID: itemIDValido, Quantidade: 1, CustoUnitario: 1}},
+	})
+	if err != domain.ErrFornecedorIDInvalido {
+		t.Fatalf("erro=%v, esperado %v", err, domain.ErrFornecedorIDInvalido)
+	}
+}
+
 func TestRegistrarEntradaRejeitaSemItens(t *testing.T) {
 	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
