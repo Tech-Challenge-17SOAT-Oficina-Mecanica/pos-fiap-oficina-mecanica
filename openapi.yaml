@@ -12,6 +12,47 @@ tags:
   - name: Serviço
 paths:
   /ordens-servico:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Lista ordens de serviço com filtros e paginação
+      description: >-
+        Exige o escopo `os:ler`. `documento` e `placa` só filtram cadastros existentes: sem
+        correspondência, retorna `404`. Sem resultado para os filtros, retorna `200` com `data: []`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [RECEBIDA, EM_DIAGNOSTICO, AGUARDANDO_APROVACAO, AGUARDANDO_RECURSOS, AGUARDANDO_EXECUCAO, EM_EXECUCAO, FINALIZADA, ENTREGUE, CANCELADA]
+        - name: documento
+          in: query
+          schema: { type: string }
+          description: CPF ou CNPJ do cliente, com ou sem máscara.
+        - name: placa
+          in: query
+          schema: { type: string }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Listagem paginada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaOrdensServico' }
+        '400':
+          description: Status, documento, placa ou paginação inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo os:ler }
+        '404': { description: Cliente ou veículo do filtro não encontrado }
     post:
       tags: [Ordem de Serviço]
       summary: Cria uma ordem de serviço
@@ -1286,6 +1327,34 @@ components:
         status: { type: string, enum: [FINALIZADA] }
         dataFinalizacao: { type: string, format: date-time }
         observacoes: { type: string }
+    ListaOrdensServico:
+      type: object
+      description: Envelope paginado padrão da API.
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              ordemServicoId: { type: string, format: uuid }
+              cliente:
+                type: object
+                properties:
+                  clienteId: { type: string, format: uuid }
+                  nome: { type: string }
+                  documento: { type: string }
+              veiculo:
+                type: object
+                properties:
+                  veiculoId: { type: string, format: uuid }
+                  placa: { type: string }
+                  marca: { type: string }
+                  modelo: { type: string }
+              status: { type: string }
+        pagina: { type: integer }
+        tamanho: { type: integer }
+        totalElementos: { type: integer }
+        totalPaginas: { type: integer }
     ConsultaOS:
       type: object
       required: [ordemServicoId, statusOrdemServico, cliente, veiculo, problemas, orcamentos, valorTotalGeral, eventos]
