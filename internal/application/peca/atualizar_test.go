@@ -65,6 +65,20 @@ func TestAtualizarPecaRejeitaIdentificadoresInvalidos(t *testing.T) {
 	}
 }
 
+func TestAtualizarPecaRejeitaFornecedorNaoUUID(t *testing.T) {
+	fake := &atualizarRepositoryFake{}
+	fornecedorID := "nao-e-uuid"
+
+	_, err := NewAtualizarPeca(fake).Execute(context.Background(), idValido, 7,
+		peca.Atualizacao{CategoriaID: categoriaValida, FornecedorID: &fornecedorID}, "usuario-1")
+	if !errors.Is(err, ErrFornecedorInvalido) {
+		t.Fatalf("erro = %v, esperado %v", err, ErrFornecedorInvalido)
+	}
+	if fake.chamado {
+		t.Fatal("repositório não deveria ser chamado")
+	}
+}
+
 func TestAtualizarPecaPropagaVersaoDivergente(t *testing.T) {
 	fake := &atualizarRepositoryFake{erro: ErrVersaoDivergente}
 	_, err := NewAtualizarPeca(fake).Execute(context.Background(), idValido, 7,

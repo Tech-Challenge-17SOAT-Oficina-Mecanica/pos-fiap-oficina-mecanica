@@ -54,6 +54,22 @@ func TestCadastrarInsumoRejeitaCategoriaNaoUUID(t *testing.T) {
 	}
 }
 
+func TestCadastrarInsumoRejeitaFornecedorNaoUUID(t *testing.T) {
+	fake := &cadastrarRepositoryFake{}
+	fornecedorID := "nao-e-uuid"
+
+	_, err := NewCadastrarInsumo(fake).Execute(context.Background(), insumo.Cadastro{
+		CategoriaID:  categoriaValida,
+		FornecedorID: &fornecedorID,
+	})
+	if !errors.Is(err, ErrFornecedorInvalido) {
+		t.Fatalf("erro = %v, esperado %v", err, ErrFornecedorInvalido)
+	}
+	if fake.chamado {
+		t.Fatal("repositório não deveria ser chamado com fornecedor inválido")
+	}
+}
+
 func TestCadastrarInsumoPropagaErro(t *testing.T) {
 	fake := &cadastrarRepositoryFake{erro: ErrDescricaoDuplicada}
 

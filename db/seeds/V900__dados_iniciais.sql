@@ -72,6 +72,10 @@ INSERT INTO fornecedor (id, razao_social, nome_fantasia, documento, tipo_documen
     ('60000000-0000-0000-0000-000000000002', 'Fornecedor Inativo LTDA', NULL, '99888777000111', 'CNPJ', '11999991002', 'contato@inativo.example.com', 7, FALSE, 1)
 ON CONFLICT (id) DO NOTHING;
 
+UPDATE item_estoque
+SET fornecedor_id = '60000000-0000-0000-0000-000000000001'
+WHERE fornecedor_id IS NULL;
+
 INSERT INTO ordem_servico (
     id, cliente_id, veiculo_id, mecanico_responsavel_id, placa_veiculo, status, custo_total_materiais, valor_final, criada_em, iniciada_em
 ) VALUES

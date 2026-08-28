@@ -11,8 +11,9 @@ const categoriaValida = "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724"
 func ponteiro(valor string) *string { return &valor }
 
 func TestNovoCadastroValido(t *testing.T) {
+	fornecedorID := "  60000000-0000-0000-0000-000000000001  "
 	cadastro, err := NovoCadastro("  Óleo 5W30  ", "Óleo   sintético  5W30 API SN",
-		" "+categoriaValida+" ", " l ", ponteiro("45.0"), ponteiro("20.5"))
+		" "+categoriaValida+" ", " l ", ponteiro("45.0"), ponteiro("20.5"), &fornecedorID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,10 +36,13 @@ func TestNovoCadastroValido(t *testing.T) {
 	if cadastro.EstoqueMinimo != "20.5" {
 		t.Fatalf("estoqueMinimo = %q; a fração deveria ser preservada", cadastro.EstoqueMinimo)
 	}
+	if cadastro.FornecedorID == nil || *cadastro.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorID = %v", cadastro.FornecedorID)
+	}
 }
 
 func TestNovoCadastroEstoqueMinimoPadrao(t *testing.T) {
-	cadastro, err := NovoCadastro("Desengraxante", "Desengraxante multiuso", categoriaValida, "L", ponteiro("18"), nil)
+	cadastro, err := NovoCadastro("Desengraxante", "Desengraxante multiuso", categoriaValida, "L", ponteiro("18"), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +54,7 @@ func TestNovoCadastroEstoqueMinimoPadrao(t *testing.T) {
 func TestNovoCadastroAceitaTodasAsUnidades(t *testing.T) {
 	for _, unidade := range UnidadesMedida {
 		t.Run(unidade, func(t *testing.T) {
-			if _, err := NovoCadastro("Item", "Descricao valida", categoriaValida, unidade, ponteiro("1"), nil); err != nil {
+			if _, err := NovoCadastro("Item", "Descricao valida", categoriaValida, unidade, ponteiro("1"), nil, nil); err != nil {
 				t.Fatalf("unidade %q deveria ser aceita: %v", unidade, err)
 			}
 		})
@@ -64,34 +68,34 @@ func TestNovoCadastroInvalido(t *testing.T) {
 		esperado error
 	}{
 		{"nome vazio", func() (Cadastro, error) {
-			return NovoCadastro("", "Descricao valida", categoriaValida, "L", ponteiro("1"), nil)
+			return NovoCadastro("", "Descricao valida", categoriaValida, "L", ponteiro("1"), nil, nil)
 		}, ErrNomeInvalido},
 		{"nome longo", func() (Cadastro, error) {
-			return NovoCadastro(strings.Repeat("a", 151), "Descricao valida", categoriaValida, "L", ponteiro("1"), nil)
+			return NovoCadastro(strings.Repeat("a", 151), "Descricao valida", categoriaValida, "L", ponteiro("1"), nil, nil)
 		}, ErrNomeInvalido},
 		{"descricao curta", func() (Cadastro, error) {
-			return NovoCadastro("Item", "ab", categoriaValida, "L", ponteiro("1"), nil)
+			return NovoCadastro("Item", "ab", categoriaValida, "L", ponteiro("1"), nil, nil)
 		}, ErrDescricaoInvalida},
 		{"categoria vazia", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", "  ", "L", ponteiro("1"), nil)
+			return NovoCadastro("Item", "Descricao valida", "  ", "L", ponteiro("1"), nil, nil)
 		}, ErrCategoriaObrigatoria},
 		{"unidade fora do enum", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "CX", ponteiro("1"), nil)
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "CX", ponteiro("1"), nil, nil)
 		}, ErrUnidadeInvalida},
 		{"unidade vazia", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "", ponteiro("1"), nil)
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "", ponteiro("1"), nil, nil)
 		}, ErrUnidadeInvalida},
 		{"custo ausente", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", nil, nil)
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", nil, nil, nil)
 		}, ErrCustoInvalido},
 		{"custo negativo", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("-1"), nil)
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("-1"), nil, nil)
 		}, ErrCustoInvalido},
 		{"custo nao numerico", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("abc"), nil)
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("abc"), nil, nil)
 		}, ErrCustoInvalido},
 		{"estoque negativo", func() (Cadastro, error) {
-			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("1"), ponteiro("-0.5"))
+			return NovoCadastro("Item", "Descricao valida", categoriaValida, "L", ponteiro("1"), ponteiro("-0.5"), nil)
 		}, ErrEstoqueMinimoInvalido},
 	}
 

@@ -29,5 +29,8 @@ func (useCase AtualizarPeca) Execute(ctx context.Context, id string, version int
 	if !validation.IsUUID(atualizacao.CategoriaID) {
 		return peca.Peca{}, ErrIdentificadorInvalido
 	}
+	if atualizacao.FornecedorID != nil && !validation.IsUUID(*atualizacao.FornecedorID) {
+		return peca.Peca{}, ErrFornecedorInvalido
+	}
 	return useCase.repository.Atualizar(ctx, id, version, atualizacao, usuarioID)
 }

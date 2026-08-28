@@ -16,7 +16,7 @@ import (
 )
 
 const colunas = `i.id, i.codigo, i.nome, i.descricao, i.categoria_id, c.nome,
-	i.fabricante, i.unidade_medida, i.preco_venda::text,
+	COALESCE(i.fornecedor_id::text, ''), i.fabricante, i.unidade_medida, i.preco_venda::text,
 	i.saldo_fisico, i.saldo_reservado, i.estoque_minimo, i.ativo, i.version,
 	EXISTS (
 		SELECT 1 FROM pedido_compra_item pci
@@ -85,12 +85,16 @@ type scanner interface {
 
 func ler(linha scanner) (peca.Peca, error) {
 	var item peca.Peca
+	var fornecedorID string
 	err := linha.Scan(
 		&item.ID, &item.Codigo, &item.Nome, &item.Descricao, &item.CategoriaID, &item.Categoria,
-		&item.Fabricante, &item.UnidadeMedida, &item.PrecoVenda,
+		&fornecedorID, &item.Fabricante, &item.UnidadeMedida, &item.PrecoVenda,
 		&item.SaldoFisico, &item.SaldoReservado, &item.EstoqueMinimo, &item.Ativo, &item.Version,
 		&item.PossuiPedidoEmAberto,
 	)
+	if fornecedorID != "" {
+		item.FornecedorID = &fornecedorID
+	}
 	return item, err
 }
 
@@ -190,20 +194,23 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro pec
 	if !ativa {
 		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
 	}
+	if err := validarFornecedor(ctx, repository.db, cadastro.FornecedorID); err != nil {
+		return peca.Peca{}, err
+	}
 
 	var id string
 	var criadoEm time.Time
 	err = repository.db.QueryRow(ctx, `
 		INSERT INTO item_estoque (
 			categoria_id, tipo, codigo, nome, descricao, descricao_normalizada,
-			fabricante, unidade_medida, preco_venda, estoque_minimo
+			fornecedor_id, fabricante, unidade_medida, preco_venda, estoque_minimo
 		) VALUES (
 			$1, 'PECA', 'PEC-' || LPAD(nextval('seq_peca_codigo')::TEXT, 6, '0'),
-			$2, $3, $4, $5, $6, $7, $8
+			$2, $3, $4, $5, $6, $7, $8, $9
 		)
 		RETURNING id, criado_em`,
 		cadastro.CategoriaID, cadastro.Nome, cadastro.Descricao, cadastro.DescricaoNormalizada,
-		cadastro.Fabricante, cadastro.UnidadeMedida, cadastro.PrecoVenda, cadastro.EstoqueMinimo,
+		valorFornecedor(cadastro.FornecedorID), cadastro.Fabricante, cadastro.UnidadeMedida, cadastro.PrecoVenda, cadastro.EstoqueMinimo,
 	).Scan(&id, &criadoEm)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -242,6 +249,9 @@ func (repository PostgresRepository) Atualizar(ctx context.Context, id string, v
 	if !ativa {
 		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
 	}
+	if err := validarFornecedor(ctx, transacao, atualizacao.FornecedorID); err != nil {
+		return peca.Peca{}, err
+	}
 
 	var precoAnterior *string
 	var versionAtual int
@@ -267,16 +277,17 @@ func (repository PostgresRepository) Atualizar(ctx context.Context, id string, v
 			descricao = $3,
 			descricao_normalizada = $4,
 			categoria_id = $5,
-			fabricante = $6,
-			preco_venda = $7::NUMERIC,
-			estoque_minimo = $8,
+			fornecedor_id = $6,
+			fabricante = $7,
+			preco_venda = $8::NUMERIC,
+			estoque_minimo = $9,
 			data_atualizacao = CURRENT_TIMESTAMP,
-			usuario_atualizacao = NULLIF($9, '')::UUID,
+			usuario_atualizacao = NULLIF($10, '')::UUID,
 			version = version + 1
 		WHERE id = $1
 		RETURNING data_atualizacao, usuario_atualizacao::text`,
 		id, atualizacao.Nome, atualizacao.Descricao, atualizacao.DescricaoNormalizada,
-		atualizacao.CategoriaID, atualizacao.Fabricante, atualizacao.PrecoVenda,
+		atualizacao.CategoriaID, valorFornecedor(atualizacao.FornecedorID), atualizacao.Fabricante, atualizacao.PrecoVenda,
 		atualizacao.EstoqueMinimo, usuarioID).Scan(&dataAtualizacao, &usuarioAtualizacao)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -317,4 +328,27 @@ func mesmoPreco(anterior, novo string) bool {
 		return anterior == novo
 	}
 	return valorAnterior == valorNovo
+}
+
+type consultor interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func validarFornecedor(ctx context.Context, consultor consultor, fornecedorID *string) error {
+	if fornecedorID == nil {
+		return nil
+	}
+	var ativo bool
+	err := consultor.QueryRow(ctx, `SELECT ativo FROM fornecedor WHERE id = $1`, *fornecedorID).Scan(&ativo)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !ativo) {
+		return pecaApplication.ErrFornecedorInvalido
+	}
+	return err
+}
+
+func valorFornecedor(fornecedorID *string) any {
+	if fornecedorID == nil {
+		return nil
+	}
+	return *fornecedorID
 }
