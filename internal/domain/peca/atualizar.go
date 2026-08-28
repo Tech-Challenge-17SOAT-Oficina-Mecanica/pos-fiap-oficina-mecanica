@@ -16,17 +16,18 @@ type Atualizacao struct {
 	Descricao            string
 	DescricaoNormalizada string
 	CategoriaID          string
+	FornecedorID         *string
 	Fabricante           *string
 	PrecoVenda           string
 	EstoqueMinimo        int64
 }
 
-func NovaAtualizacao(nome, descricao, categoriaID string, fabricante, precoVenda *string, estoqueMinimo *int64, ativoInformado bool) (Atualizacao, error) {
+func NovaAtualizacao(nome, descricao, categoriaID string, fabricante, precoVenda *string, estoqueMinimo *int64, fornecedorID *string, ativoInformado bool) (Atualizacao, error) {
 	if ativoInformado {
 		return Atualizacao{}, ErrAtivoNaoEditavel
 	}
 
-	base, err := NovoCadastro(nome, descricao, categoriaID, fabricante, nil, estoqueMinimo)
+	base, err := NovoCadastro(nome, descricao, categoriaID, fabricante, nil, estoqueMinimo, fornecedorID)
 	if err != nil {
 		return Atualizacao{}, err
 	}
@@ -44,6 +45,7 @@ func NovaAtualizacao(nome, descricao, categoriaID string, fabricante, precoVenda
 		Descricao:            base.Descricao,
 		DescricaoNormalizada: base.DescricaoNormalizada,
 		CategoriaID:          base.CategoriaID,
+		FornecedorID:         base.FornecedorID,
 		Fabricante:           base.Fabricante,
 		PrecoVenda:           preco,
 		EstoqueMinimo:        base.EstoqueMinimo,

@@ -20,6 +20,7 @@ type pecaResponse struct {
 	Descricao            string       `json:"descricao"`
 	CategoriaID          string       `json:"categoriaId"`
 	Categoria            string       `json:"categoria"`
+	FornecedorID         *string      `json:"fornecedorId,omitempty"`
 	Fabricante           *string      `json:"fabricante"`
 	UnidadeMedida        string       `json:"unidadeMedida"`
 	PrecoVenda           *json.Number `json:"precoVenda"`
@@ -121,6 +122,7 @@ func montarResponse(encontrada pecaDomain.Peca, quantidade *int64) pecaResponse 
 		Descricao:            encontrada.Descricao,
 		CategoriaID:          encontrada.CategoriaID,
 		Categoria:            encontrada.Categoria,
+		FornecedorID:         encontrada.FornecedorID,
 		Fabricante:           encontrada.Fabricante,
 		UnidadeMedida:        encontrada.UnidadeMedida,
 		SaldoFisico:          encontrada.SaldoFisico,

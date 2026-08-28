@@ -19,7 +19,7 @@ import (
 // Os saldos saem como texto porque insumo e fracionario: converter para float aqui
 // perderia a precisao que o NUMERIC(14,3) garante.
 const colunas = `i.id, i.codigo, i.nome, i.descricao, i.categoria_id, c.nome,
-	i.unidade_medida, i.custo_unitario::text,
+	COALESCE(i.fornecedor_id::text, ''), i.unidade_medida, i.custo_unitario::text,
 	i.saldo_fisico::text, i.saldo_reservado::text, i.estoque_minimo::text,
 	i.ativo, i.version,
 	EXISTS (
@@ -155,20 +155,23 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro ins
 	if !ativa {
 		return insumo.Insumo{}, insumoApplication.ErrCategoriaInvalida
 	}
+	if err := validarFornecedor(ctx, repository.db, cadastro.FornecedorID); err != nil {
+		return insumo.Insumo{}, err
+	}
 
 	var id string
 	var criadoEm time.Time
 	err = repository.db.QueryRow(ctx, `
 		INSERT INTO item_estoque (
 			categoria_id, tipo, codigo, nome, descricao, descricao_normalizada,
-			unidade_medida, custo_unitario, estoque_minimo
+			fornecedor_id, unidade_medida, custo_unitario, estoque_minimo
 		) VALUES (
 			$1, 'INSUMO', 'INS-' || LPAD(nextval('seq_insumo_codigo')::TEXT, 6, '0'),
-			$2, $3, $4, $5, $6::NUMERIC, $7::NUMERIC
+			$2, $3, $4, $5, $6, $7::NUMERIC, $8::NUMERIC
 		)
 		RETURNING id, criado_em`,
 		cadastro.CategoriaID, cadastro.Nome, cadastro.Descricao, cadastro.DescricaoNormalizada,
-		cadastro.UnidadeMedida, cadastro.CustoUnitario, cadastro.EstoqueMinimo,
+		valorFornecedor(cadastro.FornecedorID), cadastro.UnidadeMedida, cadastro.CustoUnitario, cadastro.EstoqueMinimo,
 	).Scan(&id, &criadoEm)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -560,12 +563,16 @@ type scanner interface {
 
 func ler(linha scanner) (insumo.Insumo, error) {
 	var item insumo.Insumo
+	var fornecedorID string
 	err := linha.Scan(
 		&item.ID, &item.Codigo, &item.Nome, &item.Descricao, &item.CategoriaID, &item.Categoria,
-		&item.UnidadeMedida, &item.CustoUnitario,
+		&fornecedorID, &item.UnidadeMedida, &item.CustoUnitario,
 		&item.SaldoFisico, &item.SaldoReservado, &item.EstoqueMinimo,
 		&item.Ativo, &item.Version, &item.PossuiPedidoEmAberto,
 	)
+	if fornecedorID != "" {
+		item.FornecedorID = &fornecedorID
+	}
 	return item, err
 }
 
@@ -594,4 +601,27 @@ func montarCondicoes(filtros insumoApplication.FiltrosConsulta) (string, []any) 
 		adicionar("(i.saldo_fisico - i.saldo_reservado) >= $%d::NUMERIC", *filtros.QuantidadeDesejada)
 	}
 	return strings.Join(condicoes, " AND "), args
+}
+
+type consultor interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func validarFornecedor(ctx context.Context, consultor consultor, fornecedorID *string) error {
+	if fornecedorID == nil {
+		return nil
+	}
+	var ativo bool
+	err := consultor.QueryRow(ctx, `SELECT ativo FROM fornecedor WHERE id = $1`, *fornecedorID).Scan(&ativo)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !ativo) {
+		return insumoApplication.ErrFornecedorInvalido
+	}
+	return err
+}
+
+func valorFornecedor(fornecedorID *string) any {
+	if fornecedorID == nil {
+		return nil
+	}
+	return *fornecedorID
 }

@@ -31,11 +31,12 @@ func (fake repositorioFake) BuscarPorID(context.Context, string) (pecaDomain.Pec
 func pecaExemplo() pecaDomain.Peca {
 	preco := "189.90"
 	fabricante := "Bosch"
+	fornecedorID := "60000000-0000-0000-0000-000000000001"
 	return pecaDomain.Peca{
 		ID: "3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4", Codigo: "PEC-000142",
 		Nome: "Pastilha de freio", Descricao: "Pastilha de freio dianteira",
 		CategoriaID: "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94", Categoria: "Freios",
-		Fabricante: &fabricante, UnidadeMedida: "UN", PrecoVenda: &preco,
+		FornecedorID: &fornecedorID, Fabricante: &fabricante, UnidadeMedida: "UN", PrecoVenda: &preco,
 		SaldoFisico: 6, SaldoReservado: 2, EstoqueMinimo: 4, Ativo: true, Version: 3,
 	}
 }
@@ -60,6 +61,7 @@ func TestConsultarPecasRetornaEnvelopeCompleto(t *testing.T) {
 		Data []struct {
 			Codigo               string      `json:"codigo"`
 			Tipo                 string      `json:"tipo"`
+			FornecedorID         string      `json:"fornecedorId"`
 			PrecoVenda           json.Number `json:"precoVenda"`
 			SaldoDisponivel      int64       `json:"saldoDisponivel"`
 			QuantidadeDesejada   *int64      `json:"quantidadeDesejada"`
@@ -83,6 +85,9 @@ func TestConsultarPecasRetornaEnvelopeCompleto(t *testing.T) {
 	item := corpo.Data[0]
 	if item.Tipo != "PECA" || item.Codigo != "PEC-000142" {
 		t.Fatalf("identificacao errada: %+v", item)
+	}
+	if item.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorId = %q", item.FornecedorID)
 	}
 	if item.PrecoVenda.String() != "189.90" {
 		t.Fatalf("precoVenda = %s, esperado 189.90 sem arredondamento", item.PrecoVenda)

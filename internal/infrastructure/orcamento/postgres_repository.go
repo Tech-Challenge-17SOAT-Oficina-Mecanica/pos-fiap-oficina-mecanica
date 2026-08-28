@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
+	ordemservicoInfra "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 )
 
 type PostgresRepository struct{ db *pgxpool.Pool }
@@ -371,4 +373,144 @@ func problemasDoOrcamento(ctx context.Context, queryer rowQueryer, orcamentoID s
 		problemas = append(problemas, problema)
 	}
 	return problemas, rows.Err()
+}
+
+func (repository PostgresRepository) Recusar(ctx context.Context, input application.RecusarInput) (domain.Decisao, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.Decisao{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var ordemServicoID, tipoOrcamento, status, original string
+	err = tx.QueryRow(ctx, `
+		SELECT ordem_servico_id, tipo_orcamento, status, COALESCE(orcamento_original_id::text, '')
+		FROM orcamento WHERE id = $1 FOR UPDATE`, input.OrcamentoID,
+	).Scan(&ordemServicoID, &tipoOrcamento, &status, &original)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Decisao{}, application.ErrOrcamentoNaoEncontrado
+	}
+	if err != nil {
+		return domain.Decisao{}, err
+	}
+	if input.OrdemServicoID != "" && input.OrdemServicoID != ordemServicoID {
+		return domain.Decisao{}, application.ErrAcessoNegado
+	}
+	if status != domain.StatusCriado {
+		return domain.Decisao{}, application.ErrOrcamentoJaDecidido
+	}
+
+	var clienteID, statusOS string
+	if err = tx.QueryRow(ctx, "SELECT cliente_id, status FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&clienteID, &statusOS); err != nil {
+		return domain.Decisao{}, err
+	}
+	if input.ClienteID != "" && input.ClienteID != clienteID {
+		return domain.Decisao{}, application.ErrAcessoNegado
+	}
+	// So o PRINCIPAL exige AGUARDANDO_APROVACAO: o COMPLEMENTAR e criado com a OS em EM_EXECUCAO
+	// e permanece la ate a decisao do cliente, sem transitar para AGUARDANDO_APROVACAO.
+	if tipoOrcamento == domain.TipoPrincipal && statusOS != domain.OSStatusAguardandoAprovacao {
+		return domain.Decisao{}, application.ErrOrdemServicoNaoAguardandoAprovacao
+	}
+
+	novoStatusOS := statusOS
+	if tipoOrcamento == domain.TipoPrincipal {
+		novoStatusOS = "CANCELADA"
+	} else {
+		if original == "" {
+			return domain.Decisao{}, application.ErrOrcamentoComplementarSemPrincipal
+		}
+		var statusPrincipal string
+		if err = tx.QueryRow(ctx, "SELECT status FROM orcamento WHERE id = $1 FOR UPDATE", original).Scan(&statusPrincipal); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Decisao{}, application.ErrOrcamentoComplementarSemPrincipal
+			}
+			return domain.Decisao{}, err
+		}
+		if statusPrincipal == domain.StatusAprovado {
+			novoStatusOS = "AGUARDANDO_EXECUCAO"
+		}
+	}
+
+	var decididoEm time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE orcamento
+		SET status = $1, recusado_em = CURRENT_TIMESTAMP, cliente_recusador_id = NULLIF($2, '')::uuid, motivo_recusa = NULLIF($3, '')
+		WHERE id = $4
+		RETURNING recusado_em`, domain.StatusRecusado, input.ClienteID, input.Motivo, input.OrcamentoID,
+	).Scan(&decididoEm); err != nil {
+		return domain.Decisao{}, err
+	}
+
+	if novoStatusOS != statusOS {
+		if _, err = tx.Exec(ctx, "UPDATE ordem_servico SET status = $1 WHERE id = $2", novoStatusOS, ordemServicoID); err != nil {
+			return domain.Decisao{}, err
+		}
+	}
+
+	if tipoOrcamento == domain.TipoPrincipal {
+		if _, err = ordemservicoInfra.DevolverItensTx(ctx, tx, ordemServicoID, nil); err != nil {
+			return domain.Decisao{}, err
+		}
+	} else {
+		itemIDs, err := itensDoOrcamentoComplementar(ctx, tx, input.OrcamentoID)
+		if err != nil {
+			return domain.Decisao{}, err
+		}
+		if len(itemIDs) > 0 {
+			if _, err = ordemservicoInfra.DevolverItensTx(ctx, tx, ordemServicoID, itemIDs); err != nil {
+				return domain.Decisao{}, err
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return domain.Decisao{}, err
+	}
+
+	return domain.Decisao{
+		OrcamentoID:         input.OrcamentoID,
+		OrdemServicoID:      ordemServicoID,
+		TipoOrcamento:       tipoOrcamento,
+		OrcamentoOriginalID: original,
+		StatusOrcamento:     domain.StatusRecusado,
+		StatusOrdemServico:  novoStatusOS,
+		ClienteID:           clienteID,
+		DecididoEm:          decididoEm,
+		Motivo:              input.Motivo,
+	}, nil
+}
+
+// itensDoOrcamentoComplementar retorna os item_estoque_id registrados num orcamento complementar,
+// usados para restringir a devolucao de estoque apenas aos itens daquele orcamento. Limitacao
+// conhecida: se o mesmo item ja estava reservado pelo principal, ordem_servico_item guarda uma
+// unica linha por item (quantidades somadas), entao a devolucao aqui pode incluir a parcela do
+// principal para esse item especifico.
+func itensDoOrcamentoComplementar(ctx context.Context, tx pgx.Tx, orcamentoID string) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT oi.item_estoque_id
+		FROM orcamento_item oi
+		JOIN orcamento o ON o.id = $1
+		WHERE oi.orcamento_id = $1
+		  AND oi.tipo_item IN ('PECA', 'INSUMO')
+		  AND oi.item_estoque_id IS NOT NULL
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM orcamento_item oi_principal
+		      WHERE oi_principal.orcamento_id = o.orcamento_original_id
+		        AND oi_principal.item_estoque_id = oi.item_estoque_id
+		  )`, orcamentoID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }

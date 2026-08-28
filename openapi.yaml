@@ -1174,6 +1174,55 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/entradas:
+    post:
+      tags: [Estoque]
+      summary: Registra a entrada de peças e insumos, compartilhada entre os dois contextos
+      description: >-
+        Exige o escopo `estoque:movimentar`. Aumenta o saldo físico dos itens recebidos,
+        efetiva as reservas vinculadas a pedido de compra e libera para `AGUARDANDO_EXECUCAO`
+        as ordens de serviço sem itens pendentes de compra. O header `Idempotency-Key` é
+        obrigatório: a repetição da mesma chave devolve `200` com a resposta original.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrarEntrada' }
+      responses:
+        '201':
+          description: Entrada registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntradaRegistrada' }
+        '200':
+          description: Requisição repetida com a mesma Idempotency-Key; devolve a resposta original
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntradaRegistrada' }
+        '400':
+          description: >-
+            Body inválido, Idempotency-Key ausente ou inválida, item repetido, quantidade ou
+            custo inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404': { description: Item ou pedido de compra não encontrado }
+        '409':
+          description: >-
+            Item inativo, documentoOrigem já registrado, item fora do pedido informado ou
+            quantidade recebida maior que a pedida sem confirmarDivergencia
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -1231,6 +1280,51 @@ paths:
         '403': { description: Usuário sem o escopo os:escrever }
         '404': { description: OS ou item não encontrado }
         '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/finalizar:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Finaliza a execução da OS
+      description: >-
+        Exige o escopo `os:escrever`. A OS precisa estar `EM_EXECUCAO`, sem serviços autorizados
+        pendentes, sem orçamento complementar aguardando decisão e sem reserva ativa da OS sem
+        baixa de estoque registrada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                observacoes: { type: string, example: Todos os serviços autorizados foram concluídos. }
+      responses:
+        '200':
+          description: OS finalizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Finalizacao' }
+        '400':
+          description: osId ou corpo inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS não encontrada }
+        '409':
+          description: >-
+            OS fora de EM_EXECUCAO, serviço autorizado pendente, orçamento complementar aguardando
+            decisão, ou reserva ativa sem baixa de estoque (lista os itens em `erros`)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /ordens-servico/{osId}/insumos:
     post:
       tags: [Ordem de Serviço]
@@ -1279,6 +1373,48 @@ paths:
         '401': { description: Token ausente ou expirado }
         '403': { description: Usuário sem o escopo os:ler }
         '404': { description: OS não encontrada }
+  /orcamentos/{orcamentoId}/recusar:
+    post:
+      tags: [Orçamento]
+      summary: Recusa um orçamento principal ou complementar
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orcamentoId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                motivo: { type: string, maxLength: 500 }
+      responses:
+        '200':
+          description: Orçamento recusado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orcamentoId: { type: string, format: uuid }
+                  ordemServicoId: { type: string, format: uuid }
+                  tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+                  orcamentoOriginalId: { type: string, format: uuid }
+                  statusOrcamento: { type: string, enum: [RECUSADO] }
+                  statusOrdemServico: { type: string }
+                  clienteId: { type: string, format: uuid }
+                  dataRecusa: { type: string, format: date-time }
+                  motivo: { type: string }
+        '400': { description: orcamentoId, corpo ou motivo inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:decidir, ou cliente sem acesso a este orçamento }
+        '404': { description: Orçamento não encontrado }
+        '409': { description: Orçamento já decidido, ou complementar sem orçamento principal vinculado }
 components:
   securitySchemes:
     bearerAuth:
@@ -1301,6 +1437,14 @@ components:
             properties:
               itemId: { type: string, format: uuid }
               quantidade: { type: number, exclusiveMinimum: 0 }
+    Finalizacao:
+      type: object
+      required: [ordemServicoId, status, dataFinalizacao]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        status: { type: string, enum: [FINALIZADA] }
+        dataFinalizacao: { type: string, format: date-time }
+        observacoes: { type: string }
     OrcamentoOS:
       type: object
       properties:
@@ -1369,6 +1513,7 @@ components:
         nome: { type: string, minLength: 2, maxLength: 150 }
         descricao: { type: string, minLength: 3, maxLength: 120 }
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         fabricante: { type: string, maxLength: 150, nullable: true }
         precoVenda:
           type: number
@@ -1389,6 +1534,7 @@ components:
           maxLength: 120
           description: Usada na regra de duplicidade, após normalização.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         fabricante: { type: string, maxLength: 150, nullable: true }
         precoVenda: { type: number, format: double, minimum: 0, nullable: true }
         estoqueMinimo: { type: integer, minimum: 0, default: 0 }
@@ -1402,6 +1548,7 @@ components:
         descricao: { type: string }
         categoriaId: { type: string, format: uuid }
         categoria: { type: string }
+        fornecedorId: { type: string, format: uuid, nullable: true }
         fabricante: { type: string, nullable: true }
         unidadeMedida: { type: string, example: UN }
         precoVenda: { type: number, format: double, nullable: true }
@@ -1503,6 +1650,7 @@ components:
           maxLength: 500
           description: Usada na regra de duplicidade, junto da categoria e da unidade.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
         custoUnitario: { type: number, format: double, minimum: 0 }
         estoqueMinimo:
@@ -1521,6 +1669,7 @@ components:
         descricao: { type: string }
         categoriaId: { type: string, format: uuid }
         categoria: { type: string }
+        fornecedorId: { type: string, format: uuid, nullable: true }
         unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
         custoUnitario: { type: number, format: double, nullable: true }
         saldoFisico: { type: number, format: double }
@@ -1622,6 +1771,62 @@ components:
             id: { type: string, format: uuid }
             nome: { type: string }
         valorTotalCompraParcial: { type: number, format: double }
+    RegistrarEntrada:
+      type: object
+      required: [documentoOrigem, itens]
+      additionalProperties: false
+      properties:
+        documentoOrigem: { type: string, minLength: 1, example: NF-88421 }
+        fornecedorId: { type: string, format: uuid }
+        pedidoCompraId: { type: string, format: uuid }
+        confirmarDivergencia: { type: boolean, default: false }
+        itens:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            required: [itemId, quantidade, custoUnitario]
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double, exclusiveMinimum: true, minimum: 0 }
+              custoUnitario: { type: number, format: double, exclusiveMinimum: true, minimum: 0 }
+    EntradaRegistrada:
+      type: object
+      required: [entradaId, documentoOrigem, registradoEm, itens]
+      properties:
+        entradaId: { type: string, format: uuid }
+        documentoOrigem: { type: string }
+        registradoEm: { type: string, format: date-time }
+        registradoPor: { type: string, format: uuid }
+        itens:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              codigo: { type: string }
+              unidadeMedida: { type: string }
+              quantidade: { type: number, format: double }
+              saldoFisicoAnterior: { type: number, format: double }
+              saldoFisicoAtual: { type: number, format: double }
+              saldoReservado: { type: number, format: double }
+              saldoDisponivel: { type: number, format: double }
+        pedidoCompra:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            numero: { type: string }
+            status: { type: string, enum: [ABERTO, PARCIAL, CONCLUIDO] }
+        ordensServico:
+          type: array
+          items:
+            type: object
+            properties:
+              ordemServicoId: { type: string, format: uuid }
+              statusAnterior: { type: string }
+              status: { type: string }
+              itensPendentes: { type: integer }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]

@@ -33,9 +33,10 @@ func TestNovoCadastroValido(t *testing.T) {
 	fabricante := "  Fabricante X  "
 	preco := "180.00"
 	estoque := int64(4)
+	fornecedorID := "  60000000-0000-0000-0000-000000000001  "
 
 	cadastro, err := NovoCadastro("Pastilha de freio", "Pastilha  de   freio dianteira",
-		" 7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94 ", &fabricante, &preco, &estoque)
+		" 7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94 ", &fabricante, &preco, &estoque, &fornecedorID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,6 +50,9 @@ func TestNovoCadastroValido(t *testing.T) {
 	if cadastro.CategoriaID != "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94" {
 		t.Fatalf("categoriaID = %q; deveria estar sem espaços", cadastro.CategoriaID)
 	}
+	if cadastro.FornecedorID == nil || *cadastro.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorID = %v", cadastro.FornecedorID)
+	}
 	if cadastro.Fabricante == nil || *cadastro.Fabricante != "Fabricante X" {
 		t.Fatalf("fabricante = %v", cadastro.Fabricante)
 	}
@@ -61,15 +65,15 @@ func TestNovoCadastroValido(t *testing.T) {
 }
 
 func TestNovoCadastroAplicaPadroes(t *testing.T) {
-	cadastro, err := NovoCadastro("Correia", "Correia dentada", "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94", nil, nil, nil)
+	cadastro, err := NovoCadastro("Correia", "Correia dentada", "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94", nil, nil, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cadastro.EstoqueMinimo != 0 {
 		t.Fatalf("estoqueMinimo = %d, esperado 0 quando ausente", cadastro.EstoqueMinimo)
 	}
-	if cadastro.Fabricante != nil || cadastro.PrecoVenda != nil {
-		t.Fatal("fabricante e precoVenda deveriam continuar nulos")
+	if cadastro.Fabricante != nil || cadastro.PrecoVenda != nil || cadastro.FornecedorID != nil {
+		t.Fatal("fabricante, precoVenda e fornecedorID deveriam continuar nulos")
 	}
 }
 
@@ -86,28 +90,28 @@ func TestNovoCadastroInvalido(t *testing.T) {
 		esperado error
 	}{
 		{"nome vazio", func() (Cadastro, error) {
-			return NovoCadastro("", "Descricao valida", categoria, nil, nil, nil)
+			return NovoCadastro("", "Descricao valida", categoria, nil, nil, nil, nil)
 		}, ErrNomeInvalido},
 		{"nome longo", func() (Cadastro, error) {
-			return NovoCadastro(strings.Repeat("a", 151), "Descricao valida", categoria, nil, nil, nil)
+			return NovoCadastro(strings.Repeat("a", 151), "Descricao valida", categoria, nil, nil, nil, nil)
 		}, ErrNomeInvalido},
 		{"descricao curta", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "ab", categoria, nil, nil, nil)
+			return NovoCadastro("Peca", "ab", categoria, nil, nil, nil, nil)
 		}, ErrDescricaoInvalida},
 		{"categoria vazia", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "Descricao valida", "   ", nil, nil, nil)
+			return NovoCadastro("Peca", "Descricao valida", "   ", nil, nil, nil, nil)
 		}, ErrCategoriaObrigatoria},
 		{"fabricante longo", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "Descricao valida", categoria, &fabricanteLongo, nil, nil)
+			return NovoCadastro("Peca", "Descricao valida", categoria, &fabricanteLongo, nil, nil, nil)
 		}, ErrFabricanteInvalido},
 		{"preco negativo", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "Descricao valida", categoria, nil, &precoNegativo, nil)
+			return NovoCadastro("Peca", "Descricao valida", categoria, nil, &precoNegativo, nil, nil)
 		}, ErrPrecoVendaInvalido},
 		{"preco nao numerico", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "Descricao valida", categoria, nil, &precoNaoNumerico, nil)
+			return NovoCadastro("Peca", "Descricao valida", categoria, nil, &precoNaoNumerico, nil, nil)
 		}, ErrPrecoVendaInvalido},
 		{"estoque negativo", func() (Cadastro, error) {
-			return NovoCadastro("Peca", "Descricao valida", categoria, nil, nil, &negativo)
+			return NovoCadastro("Peca", "Descricao valida", categoria, nil, nil, &negativo, nil)
 		}, ErrEstoqueMinimoInvalido},
 	}
 
