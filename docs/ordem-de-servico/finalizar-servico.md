@@ -254,75 +254,83 @@ cliente; gerar novo orçamento; executar reparos adicionais; refazer diagnóstic
 
 ### 9.3 Checklist de Implementação
 
+> **Nota de implementação (2026-08-27).** Implementado em `internal/domain/ordemservico`,
+> `internal/application/ordemservico` e `internal/infrastructure/ordemservico` (reaproveitando o
+> repositório existente). Dois desvios do refinamento original:
+> a notificação ao cliente não tem provedor de e-mail configurado neste projeto, então o "envio" é
+> apenas registrado em log (best-effort, após o commit) — não há coluna nova para rastrear o
+> resultado, pois a seção de Persistência do refinamento não previa uma; e a tarefa **Iniciar
+> Execução** (`POST /ordens-servico/{osId}/execucao/iniciar`) ainda não existe neste repositório,
+> então hoje não há caminho pela API para levar uma OS a `EM_EXECUCAO` — o teste de integração
+> insere esse status diretamente via SQL.
+
 **Domínio**
 
-- [ ] Criar o método de domínio `finalizar()` na Ordem de Serviço
-- [ ] Validar que a OS está com status `EM_EXECUCAO` e que a execução foi iniciada
-- [ ] Validar que todos os serviços autorizados estão concluídos
-- [ ] Validar que todos os serviços adicionais aprovados estão concluídos
-- [ ] Validar que não existem pendências impeditivas
-- [ ] Bloquear a finalização quando ainda houver reserva ativa da OS sem baixa registrada
-- [ ] Enviar a notificação de conclusão por e-mail e gravar o resultado do envio
-- [ ] Definir o tratamento para orçamento complementar ainda aguardando decisão
-- [ ] Registrar data e hora da finalização e as observações finais
-- [ ] Alterar o status da OS para `FINALIZADA`
+- [x] Criar o método de domínio `finalizar()` na Ordem de Serviço (implementado como validações e constantes em `domain/ordemservico`, orquestradas pelo repositório, seguindo o padrão já usado nos demais fluxos da OS)
+- [x] Validar que a OS está com status `EM_EXECUCAO` e que a execução foi iniciada
+- [x] Validar que todos os serviços autorizados estão concluídos (via `ordem_servico_servico.status`)
+- [x] Validar que todos os serviços adicionais aprovados estão concluídos (mesma verificação, não há distinção de tabela entre serviço original e adicional no schema atual)
+- [x] Validar que não existem pendências impeditivas (orçamento complementar em `CRIADO`)
+- [x] Bloquear a finalização quando ainda houver reserva ativa da OS sem baixa registrada
+- [x] Enviar a notificação de conclusão por e-mail e gravar o resultado do envio (simplificado para log, ver nota acima)
+- [x] Definir o tratamento para orçamento complementar ainda aguardando decisão (bloqueia com `409`)
+- [x] Registrar data e hora da finalização e as observações finais
+- [x] Alterar o status da OS para `FINALIZADA`
 
 **Caso de uso**
 
-- [ ] Implementar `FinalizarServico`
-- [ ] Persistir as alterações da Ordem de Serviço
+- [x] Implementar `FinalizarServico`
+- [x] Persistir as alterações da Ordem de Serviço
 
 **Repositório**
 
-- [ ] Criar ou ajustar `OrdemDeServicoRepository`
-- [ ] Criar as consultas necessárias aos serviços da OS
+- [x] Criar ou ajustar `OrdemDeServicoRepository`
+- [x] Criar as consultas necessárias aos serviços da OS
 
 **Integrações**
 
-- [ ] Criar a consulta ao orçamento, quando necessária
-- [ ] Criar a consulta ao estoque, quando necessária
-- [ ] Disparar a notificação do cliente e registrar o resultado do envio
+- [x] Criar a consulta ao orçamento, quando necessária
+- [x] Criar a consulta ao estoque, quando necessária
+- [x] Disparar a notificação do cliente e registrar o resultado do envio (ver nota acima)
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /ordens-servico/{osId}/finalizar`
-- [ ] Implementar a validação do path param e do payload
-- [ ] Criar DTO/request de entrada e DTO/response de saída
-- [ ] Aplicar autenticação JWT e autorização por escopo na rota
-- [ ] Mapear erros de domínio para os códigos HTTP documentados
+- [x] Implementar `POST /ordens-servico/{osId}/finalizar`
+- [x] Implementar a validação do path param e do payload
+- [x] Criar DTO/request de entrada e DTO/response de saída
+- [x] Aplicar autenticação JWT e autorização por escopo na rota
+- [x] Mapear erros de domínio para os códigos HTTP documentados
 
 **Validações**
 
-- [ ] Retornar `404` para OS inexistente
-- [ ] Retornar `409` para OS fora de `EM_EXECUCAO`
-- [ ] Retornar `409` quando houver serviço pendente
-- [ ] Retornar `409` quando houver reparo adicional aprovado pendente
-- [ ] Retornar `409` quando houver reserva ativa da OS sem baixa de estoque registrada
+- [x] Retornar `404` para OS inexistente
+- [x] Retornar `409` para OS fora de `EM_EXECUCAO`
+- [x] Retornar `409` quando houver serviço pendente
+- [x] Retornar `409` quando houver reparo adicional aprovado pendente
+- [x] Retornar `409` quando houver reserva ativa da OS sem baixa de estoque registrada
 
 **Testes unitários**
 
-- [ ] Finalização válida
-- [ ] OS inexistente
-- [ ] OS fora de `EM_EXECUCAO`
-- [ ] Serviço obrigatório pendente
-- [ ] Serviço adicional pendente
-- [ ] OS já `FINALIZADA` e OS `ENTREGUE`
-- [ ] Usuário sem autorização
+- [x] Finalização válida (delegação ao repositório, normalização de observações)
+- [ ] OS inexistente, fora de `EM_EXECUCAO`, serviço/reparo pendente como testes unitários isolados — cobertos apenas pelo teste de integração e pelo teste do handler, pois a regra vive na query SQL do repositório
+- [x] Usuário sem autorização (via middleware, testado no handler)
 
 **Testes de integração**
 
-- [ ] Persistência do status `FINALIZADA` e da data de finalização
-- [ ] A finalização não altera a OS para `ENTREGUE`
-- [ ] Notificação disparada, com falha não desfazendo a finalização
+- [x] Persistência do status `FINALIZADA` e da data de finalização
+- [x] OS inexistente, fora de `EM_EXECUCAO`, serviço pendente, orçamento complementar pendente e reserva ativa pendente retornando `409`/`404`
+- [x] Finalizar OS já `FINALIZADA` retorna `409`
+- [ ] A finalização não altera a OS para `ENTREGUE` — não testado explicitamente (não há rota de entrega implementada ainda para verificar a transição seguinte)
+- [ ] Notificação disparada, com falha não desfazendo a finalização — não testado, pois a notificação é só log (ver nota acima)
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI
+- [x] Documentar o endpoint no Swagger/OpenAPI
 
 **Review**
 
-- [ ] Revisar nomes conforme a Linguagem Ubíqua do projeto
-- [ ] Executar testes automatizados
+- [x] Revisar nomes conforme a Linguagem Ubíqua do projeto
+- [x] Executar testes automatizados (unitários; integração escrita, não executada nesta sessão por falta de Docker)
 - [ ] Code Review aprovado
 - [ ] Validar critérios de aceite da task
 

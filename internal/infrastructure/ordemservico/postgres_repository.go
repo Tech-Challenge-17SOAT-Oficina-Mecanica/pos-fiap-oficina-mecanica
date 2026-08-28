@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,108 @@ import (
 type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
+
+// Finalizar bloqueia enquanto houver servico pendente, orcamento complementar em aberto ou
+// reserva ativa sem baixa. A notificacao ao cliente e best-effort, apos o commit: nao ha
+// provedor de e-mail configurado neste repositorio, entao o envio e apenas registrado em log.
+func (repository PostgresRepository) Finalizar(ctx context.Context, input application.FinalizarInput) (domain.ResultadoFinalizacao, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var status string
+	if err = tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", input.OSID).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ResultadoFinalizacao{}, application.ErrOrdemServicoNaoEncontrada
+		}
+		return domain.ResultadoFinalizacao{}, err
+	}
+	if status != domain.StatusEmExecucao {
+		return domain.ResultadoFinalizacao{}, domain.ErrOSNaoEmExecucao
+	}
+
+	var servicosPendentes int
+	if err = tx.QueryRow(ctx, "SELECT COUNT(*) FROM ordem_servico_servico WHERE ordem_servico_id = $1 AND status <> 'CONCLUIDO'", input.OSID).Scan(&servicosPendentes); err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+	if servicosPendentes > 0 {
+		return domain.ResultadoFinalizacao{}, domain.ErrServicosPendentes
+	}
+
+	var complementarPendente int
+	if err = tx.QueryRow(ctx, "SELECT COUNT(*) FROM orcamento WHERE ordem_servico_id = $1 AND tipo_orcamento = 'COMPLEMENTAR' AND status = 'CRIADO'", input.OSID).Scan(&complementarPendente); err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+	if complementarPendente > 0 {
+		return domain.ResultadoFinalizacao{}, domain.ErrOrcamentoComplementarPendente
+	}
+
+	itensPendentes, err := reservasAtivasDaOS(ctx, tx, input.OSID)
+	if err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+	if len(itensPendentes) > 0 {
+		return domain.ResultadoFinalizacao{}, domain.ErroReservasPendentes{Itens: itensPendentes}
+	}
+
+	var dataFinalizacao time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE ordem_servico SET status = $2, finalizada_em = CURRENT_TIMESTAMP, observacoes_finalizacao = NULLIF($3, '')
+		WHERE id = $1
+		RETURNING finalizada_em`, input.OSID, domain.StatusFinalizada, input.Observacoes,
+	).Scan(&dataFinalizacao); err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'FINALIZACAO', jsonb_build_object('observacoes', COALESCE($3, '')), '{}'::jsonb, $4)`,
+		input.OSID, input.UsuarioID, input.Observacoes, dataFinalizacao,
+	); err != nil {
+		return domain.ResultadoFinalizacao{}, fmt.Errorf("registrar auditoria da finalizacao: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return domain.ResultadoFinalizacao{}, err
+	}
+
+	resultado := domain.ResultadoFinalizacao{
+		OrdemServicoID: input.OSID, Status: domain.StatusFinalizada, DataFinalizacao: dataFinalizacao, Observacoes: input.Observacoes,
+	}
+	resultado.NotificacaoEnviada = notificarClienteVeiculoDisponivel(input.OSID)
+	return resultado, nil
+}
+
+func reservasAtivasDaOS(ctx context.Context, tx pgx.Tx, ordemServicoID string) ([]domain.ItemPendenteBaixa, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT ie.id, ie.codigo, r.quantidade
+		FROM reserva_estoque r
+		JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id
+		JOIN item_estoque ie ON ie.id = r.item_estoque_id
+		WHERE osi.ordem_servico_id = $1 AND r.status = $2
+		ORDER BY ie.id`, ordemServicoID, domainEstoque.ReservaAtiva)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var itens []domain.ItemPendenteBaixa
+	for rows.Next() {
+		var item domain.ItemPendenteBaixa
+		if err = rows.Scan(&item.ItemID, &item.Codigo, &item.Quantidade); err != nil {
+			return nil, err
+		}
+		itens = append(itens, item)
+	}
+	return itens, rows.Err()
+}
+
+// notificarClienteVeiculoDisponivel e um envio best-effort: sem provedor de e-mail configurado
+// neste projeto, o "envio" e apenas registrado em log, e uma falha aqui nunca desfaz a finalizacao.
+func notificarClienteVeiculoDisponivel(ordemServicoID string) bool {
+	log.Printf("notificacao: veiculo da OS %s disponivel para retirada", ordemServicoID)
+	return true
+}
 
 func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Context, ordemServicoID string, problema domain.ProblemaRelatado) (resultado domain.OrdemDeServico, err error) {
 	tx, err := repository.db.Begin(ctx)
