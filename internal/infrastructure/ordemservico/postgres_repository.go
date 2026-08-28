@@ -351,6 +351,7 @@ type devolucaoItemRow struct {
 	osItemID            string
 	itemEstoqueID       string
 	quantidadeConsumida float64
+	quantidadeReservada float64
 	codigo, descricao   string
 	tipo, unidadeMedida string
 	saldoFisico         float64
@@ -383,7 +384,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 // todos os itens da OS (usado na recusa do orcamento principal, que cancela a OS inteira).
 func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, itemEstoqueIDs []string) (domainEstoque.ResultadoDevolucao, error) {
 	query := `
-		SELECT osi.id, ie.id, osi.quantidade_consumida, ie.codigo, ie.descricao, ie.tipo, ie.unidade_medida,
+		SELECT osi.id, ie.id, osi.quantidade_consumida, osi.quantidade_reservada, ie.codigo, ie.descricao, ie.tipo, ie.unidade_medida,
 		       ie.saldo_fisico, ie.saldo_reservado, ie.ativo
 		FROM ordem_servico_item osi
 		JOIN item_estoque ie ON ie.id = osi.item_estoque_id
@@ -402,7 +403,7 @@ func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, item
 	var itens []devolucaoItemRow
 	for rows.Next() {
 		var item devolucaoItemRow
-		if err = rows.Scan(&item.osItemID, &item.itemEstoqueID, &item.quantidadeConsumida, &item.codigo, &item.descricao,
+		if err = rows.Scan(&item.osItemID, &item.itemEstoqueID, &item.quantidadeConsumida, &item.quantidadeReservada, &item.codigo, &item.descricao,
 			&item.tipo, &item.unidadeMedida, &item.saldoFisico, &item.saldoReservado, &item.ativo); err != nil {
 			rows.Close()
 			return domainEstoque.ResultadoDevolucao{}, err
@@ -424,10 +425,14 @@ func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, item
 		}
 		if quantidadeReservada > 0 {
 			novoSaldoReservado := item.saldoReservado - quantidadeReservada
-			if novoSaldoReservado < 0 {
+			novaQuantidadeReservada := item.quantidadeReservada - quantidadeReservada
+			if novoSaldoReservado < 0 || novaQuantidadeReservada < 0 {
 				return domainEstoque.ResultadoDevolucao{}, domainEstoque.ErrSaldoReservadoInsuficiente
 			}
 			if _, err = tx.Exec(ctx, "UPDATE item_estoque SET saldo_reservado = $2 WHERE id = $1", item.itemEstoqueID, novoSaldoReservado); err != nil {
+				return domainEstoque.ResultadoDevolucao{}, err
+			}
+			if _, err = tx.Exec(ctx, "UPDATE ordem_servico_item SET quantidade_reservada = $2 WHERE id = $1", item.osItemID, novaQuantidadeReservada); err != nil {
 				return domainEstoque.ResultadoDevolucao{}, err
 			}
 			if _, err = tx.Exec(ctx, `

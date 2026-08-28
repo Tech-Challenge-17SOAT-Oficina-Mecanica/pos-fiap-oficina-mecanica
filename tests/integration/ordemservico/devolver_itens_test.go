@@ -123,6 +123,10 @@ func TestDevolverItensAoEstoque(t *testing.T) {
 	if err = db.QueryRow(ctx, "SELECT saldo_reservado FROM item_estoque WHERE id=$1", pecaReservadaID).Scan(&saldoReservado); err != nil || saldoReservado != 0 {
 		t.Fatalf("saldoReservado=%.2f erro=%v", saldoReservado, err)
 	}
+	var quantidadeReservada float64
+	if err = db.QueryRow(ctx, "SELECT quantidade_reservada FROM ordem_servico_item WHERE id=$1", osItemReservadoID).Scan(&quantidadeReservada); err != nil || quantidadeReservada != 0 {
+		t.Fatalf("quantidadeReservada=%.2f erro=%v", quantidadeReservada, err)
+	}
 	if err = db.QueryRow(ctx, "SELECT saldo_fisico FROM item_estoque WHERE id=$1", insumoConsumidoID).Scan(&saldoFisico); err != nil || saldoFisico != 22 {
 		t.Fatalf("saldoFisico=%.2f erro=%v", saldoFisico, err)
 	}
