@@ -51,8 +51,8 @@ func TestAprovarOrcamento(t *testing.T) {
 		INSERT INTO cliente (id, nome, documento, tipo_documento, telefone, ativo) VALUES ($2, 'Cliente Aprovacao', '12345678904', 'CPF', '11999999996', TRUE);
 		INSERT INTO veiculo (id, cliente_id, placa, marca, modelo, ano, ativo) VALUES ($3, $2, 'APR1A23', 'VW', 'Gol', 2020, TRUE);
 		INSERT INTO fornecedor (id, razao_social, documento, tipo_documento, ativo) VALUES ($4, 'Fornecedor Aprovacao', '12345678000196', 'CNPJ', TRUE);
-		INSERT INTO item_estoque (id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, unidade_medida, saldo_fisico, saldo_reservado, preco_venda, ativo)
-		VALUES ($5, $1, 'PECA', 'PEC-950001', 'Peca aprovacao', 'Peca aprovacao', 'peca aprovacao', 'UN', 1, 0, 50, TRUE);
+		INSERT INTO item_estoque (id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, fornecedor_id, unidade_medida, saldo_fisico, saldo_reservado, preco_venda, ativo)
+		VALUES ($5, $1, 'PECA', 'PEC-950001', 'Peca aprovacao', 'Peca aprovacao', 'peca aprovacao', $4, 'UN', 1, 0, 50, TRUE);
 		INSERT INTO ordem_servico (id, cliente_id, veiculo_id, placa_veiculo, status) VALUES ($6, $2, $3, 'APR1A23', 'AGUARDANDO_APROVACAO');
 		INSERT INTO orcamento (id, ordem_servico_id, tipo_orcamento, status) VALUES ($7, $6, 'PRINCIPAL', 'CRIADO');
 		INSERT INTO orcamento_item (orcamento_id, item_estoque_id, tipo_item, descricao, quantidade, valor_unitario, valor_total)
@@ -98,9 +98,17 @@ func TestAprovarOrcamento(t *testing.T) {
 	if err := db.QueryRow(ctx, "SELECT saldo_reservado::text FROM item_estoque WHERE id = $1", pecaID).Scan(&saldoReservado); err != nil || saldoReservado != "1.000" {
 		t.Fatalf("saldo=%s err=%v", saldoReservado, err)
 	}
-	var pedidos, reservas int
-	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pedido_compra_item WHERE item_estoque_id = $1", pecaID).Scan(&pedidos); err != nil || pedidos != 0 {
-		t.Fatalf("pedidos=%d err=%v", pedidos, err)
+	var reservas int
+	var quantidadePedida string
+	if err := db.QueryRow(ctx, `
+		SELECT pci.quantidade_pedida::text
+		FROM pedido_compra pc
+		JOIN pedido_compra_item pci ON pci.pedido_compra_id = pc.id
+		JOIN pedido_compra_item_os pcios ON pcios.pedido_compra_item_id = pci.id
+		JOIN ordem_servico_item osi ON osi.id = pcios.ordem_servico_item_id
+		WHERE pci.item_estoque_id = $1 AND osi.ordem_servico_id = $2 AND pc.fornecedor_id = $3`,
+		pecaID, osID, fornecedorID).Scan(&quantidadePedida); err != nil || quantidadePedida != "1.000" {
+		t.Fatalf("quantidadePedida=%s err=%v", quantidadePedida, err)
 	}
 	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 1 {
 		t.Fatalf("reservas=%d err=%v", reservas, err)

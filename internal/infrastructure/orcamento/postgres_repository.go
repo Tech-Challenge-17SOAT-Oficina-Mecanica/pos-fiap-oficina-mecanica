@@ -24,10 +24,12 @@ type itemAprovacao struct {
 	id             string
 	tipo           string
 	ativo          bool
+	fornecedorID   string
 	quantidade     string
 	saldoFisico    string
 	saldoReservado string
 	valorUnitario  string
+	custoUnitario  *string
 	osItemID       *string
 }
 
@@ -129,8 +131,9 @@ func orcamentoOriginalValido(ctx context.Context, tx pgx.Tx, ordemServicoID, ori
 
 func carregarItensAprovacao(ctx context.Context, tx pgx.Tx, orcamentoID, ordemServicoID string) ([]itemAprovacao, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT i.id::text, i.tipo, i.ativo, oi.quantidade::text, i.saldo_fisico::text,
-		       i.saldo_reservado::text, oi.valor_unitario::text, osi.id::text
+		SELECT i.id::text, i.tipo, i.ativo, COALESCE(i.fornecedor_id::text, ''), oi.quantidade::text,
+		       i.saldo_fisico::text, i.saldo_reservado::text, oi.valor_unitario::text,
+		       i.custo_unitario::text, osi.id::text
 		FROM orcamento_item oi
 		JOIN item_estoque i ON i.id = oi.item_estoque_id
 		LEFT JOIN ordem_servico_item osi ON osi.ordem_servico_id = $2 AND osi.item_estoque_id = i.id
@@ -144,8 +147,8 @@ func carregarItensAprovacao(ctx context.Context, tx pgx.Tx, orcamentoID, ordemSe
 	var itens []itemAprovacao
 	for rows.Next() {
 		var item itemAprovacao
-		if err := rows.Scan(&item.id, &item.tipo, &item.ativo, &item.quantidade, &item.saldoFisico,
-			&item.saldoReservado, &item.valorUnitario, &item.osItemID); err != nil {
+		if err := rows.Scan(&item.id, &item.tipo, &item.ativo, &item.fornecedorID, &item.quantidade,
+			&item.saldoFisico, &item.saldoReservado, &item.valorUnitario, &item.custoUnitario, &item.osItemID); err != nil {
 			return nil, err
 		}
 		if !item.ativo || (item.tipo != "PECA" && item.tipo != "INSUMO") {
@@ -179,6 +182,16 @@ func processarItensAprovados(ctx context.Context, tx pgx.Tx, ordemServicoID stri
 			}
 		}
 		if compararDecimal(comprar, "0") > 0 {
+			if item.fornecedorID == "" {
+				return false, errors.New("item sem fornecedor padrao")
+			}
+			pedidoID, err := criarPedidoCompraAprovacao(ctx, tx, item.fornecedorID)
+			if err != nil {
+				return false, err
+			}
+			if err = solicitarCompraAprovacao(ctx, tx, pedidoID, osItemID, item, comprar); err != nil {
+				return false, err
+			}
 			possuiPendenciaCompra = true
 		}
 	}
@@ -229,6 +242,39 @@ func registrarMovimentacaoReserva(ctx context.Context, tx pgx.Tx, ordemServicoID
 		INSERT INTO movimentacao_estoque (item_estoque_id, ordem_servico_id, reserva_estoque_id, tipo, quantidade)
 		VALUES ($1, $2, $3, 'RESERVA', $4::NUMERIC)`, itemID, ordemServicoID, reservaID, quantidade)
 	return err
+}
+
+func criarPedidoCompraAprovacao(ctx context.Context, tx pgx.Tx, fornecedorID string) (string, error) {
+	var pedidoID string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO pedido_compra (fornecedor_id, numero, status)
+		VALUES ($1, to_char(CURRENT_DATE, 'YYYY') || '/' || LPAD(nextval('seq_pedido_compra_numero')::TEXT, 4, '0'), 'ABERTO')
+		RETURNING id`, fornecedorID,
+	).Scan(&pedidoID)
+	return pedidoID, err
+}
+
+func solicitarCompraAprovacao(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, item itemAprovacao, quantidade string) error {
+	var pedidoItemID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO pedido_compra_item (
+			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada, custo_unitario
+		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, 0, $4::NUMERIC)
+		RETURNING id`, pedidoID, item.id, quantidade, custoUnitarioCompra(item),
+	).Scan(&pedidoItemID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
+		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, quantidade)
+	return err
+}
+
+func custoUnitarioCompra(item itemAprovacao) any {
+	if item.tipo == "INSUMO" && item.custoUnitario != nil {
+		return *item.custoUnitario
+	}
+	return nil
 }
 
 func menorDecimal(a, b string) string {
