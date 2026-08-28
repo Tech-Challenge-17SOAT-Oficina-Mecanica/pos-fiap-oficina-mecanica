@@ -164,6 +164,12 @@ Exemplo:
 - Quando o tipo for `COMPLEMENTAR`, deve existir orçamento principal vinculado à mesma OS.
 - Quando o tipo for `COMPLEMENTAR`, `orcamentoOriginalId` deve referenciar o orçamento principal da mesma OS.
 
+> **Nota de implementação (2026-08-27).** A validação de status da OS é aplicada apenas ao
+> orçamento `PRINCIPAL` (`409` quando a OS não está em `AGUARDANDO_APROVACAO`). Para `COMPLEMENTAR`
+> não há esse gate: na prática, o complementar é criado com a OS em `EM_EXECUCAO` e permanece lá até
+> a decisão do cliente — exigir `AGUARDANDO_APROVACAO` também aqui quebraria esse fluxo, já coberto
+> por teste de integração.
+
 **Processamento**
 
 1. Receber o identificador do orçamento e o motivo da recusa.

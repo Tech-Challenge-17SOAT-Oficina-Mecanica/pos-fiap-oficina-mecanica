@@ -87,7 +87,9 @@ func main() {
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
-	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
+	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
+	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
+	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
 	mux := http.NewServeMux()
@@ -121,6 +123,7 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/problema-relatado", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarProblemaRelatadoHandler(registrarProblemaRelatado)))
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
+	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewRecusarHandler(recusarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewAtualizarHandler(atualizar)))
 	mux.Handle("DELETE /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewInativarHandler(inativar)))
