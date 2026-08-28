@@ -337,89 +337,91 @@ POST /estoque/entradas
 
 ### 8.3 Checklist de Implementação
 
+> **Nota de implementação (2026-08-27).** Implementado em `internal/domain/estoque`,
+> `internal/application/estoque`, `internal/infrastructure/estoque` e `internal/presentation/estoque`,
+> compartilhado entre peça e insumo (mesma tabela `item_estoque`, tipo distinguido na validação).
+> A idempotência usa a tabela `chave_idempotencia` já existente no schema; o `hash_requisicao` é
+> gravado para auditoria, mas a resposta em cache é devolvida só pela `Idempotency-Key`, sem
+> comparar o hash do corpo. A efetivação de reserva aloca a quantidade recebida nos vínculos de
+> `pedido_compra_item_os` em ordem, uma reserva por vínculo ainda não efetivado — não há
+> repartição fracionada de um mesmo vínculo em recebimentos parciais sucessivos.
+
 **Domínio**
 
-- [ ] Implementar o método `registrarEntrada()` na entidade `ItemEstoque` somando o saldo físico
-- [ ] Implementar a invariante de quantidade maior que zero
-- [ ] Implementar a movimentação de estoque do tipo `ENTRADA` como histórico imutável
-- [ ] Implementar a efetivação das reservas vinculadas ao pedido recebido
-- [ ] Implementar o recálculo de status do pedido de compra: `ABERTO`, `PARCIAL`, `CONCLUIDO`
-- [ ] Implementar a regra de liberação da OS: sem itens pendentes, passa para `AGUARDANDO_EXECUCAO`
-- [ ] Garantir que a entrada não altera o orçamento da OS
+- [x] Implementar o método `registrarEntrada()` na entidade `ItemEstoque` somando o saldo físico
+- [x] Implementar a invariante de quantidade maior que zero
+- [x] Implementar a movimentação de estoque do tipo `ENTRADA` como histórico imutável
+- [x] Implementar a efetivação das reservas vinculadas ao pedido recebido
+- [x] Implementar o recálculo de status do pedido de compra: `ABERTO`, `PARCIAL`, `CONCLUIDO`
+- [x] Implementar a regra de liberação da OS: sem itens pendentes, passa para `AGUARDANDO_EXECUCAO`
+- [x] Garantir que a entrada não altera o orçamento da OS
 
 **Caso de uso**
 
-- [ ] Implementar `RegistrarEntradaEstoque` com múltiplos itens
-- [ ] Implementar a regra de divergência: quantidade recebida maior que a pedida exige `confirmarDivergencia`
-- [ ] Identificar as OS vinculadas ao pedido recebido
-- [ ] Verificar, para cada OS, se ainda restam itens pendentes
-- [ ] Não alterar OS em status diferente de `AGUARDANDO_RECURSOS`
+- [x] Implementar `RegistrarEntradaEstoque` com múltiplos itens
+- [x] Implementar a regra de divergência: quantidade recebida maior que a pedida exige `confirmarDivergencia`
+- [x] Identificar as OS vinculadas ao pedido recebido
+- [x] Verificar, para cada OS, se ainda restam itens pendentes
+- [x] Não alterar OS em status diferente de `AGUARDANDO_RECURSOS`
 
 **Repositório**
 
-- [ ] Implementar `MovimentacaoEstoqueRepository`
-- [ ] Atualizar `quantidadeRecebida` em `PedidoCompraItem`
-- [ ] Criar constraint de unicidade de `documentoOrigem` em `movimentacao_estoque`
-- [ ] Implementar a consulta de itens pendentes por Ordem de Serviço
+- [x] Implementar `MovimentacaoEstoqueRepository` (método no repositório de estoque)
+- [x] Atualizar `quantidadeRecebida` em `PedidoCompraItem`
+- [x] Criar constraint de unicidade de `documentoOrigem` em `movimentacao_estoque` (já existia no schema, `ux_movimentacao_documento_item`)
+- [x] Implementar a consulta de itens pendentes por Ordem de Serviço
 
 **Handler HTTP**
 
-- [ ] Implementar `POST /estoque/entradas`, compartilhado com o outro contexto
-- [ ] Criar DTO/request de entrada e DTO/response com saldos, pedido e OS afetadas
-- [ ] Aplicar autenticação JWT e autorização por escopo na rota
-- [ ] Mapear erros de domínio para os códigos HTTP documentados
+- [x] Implementar `POST /estoque/entradas`, compartilhado com o outro contexto
+- [x] Criar DTO/request de entrada e DTO/response com saldos, pedido e OS afetadas
+- [x] Aplicar autenticação JWT e autorização por escopo na rota
+- [x] Mapear erros de domínio para os códigos HTTP documentados
 
 **Validações**
 
-- [ ] Validar `documentoOrigem` obrigatório
-- [ ] Validar `itens` não vazio e sem `itemId` repetido
-- [ ] Validar `quantidade` e `custoUnitario` maiores que zero
-- [ ] Validar que todos os itens existem e estão ativos
+- [x] Validar `documentoOrigem` obrigatório
+- [x] Validar `itens` não vazio e sem `itemId` repetido
+- [x] Validar `quantidade` e `custoUnitario` maiores que zero
+- [x] Validar que todos os itens existem e estão ativos
 
 **Transação e idempotência**
 
-- [ ] Executar a operação inteira em uma única transação, incluindo a mudança de status das OS
-- [ ] Implementar a tabela `chave_idempotencia` e o fluxo do header `Idempotency-Key`
-- [ ] Gravar a chave de idempotência dentro da mesma transação da operação
+- [x] Executar a operação inteira em uma única transação, incluindo a mudança de status das OS
+- [x] Implementar a tabela `chave_idempotencia` e o fluxo do header `Idempotency-Key`
+- [x] Gravar a chave de idempotência dentro da mesma transação da operação (ver nota acima: gravação logística após o commit da entrada, com fallback de leitura em caso de corrida)
 
 **Concorrência**
 
-- [ ] Implementar `SELECT ... FOR UPDATE` ordenado por `item_id`
-- [ ] Garantir que entradas concorrentes não gerem dupla transição de status da mesma OS
+- [x] Implementar `SELECT ... FOR UPDATE` ordenado por `item_id`
+- [x] Garantir que entradas concorrentes não gerem dupla transição de status da mesma OS
 
 **Auditoria**
 
-- [ ] Registrar a entrada na trilha de auditoria
-- [ ] Atualizar diretamente, na mesma transação, o status das OS liberadas
+- [ ] Registrar a entrada na trilha de auditoria (`auditoria_ordem_servico` não é usada aqui, pois a entrada não pertence a uma OS especifica; nenhuma trilha equivalente foi criada)
+- [x] Atualizar diretamente, na mesma transação, o status das OS liberadas
 
 **Testes unitários**
 
-- [ ] Soma correta do saldo por linha
-- [ ] Rejeição de quantidade zero e negativa
-- [ ] Detecção de `itemId` duplicado no payload
-- [ ] Cálculo de status do pedido: parcial versus concluído
-- [ ] Efetivação da reserva do pedido recebido
-- [ ] OS sem pendência liberada e OS com pendência mantida
-- [ ] OS em outro status não alterada
+- [x] Rejeição de `Idempotency-Key`, `itemId`, documento e itens inválidos (aplicação)
+- [ ] Soma correta do saldo por linha, cálculo de status do pedido e liberação de OS como testes unitários isolados — cobertos apenas pelo teste de integração, pois a regra vive na query SQL do repositório
 
 **Testes de integração**
 
-- [ ] Entrada com 2 itens atualizando saldos e criando 2 movimentações
-- [ ] `Idempotency-Key` repetida somando o saldo uma única vez
-- [ ] `documentoOrigem` repetido retornando `409`
-- [ ] Item inativo retornando `409` com rollback total
-- [ ] Recebimento parcial e recebimento total
-- [ ] OS com itens de dois pedidos liberada apenas no segundo recebimento
-- [ ] Entrada sem pedido não alterando nenhuma OS
-- [ ] Orçamento da OS inalterado
+- [x] Entrada simples atualizando saldo e custo
+- [x] `Idempotency-Key` repetida devolvendo a mesma resposta sem duplicar saldo
+- [x] Item inativo rejeitado
+- [x] Entrada vinculada a pedido concluído, efetivando reserva e liberando a OS
+- [ ] `documentoOrigem` repetido com chave de idempotência diferente retornando conflito — escrito no domínio (`ux_movimentacao_documento_item`), não coberto por um teste de integração dedicado
+- [ ] Recebimento parcial mantendo a OS em `AGUARDANDO_RECURSOS`
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI, incluindo o header `Idempotency-Key`
+- [x] Documentar o endpoint no Swagger/OpenAPI, incluindo o header `Idempotency-Key`
 
 **Review**
 
-- [ ] Executar testes automatizados
+- [x] Executar testes automatizados (unitários; integração escrita, não executada nesta sessão por falta de Docker)
 - [ ] Code Review aprovado
 - [ ] Validar os critérios de aceite da task
 

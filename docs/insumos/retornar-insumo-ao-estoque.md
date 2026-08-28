@@ -297,25 +297,41 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 
 ### 9.3 Checklist de Implementação
 
+> **Nota de implementação (2026-08-27).** `DevolverItensAoEstoque` foi implementado como serviço
+> compartilhado entre Peças e Insumos, em `internal/application/ordemservico` e
+> `internal/infrastructure/ordemservico/postgres_repository.go`, já que ambos operam sobre a mesma
+> tabela `item_estoque` distinguida por `tipo`. Dois desvios do refinamento original:
+> a marcação de devolução usa os campos já existentes (`reserva_estoque.status = LIBERADA` e
+> zeramento de `ordem_servico_item.quantidade_consumida`), sem novo campo no item da OS; e o
+> serviço abre sua própria transação, porque `RecusarOrcamento` ainda não existe neste repositório
+> — quando essa integração for feita, a assinatura precisará aceitar uma `pgx.Tx` externa em vez de
+> abrir a própria.
+>
+> **Atualização (2026-08-27).** `RecusarOrcamento` foi implementado e integrado: a devolução agora
+> roda via `DevolverItensTx`, dentro da transação da recusa, sem abrir transação própria. O caso
+> A6 ("item inativado após o vínculo com a OS") também foi coberto: `ItemLiberado`, `ItemRetornado`
+> e `ItemSemDevolucao` agora carregam o campo `Ativo`, refletindo o estado atual do item no momento
+> da devolução.
+
 **Domínio**
 
-- [ ] Implementar o status `LIBERADA` na `ReservaEstoque`
-- [ ] Implementar a regra de liberação de reserva reduzindo apenas o saldo reservado
-- [ ] Implementar a regra de retorno de item baixado aumentando o saldo físico
-- [ ] Implementar a movimentação do tipo `LIBERACAO_RESERVA`
-- [ ] Implementar a movimentação do tipo `ENTRADA_RETORNO`
-- [ ] Implementar a marcação de devolução nos itens da OS
-- [ ] Implementar o descarte de itens já marcados como devolvidos
-- [ ] Garantir que a devolução não altera o status da OS nem o orçamento
-- [ ] Garantir que o saldo reservado nunca fique negativo
+- [x] Implementar o status `LIBERADA` na `ReservaEstoque`
+- [x] Implementar a regra de liberação de reserva reduzindo apenas o saldo reservado
+- [x] Implementar a regra de retorno de item baixado aumentando o saldo físico
+- [x] Implementar a movimentação do tipo `LIBERACAO_RESERVA`
+- [x] Implementar a movimentação do tipo `ENTRADA_RETORNO`
+- [x] Implementar a marcação de devolução nos itens da OS (via `reserva_estoque.status` e zeramento de `quantidade_consumida`, ver nota acima)
+- [x] Implementar o descarte de itens já marcados como devolvidos
+- [x] Garantir que a devolução não altera o status da OS nem o orçamento
+- [x] Garantir que o saldo reservado nunca fique negativo
 
 **Serviço de devolução**
 
-- [ ] Implementar `DevolverItensAoEstoque` com a assinatura definida
-- [ ] Separar os itens em reservados, baixados e pendentes de compra
-- [ ] Desvincular os itens pendentes de compra
-- [ ] Montar e retornar o `ResultadoDevolucao`
-- [ ] Executar dentro da transação do chamador, sem abrir transação própria
+- [x] Implementar `DevolverItensAoEstoque` com a assinatura definida (recebe `ordemServicoID`, ver nota acima)
+- [x] Separar os itens em reservados, baixados e pendentes de compra
+- [x] Desvincular os itens pendentes de compra
+- [x] Montar e retornar o `ResultadoDevolucao`
+- [ ] Executar dentro da transação do chamador, sem abrir transação própria — pendente até `RecusarOrcamento` existir
 
 **Integração com a recusa**
 
@@ -324,14 +340,14 @@ Não há códigos HTTP próprios. As exceções sobem para o caso de uso de recu
 
 **Repositório**
 
-- [ ] Criar consulta dos itens vinculados à OS
-- [ ] Criar consulta das reservas ativas da OS
+- [x] Criar consulta dos itens vinculados à OS
+- [x] Criar consulta das reservas ativas da OS
 
 **Concorrência**
 
-- [ ] Carregar os itens com lock de linha
-- [ ] Ordenar os itens por `item_id` antes do lock para reduzir risco de deadlock
-- [ ] Garantir que a liberação concorrente não gera saldo reservado negativo
+- [x] Carregar os itens com lock de linha
+- [x] Ordenar os itens por `item_id` antes do lock para reduzir risco de deadlock
+- [x] Garantir que a liberação concorrente não gera saldo reservado negativo
 
 **Testes unitários**
 
