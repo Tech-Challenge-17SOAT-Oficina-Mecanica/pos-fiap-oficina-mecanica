@@ -246,6 +246,13 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 	).Scan(&dataFinalizacao); err != nil {
 		return domain.ResultadoFinalizacao{}, err
 	}
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'FINALIZACAO', jsonb_build_object('observacoes', COALESCE($3, '')), '{}'::jsonb, $4)`,
+		input.OSID, input.UsuarioID, input.Observacoes, dataFinalizacao,
+	); err != nil {
+		return domain.ResultadoFinalizacao{}, fmt.Errorf("registrar auditoria da finalizacao: %w", err)
+	}
 
 	if err = tx.Commit(ctx); err != nil {
 		return domain.ResultadoFinalizacao{}, err
@@ -620,6 +627,7 @@ type devolucaoItemRow struct {
 	osItemID            string
 	itemEstoqueID       string
 	quantidadeConsumida float64
+	quantidadeReservada float64
 	codigo, descricao   string
 	tipo, unidadeMedida string
 	saldoFisico         float64
@@ -652,7 +660,7 @@ func (repository PostgresRepository) DevolverItensAoEstoque(ctx context.Context,
 // todos os itens da OS (usado na recusa do orcamento principal, que cancela a OS inteira).
 func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, itemEstoqueIDs []string) (domainEstoque.ResultadoDevolucao, error) {
 	query := `
-		SELECT osi.id, ie.id, osi.quantidade_consumida, ie.codigo, ie.descricao, ie.tipo, ie.unidade_medida,
+		SELECT osi.id, ie.id, osi.quantidade_consumida, osi.quantidade_reservada, ie.codigo, ie.descricao, ie.tipo, ie.unidade_medida,
 		       ie.saldo_fisico, ie.saldo_reservado, ie.ativo
 		FROM ordem_servico_item osi
 		JOIN item_estoque ie ON ie.id = osi.item_estoque_id
@@ -671,7 +679,7 @@ func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, item
 	var itens []devolucaoItemRow
 	for rows.Next() {
 		var item devolucaoItemRow
-		if err = rows.Scan(&item.osItemID, &item.itemEstoqueID, &item.quantidadeConsumida, &item.codigo, &item.descricao,
+		if err = rows.Scan(&item.osItemID, &item.itemEstoqueID, &item.quantidadeConsumida, &item.quantidadeReservada, &item.codigo, &item.descricao,
 			&item.tipo, &item.unidadeMedida, &item.saldoFisico, &item.saldoReservado, &item.ativo); err != nil {
 			rows.Close()
 			return domainEstoque.ResultadoDevolucao{}, err
@@ -693,10 +701,14 @@ func DevolverItensTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, item
 		}
 		if quantidadeReservada > 0 {
 			novoSaldoReservado := item.saldoReservado - quantidadeReservada
-			if novoSaldoReservado < 0 {
+			novaQuantidadeReservada := item.quantidadeReservada - quantidadeReservada
+			if novoSaldoReservado < 0 || novaQuantidadeReservada < 0 {
 				return domainEstoque.ResultadoDevolucao{}, domainEstoque.ErrSaldoReservadoInsuficiente
 			}
 			if _, err = tx.Exec(ctx, "UPDATE item_estoque SET saldo_reservado = $2 WHERE id = $1", item.itemEstoqueID, novoSaldoReservado); err != nil {
+				return domainEstoque.ResultadoDevolucao{}, err
+			}
+			if _, err = tx.Exec(ctx, "UPDATE ordem_servico_item SET quantidade_reservada = $2 WHERE id = $1", item.osItemID, novaQuantidadeReservada); err != nil {
 				return domainEstoque.ResultadoDevolucao{}, err
 			}
 			if _, err = tx.Exec(ctx, `

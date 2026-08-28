@@ -66,6 +66,7 @@ func main() {
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
+	atualizarPeca := pecaApplication.NewAtualizarPeca(pecaRepository)
 	insumoRepository := insumoInfrastructure.NewPostgresRepository(db)
 	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoRepository)
 	consultarInsumos := insumoApplication.NewConsultarInsumos(insumoRepository)
@@ -163,6 +164,8 @@ func main() {
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,
 		pecaPresentation.NewConsultarPecaPorIDHandler(consultarPecas)))
+	mux.Handle("PUT /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
+		pecaPresentation.NewAtualizarPecaHandler(atualizarPeca)))
 	mux.Handle("DELETE /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewDesativarPecaHandler(desativarPeca)))
 	mux.Handle("POST /estoque/entradas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,

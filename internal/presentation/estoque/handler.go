@@ -67,14 +67,18 @@ func writeEntradaError(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, domain.ErrIdempotencyKeyObrigatoria):
 		status, title, campo = http.StatusBadRequest, "Dados invalidos", "Idempotency-Key"
+	case errors.Is(err, domain.ErrFornecedorIDInvalido):
+		status, title, campo = http.StatusBadRequest, "Dados invalidos", "fornecedorId"
 	case errors.Is(err, domain.ErrDocumentoOrigemObrigatorio), errors.Is(err, domain.ErrItensObrigatorios),
 		errors.Is(err, domain.ErrItensExcedemLimite), errors.Is(err, domain.ErrItemIDInvalido),
 		errors.Is(err, domain.ErrItemRepetido), errors.Is(err, domain.ErrCustoInvalido),
 		errors.Is(err, domain.ErrQuantidadeIncompativelComUnidade):
 		status, title = http.StatusBadRequest, "Dados invalidos"
-	case errors.Is(err, application.ErrItemNaoEncontrado), errors.Is(err, application.ErrPedidoCompraNaoEncontrado):
+	case errors.Is(err, application.ErrItemNaoEncontrado), errors.Is(err, application.ErrPedidoCompraNaoEncontrado),
+		errors.Is(err, application.ErrFornecedorNaoEncontrado):
 		status, title = http.StatusNotFound, "Recurso nao encontrado"
-	case errors.Is(err, application.ErrItemInativo), errors.Is(err, application.ErrDocumentoOrigemDuplicado),
+	case errors.Is(err, application.ErrItemInativo), errors.Is(err, application.ErrFornecedorInativo),
+		errors.Is(err, application.ErrDocumentoOrigemDuplicado), errors.Is(err, application.ErrFornecedorDivergente),
 		errors.Is(err, application.ErrItemForaDoPedido), errors.Is(err, application.ErrDivergenciaQuantidade):
 		status, title = http.StatusConflict, "Conflito de estado"
 	default:

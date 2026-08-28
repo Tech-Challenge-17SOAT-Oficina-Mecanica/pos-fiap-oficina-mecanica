@@ -10,6 +10,7 @@ import (
 type FinalizarInput struct {
 	OSID        string
 	Observacoes string
+	UsuarioID   string
 }
 
 type FinalizarRepository interface {

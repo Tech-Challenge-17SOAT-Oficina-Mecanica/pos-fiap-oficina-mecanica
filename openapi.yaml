@@ -857,6 +857,60 @@ paths:
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo estoque:ler }
         '404': { description: Peça não encontrada }
+    put:
+      tags: [Estoque]
+      summary: Atualiza os dados cadastrais da peça
+      description: >-
+        Exige o escopo `estoque:escrever` e o header `If-Match` com a `version` atual.
+        Não altera `ativo`, `codigo` nem saldo: a situação muda apenas pelo `DELETE`, onde
+        as validações de reserva e orçamento existem. Quando `precoVenda` muda, a alteração
+        é registrada no histórico de preço.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pecaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: string }
+          description: 'Version atual da peça. Aceita `3` ou `"3"`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarPeca' }
+      responses:
+        '200':
+          description: Peça atualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Peca' }
+        '400':
+          description: Dados inválidos, `ativo` no corpo, categoria inexistente ou inativa, ou If-Match malformado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '404': { description: Peça não encontrada }
+        '409':
+          description: Já existe peça ativa com a mesma descrição na categoria
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '412':
+          description: If-Match diverge da version atual
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '428':
+          description: If-Match não informado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
     delete:
       tags: [Estoque]
       summary: Desativa a peça (exclusão lógica)
@@ -1469,6 +1523,22 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
+    AtualizarPeca:
+      type: object
+      required: [nome, descricao, categoriaId, precoVenda]
+      properties:
+        nome: { type: string, minLength: 2, maxLength: 150 }
+        descricao: { type: string, minLength: 3, maxLength: 120 }
+        categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fabricante: { type: string, maxLength: 150, nullable: true }
+        precoVenda:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+          description: Obrigatório na atualização, maior que zero e com no máximo 2 casas decimais.
+        estoqueMinimo: { type: integer, minimum: 0, default: 0 }
+      additionalProperties: false
     CadastrarPeca:
       type: object
       required: [nome, descricao, categoriaId]
@@ -1477,7 +1547,7 @@ components:
         descricao:
           type: string
           minLength: 3
-          maxLength: 500
+          maxLength: 120
           description: Usada na regra de duplicidade, após normalização.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
         fabricante: { type: string, maxLength: 150, nullable: true }
@@ -1511,6 +1581,14 @@ components:
           type: string
           format: date-time
           description: Devolvida apenas no cadastro.
+        atualizadoEm:
+          type: string
+          format: date-time
+          description: Devolvida apenas na atualização.
+        atualizadoPor:
+          type: string
+          format: uuid
+          description: Devolvida apenas na atualização.
     ListaPecas:
       type: object
       description: Envelope paginado padrão da API.

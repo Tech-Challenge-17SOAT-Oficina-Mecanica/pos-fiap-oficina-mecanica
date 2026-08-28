@@ -68,6 +68,12 @@ func (repository PostgresRepository) processarEntrada(ctx context.Context, input
 	}
 	defer tx.Rollback(ctx)
 
+	if cadastro.FornecedorID != "" {
+		if err = validarFornecedorEntrada(ctx, tx, cadastro.FornecedorID); err != nil {
+			return domain.ResultadoEntrada{}, err
+		}
+	}
+
 	itens, err := carregarItens(ctx, tx, cadastro.Itens)
 	if err != nil {
 		return domain.ResultadoEntrada{}, err
@@ -78,6 +84,11 @@ func (repository PostgresRepository) processarEntrada(ctx context.Context, input
 		pedido, err = carregarPedido(ctx, tx, cadastro.PedidoCompraID, cadastro.Itens, cadastro.ConfirmarDivergencia)
 		if err != nil {
 			return domain.ResultadoEntrada{}, err
+		}
+		if cadastro.FornecedorID == "" {
+			cadastro.FornecedorID = pedido.fornecedorID
+		} else if cadastro.FornecedorID != pedido.fornecedorID {
+			return domain.ResultadoEntrada{}, application.ErrFornecedorDivergente
 		}
 	}
 
@@ -94,13 +105,20 @@ func (repository PostgresRepository) processarEntrada(ctx context.Context, input
 			return domain.ResultadoEntrada{}, fmt.Errorf("atualizar saldo fisico: %w", err)
 		}
 		if _, err = tx.Exec(ctx, `
-			INSERT INTO movimentacao_estoque (item_estoque_id, tipo, quantidade, custo_unitario, documento_origem)
-			VALUES ($1, $2, $3, $4, $5)`, item.id, domain.MovimentacaoEntrada, requisitado.Quantidade, requisitado.CustoUnitario, cadastro.DocumentoOrigem,
+			INSERT INTO movimentacao_estoque (item_estoque_id, tipo, quantidade, custo_unitario, documento_origem, fornecedor_id)
+			VALUES ($1, $2, $3, $4, $5, NULLIF($6, '')::uuid)`, item.id, domain.MovimentacaoEntrada, requisitado.Quantidade, requisitado.CustoUnitario, cadastro.DocumentoOrigem, cadastro.FornecedorID,
 		); err != nil {
 			if isUniqueViolation(err) {
 				return domain.ResultadoEntrada{}, application.ErrDocumentoOrigemDuplicado
 			}
 			return domain.ResultadoEntrada{}, fmt.Errorf("registrar movimentacao: %w", err)
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO auditoria_estoque (item_estoque_id, fornecedor_id, pedido_compra_id, usuario_id, tipo_evento, documento_origem, dados, ocorrido_em)
+			VALUES ($1, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, NULLIF($4, '')::uuid, 'ENTRADA_ESTOQUE', $5, jsonb_build_object('quantidade', $6, 'custoUnitario', $7), CURRENT_TIMESTAMP)`,
+			item.id, cadastro.FornecedorID, cadastro.PedidoCompraID, input.UsuarioID, cadastro.DocumentoOrigem, requisitado.Quantidade, requisitado.CustoUnitario,
+		); err != nil {
+			return domain.ResultadoEntrada{}, fmt.Errorf("registrar auditoria de entrada: %w", err)
 		}
 
 		saldoReservado := item.saldoReservado
@@ -151,6 +169,20 @@ func (repository PostgresRepository) processarEntrada(ctx context.Context, input
 	return resultado, nil
 }
 
+func validarFornecedorEntrada(ctx context.Context, tx pgx.Tx, fornecedorID string) error {
+	var ativo bool
+	if err := tx.QueryRow(ctx, "SELECT ativo FROM fornecedor WHERE id = $1 FOR UPDATE", fornecedorID).Scan(&ativo); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return application.ErrFornecedorNaoEncontrado
+		}
+		return err
+	}
+	if !ativo {
+		return application.ErrFornecedorInativo
+	}
+	return nil
+}
+
 func carregarItens(ctx context.Context, tx pgx.Tx, itens []domain.ItemEntrada) (map[string]itemRow, error) {
 	ids := make([]string, len(itens))
 	for index, item := range itens {
@@ -195,13 +227,14 @@ func carregarItens(ctx context.Context, tx pgx.Tx, itens []domain.ItemEntrada) (
 }
 
 type pedidoItensCarregados struct {
-	numero string
-	itens  map[string]pedidoItemRow
+	numero       string
+	fornecedorID string
+	itens        map[string]pedidoItemRow
 }
 
 func carregarPedido(ctx context.Context, tx pgx.Tx, pedidoID string, itens []domain.ItemEntrada, confirmarDivergencia bool) (*pedidoItensCarregados, error) {
-	var numero string
-	if err := tx.QueryRow(ctx, "SELECT numero FROM pedido_compra WHERE id = $1 FOR UPDATE", pedidoID).Scan(&numero); err != nil {
+	var numero, fornecedorID string
+	if err := tx.QueryRow(ctx, "SELECT numero, fornecedor_id FROM pedido_compra WHERE id = $1 FOR UPDATE", pedidoID).Scan(&numero, &fornecedorID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, application.ErrPedidoCompraNaoEncontrado
 		}
@@ -214,7 +247,7 @@ func carregarPedido(ctx context.Context, tx pgx.Tx, pedidoID string, itens []dom
 		return nil, err
 	}
 	defer rows.Close()
-	pedido := &pedidoItensCarregados{numero: numero, itens: map[string]pedidoItemRow{}}
+	pedido := &pedidoItensCarregados{numero: numero, fornecedorID: fornecedorID, itens: map[string]pedidoItemRow{}}
 	for rows.Next() {
 		var itemID string
 		var row pedidoItemRow
@@ -243,27 +276,32 @@ func carregarPedido(ctx context.Context, tx pgx.Tx, pedidoID string, itens []dom
 // ainda nao reservado, na ordem dos vinculos, ate esgotar a quantidade recebida ou os vinculos.
 func efetivarReservas(ctx context.Context, tx pgx.Tx, pedidoCompraItemID, itemEstoqueID string, quantidadeRecebida float64) (float64, []string, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT pcio.ordem_servico_item_id, pcio.quantidade_atendida, osi.ordem_servico_id
+		SELECT pcio.ordem_servico_item_id,
+		       pcio.quantidade_atendida,
+		       osi.ordem_servico_id,
+		       COALESCE(SUM(r.quantidade), 0) AS ja_reservado
 		FROM pedido_compra_item_os pcio
 		JOIN ordem_servico_item osi ON osi.id = pcio.ordem_servico_item_id
+		LEFT JOIN reserva_estoque r ON r.ordem_servico_item_id = pcio.ordem_servico_item_id
+			AND r.pedido_compra_item_id = pcio.pedido_compra_item_id
+			AND r.status = $2
 		WHERE pcio.pedido_compra_item_id = $1
-		  AND NOT EXISTS (
-		      SELECT 1 FROM reserva_estoque r
-		      WHERE r.ordem_servico_item_id = pcio.ordem_servico_item_id AND r.pedido_compra_item_id = pcio.pedido_compra_item_id
-		  )
+		GROUP BY pcio.ordem_servico_item_id, pcio.quantidade_atendida, osi.ordem_servico_id
+		HAVING COALESCE(SUM(r.quantidade), 0) < pcio.quantidade_atendida
 		ORDER BY pcio.ordem_servico_item_id
-		FOR UPDATE OF osi`, pedidoCompraItemID)
+		FOR UPDATE OF osi`, pedidoCompraItemID, domain.ReservaAtiva)
 	if err != nil {
 		return 0, nil, err
 	}
 	type link struct {
 		osItemID, ordemServicoID string
 		quantidadeAtendida       float64
+		jaReservado              float64
 	}
 	var links []link
 	for rows.Next() {
 		var l link
-		if err = rows.Scan(&l.osItemID, &l.quantidadeAtendida, &l.ordemServicoID); err != nil {
+		if err = rows.Scan(&l.osItemID, &l.quantidadeAtendida, &l.ordemServicoID, &l.jaReservado); err != nil {
 			rows.Close()
 			return 0, nil, err
 		}
@@ -281,7 +319,11 @@ func efetivarReservas(ctx context.Context, tx pgx.Tx, pedidoCompraItemID, itemEs
 		if restante <= 0 {
 			break
 		}
-		alocado := l.quantidadeAtendida
+		faltante := l.quantidadeAtendida - l.jaReservado
+		if faltante <= 0 {
+			continue
+		}
+		alocado := faltante
 		if alocado > restante {
 			alocado = restante
 		}
@@ -290,6 +332,9 @@ func efetivarReservas(ctx context.Context, tx pgx.Tx, pedidoCompraItemID, itemEs
 			VALUES ($1, $2, $3, $4, $5)`, l.osItemID, itemEstoqueID, pedidoCompraItemID, alocado, domain.ReservaAtiva,
 		); err != nil {
 			return 0, nil, fmt.Errorf("efetivar reserva: %w", err)
+		}
+		if _, err = tx.Exec(ctx, "UPDATE ordem_servico_item SET quantidade_reservada = quantidade_reservada + $2 WHERE id = $1", l.osItemID, alocado); err != nil {
+			return 0, nil, fmt.Errorf("atualizar reserva da os: %w", err)
 		}
 		totalEfetivado += alocado
 		restante -= alocado

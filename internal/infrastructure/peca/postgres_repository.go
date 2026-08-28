@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -218,4 +219,102 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro pec
 	}
 	cadastrada.DataCriacao = &criadoEm
 	return cadastrada, nil
+}
+
+// Atualizar aplica as alteracoes sob lock otimista, em transacao: le a linha com
+// FOR UPDATE para saber o preco anterior e a version corrente, atualiza, e grava o
+// historico quando o preco muda — sem que exista preco novo sem o registro.
+func (repository PostgresRepository) Atualizar(ctx context.Context, id string, version int, atualizacao peca.Atualizacao, usuarioID string) (peca.Peca, error) {
+	transacao, err := repository.db.Begin(ctx)
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	defer func() { _ = transacao.Rollback(ctx) }()
+
+	var ativa bool
+	err = transacao.QueryRow(ctx, `SELECT ativa FROM categoria WHERE id = $1`, atualizacao.CategoriaID).Scan(&ativa)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	if !ativa {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+
+	var precoAnterior *string
+	var versionAtual int
+	err = transacao.QueryRow(ctx, `
+		SELECT preco_venda::text, version FROM item_estoque
+		WHERE id = $1 AND tipo = 'PECA' AND ativo
+		FOR UPDATE`, id).Scan(&precoAnterior, &versionAtual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return peca.Peca{}, pecaApplication.ErrNaoEncontrada
+	}
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	if versionAtual != version {
+		return peca.Peca{}, pecaApplication.ErrVersaoDivergente
+	}
+
+	var dataAtualizacao time.Time
+	var usuarioAtualizacao *string
+	err = transacao.QueryRow(ctx, `
+		UPDATE item_estoque
+		SET nome = $2,
+			descricao = $3,
+			descricao_normalizada = $4,
+			categoria_id = $5,
+			fabricante = $6,
+			preco_venda = $7::NUMERIC,
+			estoque_minimo = $8,
+			data_atualizacao = CURRENT_TIMESTAMP,
+			usuario_atualizacao = NULLIF($9, '')::UUID,
+			version = version + 1
+		WHERE id = $1
+		RETURNING data_atualizacao, usuario_atualizacao::text`,
+		id, atualizacao.Nome, atualizacao.Descricao, atualizacao.DescricaoNormalizada,
+		atualizacao.CategoriaID, atualizacao.Fabricante, atualizacao.PrecoVenda,
+		atualizacao.EstoqueMinimo, usuarioID).Scan(&dataAtualizacao, &usuarioAtualizacao)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23505" {
+			return peca.Peca{}, pecaApplication.ErrDescricaoDuplicada
+		}
+		return peca.Peca{}, err
+	}
+
+	if precoAnterior == nil || !mesmoPreco(*precoAnterior, atualizacao.PrecoVenda) {
+		if _, err = transacao.Exec(ctx, `
+			INSERT INTO historico_preco_item (item_estoque_id, preco_anterior, preco_novo, usuario_id)
+			VALUES ($1, $2::NUMERIC, $3::NUMERIC, NULLIF($4, '')::UUID)`,
+			id, precoAnterior, atualizacao.PrecoVenda, usuarioID); err != nil {
+			return peca.Peca{}, err
+		}
+	}
+
+	if err = transacao.Commit(ctx); err != nil {
+		return peca.Peca{}, err
+	}
+
+	atualizada, err := repository.BuscarPorID(ctx, id)
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	atualizada.DataAtualizacao = &dataAtualizacao
+	atualizada.UsuarioAtualizacao = usuarioAtualizacao
+	return atualizada, nil
+}
+
+// mesmoPreco compara valor, nao texto: o banco devolve "180.00" onde o cliente mandou
+// "180", e um historico por diferenca de formatacao seria ruido.
+func mesmoPreco(anterior, novo string) bool {
+	valorAnterior, erroAnterior := strconv.ParseFloat(anterior, 64)
+	valorNovo, erroNovo := strconv.ParseFloat(novo, 64)
+	if erroAnterior != nil || erroNovo != nil {
+		return anterior == novo
+	}
+	return valorAnterior == valorNovo
 }
