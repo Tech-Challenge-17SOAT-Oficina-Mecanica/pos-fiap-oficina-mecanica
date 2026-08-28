@@ -1104,8 +1104,8 @@ paths:
         `quantidade x valorUnitario` e devolve o `valorTotalGeral` da OS, somando o
         orçamento principal e os complementares com status `CRIADO` ou `APROVADO`.
         Orçamentos `RECUSADO` ficam de fora. Não altera o status do orçamento.
-        A estimativa de entrega ainda não é calculada — depende da modelagem de
-        capacidade diária e do prazo de entrega por item.
+        Calcula também a estimativa de entrega em dias e a persiste no orçamento, sem
+        alterar o status. A fila só entra quando `CAPACIDADE_DIARIA_OS` está configurada.
       security:
         - bearerAuth: []
       parameters:
@@ -1433,6 +1433,14 @@ components:
           type: number
           format: double
           description: Soma dos orçamentos CRIADO e APROVADO da OS.
+        estimativaEntregaDias:
+          type: integer
+          minimum: 0
+          description: >-
+            Prazo em dias inteiros, sem data exata. Soma o maior prazo entre os itens
+            indisponíveis, o tempo médio de execução das OS já finalizadas e os dias de
+            fila. Parcelas sem dado valem zero: oficina sem histórico ou sem capacidade
+            configurada recebe estimativa menor, e não erro.
     CadastrarPeca:
       type: object
       required: [nome, descricao, categoriaId]
