@@ -64,6 +64,7 @@ func main() {
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
 	processarPecas := pecaApplication.NewSolicitarCompraEReservarPecas(pecaRepository)
+	atualizarPeca := pecaApplication.NewAtualizarPeca(pecaRepository)
 	insumoRepository := insumoInfrastructure.NewPostgresRepository(db)
 	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoRepository)
 	consultarInsumos := insumoApplication.NewConsultarInsumos(insumoRepository)
@@ -84,8 +85,10 @@ func main() {
 	reativarServico := servicoApplication.NewReativar(servicoRepository)
 	ordemServicoRepository := ordemServicoInfrastructure.NewPostgresRepository(db)
 	criarOrdemServico := ordemServicoApplication.NewCriar(ordemServicoRepository)
+	registrarProblemaRelatado := ordemServicoApplication.NewRegistrarProblemaRelatado(ordemServicoRepository)
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
+	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
@@ -94,6 +97,8 @@ func main() {
 	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoComprasEscrever, fornecedorPresentation.NewCadastrarHandler(
 		fornecedorApplication.NewCadastrar(fornecedorRepository),
 	)))
+	mux.Handle("POST /ordens-servico/{osId}/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarPecasHandler(registrarItensOS)))
+	mux.Handle("POST /ordens-servico/{osId}/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarInsumosHandler(registrarItensOS)))
 	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoComprasLer, fornecedorPresentation.NewListarHandler(
 		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
 	)))
@@ -115,6 +120,7 @@ func main() {
 	mux.Handle("POST /clientes/{clienteId}/veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewHandler(cadastrar)))
 	mux.Handle("POST /ordens-servico/{osId}/problemas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarProblemaHandler(registrarProblema)))
 	mux.Handle("POST /ordens-servico", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewCriarHandler(criarOrdemServico)))
+	mux.Handle("POST /ordens-servico/{osId}/problema-relatado", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarProblemaRelatadoHandler(registrarProblemaRelatado)))
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
@@ -150,6 +156,8 @@ func main() {
 		pecaPresentation.NewConsultarPecasHandler(consultarPecas)))
 	mux.Handle("GET /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,
 		pecaPresentation.NewConsultarPecaPorIDHandler(consultarPecas)))
+	mux.Handle("PUT /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
+		pecaPresentation.NewAtualizarPecaHandler(atualizarPeca)))
 	mux.Handle("DELETE /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewDesativarPecaHandler(desativarPeca)))
 

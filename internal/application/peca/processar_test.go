@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-const idValido = "10000000-0000-0000-0000-000000000001"
+const idProcessamentoValido = "10000000-0000-0000-0000-000000000001"
 
 type processamentoFake struct {
 	solicitacao SolicitacaoCompraReserva
@@ -20,13 +20,13 @@ func (fake *processamentoFake) SolicitarCompraEReservar(_ context.Context, solic
 }
 
 func TestSolicitarCompraEReservarPecasValidaEDelega(t *testing.T) {
-	fake := &processamentoFake{resultado: ResultadoCompraReserva{OrdemServicoID: idValido}}
+	fake := &processamentoFake{resultado: ResultadoCompraReserva{OrdemServicoID: idProcessamentoValido}}
 	resultado, err := NewSolicitarCompraEReservarPecas(fake).Execute(context.Background(), solicitacaoValida())
 
-	if err != nil || resultado.OrdemServicoID != idValido {
+	if err != nil || resultado.OrdemServicoID != idProcessamentoValido {
 		t.Fatalf("resultado=%+v erro=%v", resultado, err)
 	}
-	if fake.solicitacao.OrdemServicoID != idValido || fake.solicitacao.Itens[0].Quantidade != 2 {
+	if fake.solicitacao.OrdemServicoID != idProcessamentoValido || fake.solicitacao.Itens[0].Quantidade != 2 {
 		t.Fatalf("solicitacao nao delegada: %+v", fake.solicitacao)
 	}
 }
@@ -70,7 +70,7 @@ func solicitacaoValida() SolicitacaoCompraReserva {
 	return SolicitacaoCompraReserva{
 		IdempotencyKey: "10000000-0000-0000-0000-000000000001",
 		HashRequisicao: "hash",
-		OrdemServicoID: idValido,
+		OrdemServicoID: idProcessamentoValido,
 		FornecedorID:   "20000000-0000-0000-0000-000000000001",
 		Itens:          []ItemProcessamento{{ItemID: "30000000-0000-0000-0000-000000000001", Quantidade: 2}},
 	}

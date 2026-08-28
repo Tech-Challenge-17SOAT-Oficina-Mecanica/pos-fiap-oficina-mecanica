@@ -102,12 +102,15 @@ func TestSolicitarCompraEReservarPecas(t *testing.T) {
 	if err := db.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1", osID).Scan(&status); err != nil || status != "AGUARDANDO_RECURSOS" {
 		t.Fatalf("status=%q err=%v", status, err)
 	}
-	var pedidos, reservas int
+	var pedidos, reservas, auditorias int
 	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pedido_compra pc JOIN pedido_compra_item pci ON pci.pedido_compra_id = pc.id WHERE pc.fornecedor_id = $1 AND pci.item_estoque_id = $2", fornecedorID, pecaSemSaldo).Scan(&pedidos); err != nil || pedidos != 1 {
 		t.Fatalf("pedidos=%d err=%v", pedidos, err)
 	}
-	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 2 {
+	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 1 {
 		t.Fatalf("reservas=%d err=%v", reservas, err)
+	}
+	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM auditoria_ordem_servico WHERE ordem_servico_id = $1 AND tipo_evento = 'PECAS_RESERVA_COMPRA_PROCESSADA'", osID).Scan(&auditorias); err != nil || auditorias != 1 {
+		t.Fatalf("auditorias=%d err=%v", auditorias, err)
 	}
 }
 
@@ -128,6 +131,7 @@ func cleanupProcessamento(ctx context.Context, t *testing.T, db *pgxpool.Pool, o
 	t.Helper()
 	comandos := []string{
 		"DELETE FROM chave_idempotencia WHERE chave IN ($1,$2)",
+		"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $3",
 		"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $3",
 		"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $3)",
 		"DELETE FROM pedido_compra_item_os WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $3)",
