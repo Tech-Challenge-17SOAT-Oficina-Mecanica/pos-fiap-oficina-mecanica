@@ -6,6 +6,7 @@ import (
 	"os"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
+	estoqueApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/estoque"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	insumoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
@@ -17,6 +18,7 @@ import (
 	veiculoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/veiculo"
 	segurancaDominio "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
 	clienteInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/cliente"
+	estoqueInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/estoque"
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	insumoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/insumo"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
@@ -27,6 +29,7 @@ import (
 	servicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/servico"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/veiculo"
 	clientePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/cliente"
+	estoquePresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/estoque"
 	fornecedorPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/fornecedor"
 	insumoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/insumo"
 	mecanicoPresentation "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/mecanico"
@@ -90,6 +93,8 @@ func main() {
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
 	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
+	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
+	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -154,6 +159,8 @@ func main() {
 		pecaPresentation.NewConsultarPecaPorIDHandler(consultarPecas)))
 	mux.Handle("DELETE /estoque/pecas/{pecaId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewDesativarPecaHandler(desativarPeca)))
+	mux.Handle("POST /estoque/entradas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
+		estoquePresentation.NewRegistrarEntradaHandler(registrarEntrada)))
 
 	server := &http.Server{
 		Addr:    ":8080",

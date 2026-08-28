@@ -991,6 +991,55 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/entradas:
+    post:
+      tags: [Estoque]
+      summary: Registra a entrada de peças e insumos, compartilhada entre os dois contextos
+      description: >-
+        Exige o escopo `estoque:movimentar`. Aumenta o saldo físico dos itens recebidos,
+        efetiva as reservas vinculadas a pedido de compra e libera para `AGUARDANDO_EXECUCAO`
+        as ordens de serviço sem itens pendentes de compra. O header `Idempotency-Key` é
+        obrigatório: a repetição da mesma chave devolve `200` com a resposta original.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrarEntrada' }
+      responses:
+        '201':
+          description: Entrada registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntradaRegistrada' }
+        '200':
+          description: Requisição repetida com a mesma Idempotency-Key; devolve a resposta original
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntradaRegistrada' }
+        '400':
+          description: >-
+            Body inválido, Idempotency-Key ausente ou inválida, item repetido, quantidade ou
+            custo inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404': { description: Item ou pedido de compra não encontrado }
+        '409':
+          description: >-
+            Item inativo, documentoOrigem já registrado, item fora do pedido informado ou
+            quantidade recebida maior que a pedida sem confirmarDivergencia
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /autenticacao/login:
     post:
       tags: [Segurança]
@@ -1353,6 +1402,62 @@ components:
         tamanho: { type: integer }
         totalElementos: { type: integer }
         totalPaginas: { type: integer }
+    RegistrarEntrada:
+      type: object
+      required: [documentoOrigem, itens]
+      additionalProperties: false
+      properties:
+        documentoOrigem: { type: string, minLength: 1, example: NF-88421 }
+        fornecedorId: { type: string, format: uuid }
+        pedidoCompraId: { type: string, format: uuid }
+        confirmarDivergencia: { type: boolean, default: false }
+        itens:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            required: [itemId, quantidade, custoUnitario]
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double, exclusiveMinimum: true, minimum: 0 }
+              custoUnitario: { type: number, format: double, exclusiveMinimum: true, minimum: 0 }
+    EntradaRegistrada:
+      type: object
+      required: [entradaId, documentoOrigem, registradoEm, itens]
+      properties:
+        entradaId: { type: string, format: uuid }
+        documentoOrigem: { type: string }
+        registradoEm: { type: string, format: date-time }
+        registradoPor: { type: string, format: uuid }
+        itens:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              codigo: { type: string }
+              unidadeMedida: { type: string }
+              quantidade: { type: number, format: double }
+              saldoFisicoAnterior: { type: number, format: double }
+              saldoFisicoAtual: { type: number, format: double }
+              saldoReservado: { type: number, format: double }
+              saldoDisponivel: { type: number, format: double }
+        pedidoCompra:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            numero: { type: string }
+            status: { type: string, enum: [ABERTO, PARCIAL, CONCLUIDO] }
+        ordensServico:
+          type: array
+          items:
+            type: object
+            properties:
+              ordemServicoId: { type: string, format: uuid }
+              statusAnterior: { type: string }
+              status: { type: string }
+              itensPendentes: { type: integer }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
