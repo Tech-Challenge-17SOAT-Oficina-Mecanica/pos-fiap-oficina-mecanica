@@ -11,7 +11,7 @@ const (
 	nomeMinimo          = 2
 	nomeMaximo          = 150
 	descricaoMinima     = 3
-	descricaoMaxima     = 500
+	descricaoMaxima     = 120
 	fabricanteMaximo    = 150
 	UnidadeMedidaPadrao = "UN"
 	TipoPeca            = "PECA"
@@ -21,7 +21,7 @@ const (
 // do problem+json alem do `detail`.
 var (
 	ErrNomeInvalido          = ErroValidacao{"nome", "nome deve ter entre 2 e 150 caracteres"}
-	ErrDescricaoInvalida     = ErroValidacao{"descricao", "descricao deve ter entre 3 e 500 caracteres"}
+	ErrDescricaoInvalida     = ErroValidacao{"descricao", "descricao deve ter entre 3 e 120 caracteres"}
 	ErrCategoriaObrigatoria  = ErroValidacao{"categoriaId", "categoriaId e obrigatorio"}
 	ErrFabricanteInvalido    = ErroValidacao{"fabricante", "fabricante deve ter no maximo 150 caracteres"}
 	ErrPrecoVendaInvalido    = ErroValidacao{"precoVenda", "precoVenda deve ser maior ou igual a zero"}
