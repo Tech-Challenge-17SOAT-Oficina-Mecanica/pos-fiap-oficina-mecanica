@@ -68,26 +68,20 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 	if resultado.TipoOrcamento == "COMPLEMENTAR" && !orcamentoOriginalValido(ctx, tx, resultado.OrdemServicoID, resultado.OrcamentoOriginalID) {
 		return domain.Aprovacao{}, application.ErrOrcamentoComplementarSemPai
 	}
-	if err = validarFornecedor(ctx, tx, input.FornecedorID); err != nil {
-		return domain.Aprovacao{}, err
-	}
-
 	itens, err := carregarItensAprovacao(ctx, tx, resultado.OrcamentoID, resultado.OrdemServicoID)
 	if err != nil {
 		return domain.Aprovacao{}, err
 	}
-	compraSolicitada, err := processarItensAprovados(ctx, tx, resultado.OrdemServicoID, input.FornecedorID, itens)
+	possuiPendenciaCompra, err := processarItensAprovados(ctx, tx, resultado.OrdemServicoID, itens)
 	if err != nil {
 		return domain.Aprovacao{}, err
 	}
 
 	resultado.StatusOrcamento = "APROVADO"
 	resultado.StatusOrdemServico = "AGUARDANDO_EXECUCAO"
-	if compraSolicitada {
+	if possuiPendenciaCompra {
 		resultado.StatusOrdemServico = "AGUARDANDO_RECURSOS"
 	}
-	resultado.FornecedorID = input.FornecedorID
-	resultado.PossuiCompraSolicitada = compraSolicitada
 	err = tx.QueryRow(ctx, `
 		UPDATE orcamento
 		SET status = 'APROVADO',
@@ -107,7 +101,8 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
 		VALUES ($1, NULL, 'ORCAMENTO', $2, 'ORCAMENTO_APROVADO', $3::jsonb, CURRENT_TIMESTAMP)`,
 		resultado.OrdemServicoID, resultado.OrcamentoID,
-		fmt.Sprintf(`{"clienteId":"%s","statusOrdemServico":"%s"}`, input.ClienteID, resultado.StatusOrdemServico)); err != nil {
+		fmt.Sprintf(`{"clienteId":"%s","statusOrdemServico":"%s","possuiPendenciaCompra":%t}`,
+			input.ClienteID, resultado.StatusOrdemServico, possuiPendenciaCompra)); err != nil {
 		return domain.Aprovacao{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
@@ -128,21 +123,6 @@ func orcamentoOriginalValido(ctx context.Context, tx pgx.Tx, ordemServicoID, ori
 		)`, originalID, ordemServicoID,
 	).Scan(&existe)
 	return err == nil && existe
-}
-
-func validarFornecedor(ctx context.Context, tx pgx.Tx, fornecedorID string) error {
-	var ativo bool
-	err := tx.QueryRow(ctx, `SELECT ativo FROM fornecedor WHERE id = $1`, fornecedorID).Scan(&ativo)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return application.ErrFornecedorNaoEncontrado
-	}
-	if err != nil {
-		return err
-	}
-	if !ativo {
-		return application.ErrFornecedorInativo
-	}
-	return nil
 }
 
 func carregarItensAprovacao(ctx context.Context, tx pgx.Tx, orcamentoID, ordemServicoID string) ([]itemAprovacao, error) {
@@ -174,9 +154,8 @@ func carregarItensAprovacao(ctx context.Context, tx pgx.Tx, orcamentoID, ordemSe
 	return itens, rows.Err()
 }
 
-func processarItensAprovados(ctx context.Context, tx pgx.Tx, ordemServicoID, fornecedorID string, itens []itemAprovacao) (bool, error) {
-	var pedidoID string
-	compraSolicitada := false
+func processarItensAprovados(ctx context.Context, tx pgx.Tx, ordemServicoID string, itens []itemAprovacao) (bool, error) {
+	possuiPendenciaCompra := false
 	for _, item := range itens {
 		osItemID, err := garantirItemOrdemServico(ctx, tx, ordemServicoID, item)
 		if err != nil {
@@ -198,19 +177,10 @@ func processarItensAprovados(ctx context.Context, tx pgx.Tx, ordemServicoID, for
 			}
 		}
 		if compararDecimal(comprar, "0") > 0 {
-			if pedidoID == "" {
-				pedidoID, err = criarPedidoCompra(ctx, tx, fornecedorID)
-				if err != nil {
-					return false, err
-				}
-			}
-			if err = solicitarCompra(ctx, tx, pedidoID, osItemID, item, comprar); err != nil {
-				return false, err
-			}
-			compraSolicitada = true
+			possuiPendenciaCompra = true
 		}
 	}
-	return compraSolicitada, nil
+	return possuiPendenciaCompra, nil
 }
 
 func garantirItemOrdemServico(ctx context.Context, tx pgx.Tx, ordemServicoID string, item itemAprovacao) (string, error) {
@@ -256,32 +226,6 @@ func registrarMovimentacaoReserva(ctx context.Context, tx pgx.Tx, ordemServicoID
 	_, err := tx.Exec(ctx, `
 		INSERT INTO movimentacao_estoque (item_estoque_id, ordem_servico_id, reserva_estoque_id, tipo, quantidade)
 		VALUES ($1, $2, $3, 'RESERVA', $4::NUMERIC)`, itemID, ordemServicoID, reservaID, quantidade)
-	return err
-}
-
-func criarPedidoCompra(ctx context.Context, tx pgx.Tx, fornecedorID string) (string, error) {
-	var pedidoID string
-	err := tx.QueryRow(ctx, `
-		INSERT INTO pedido_compra (fornecedor_id, numero, status)
-		VALUES ($1, to_char(CURRENT_DATE, 'YYYY') || '/' || LPAD(nextval('seq_pedido_compra_numero')::TEXT, 4, '0'), 'ABERTO')
-		RETURNING id`, fornecedorID,
-	).Scan(&pedidoID)
-	return pedidoID, err
-}
-
-func solicitarCompra(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, item itemAprovacao, quantidade string) error {
-	var pedidoItemID string
-	if err := tx.QueryRow(ctx, `
-		INSERT INTO pedido_compra_item (
-			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada, custo_unitario
-		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, 0, $4::NUMERIC)
-		RETURNING id`, pedidoID, item.id, quantidade, item.valorUnitario,
-	).Scan(&pedidoItemID); err != nil {
-		return err
-	}
-	_, err := tx.Exec(ctx, `
-		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
-		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, quantidade)
 	return err
 }
 

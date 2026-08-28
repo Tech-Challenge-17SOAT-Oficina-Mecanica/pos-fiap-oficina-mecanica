@@ -84,10 +84,9 @@ func TestConsultarHandler(t *testing.T) {
 
 func TestAprovarHandler(t *testing.T) {
 	const (
-		orcamentoID  = "10000000-0000-0000-0000-000000000001"
-		osID         = "20000000-0000-0000-0000-000000000001"
-		clienteID    = "30000000-0000-0000-0000-000000000001"
-		fornecedorID = "40000000-0000-0000-0000-000000000001"
+		orcamentoID = "10000000-0000-0000-0000-000000000001"
+		osID        = "20000000-0000-0000-0000-000000000001"
+		clienteID   = "30000000-0000-0000-0000-000000000001"
 	)
 	jwt, err := infrastructure.NewJWT("segredo")
 	if err != nil {
@@ -102,20 +101,17 @@ func TestAprovarHandler(t *testing.T) {
 		StatusOrdemServico: "AGUARDANDO_EXECUCAO",
 		ClienteID:          clienteID,
 		DataAprovacao:      time.Now(),
-		FornecedorID:       fornecedorID,
 	}
 	tests := []struct {
 		name, id, token, body string
 		err                   error
 		want                  int
 	}{
-		{"sem token", orcamentoID, "", `{"fornecedorId":"` + fornecedorID + `"}`, nil, http.StatusUnauthorized},
-		{"body invalido", orcamentoID, cliente, `{`, nil, http.StatusBadRequest},
-		{"fornecedor invalido", orcamentoID, cliente, `{"fornecedorId":"x"}`, nil, http.StatusBadRequest},
-		{"orcamento ausente", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrOrcamentoNaoEncontrado, http.StatusNotFound},
-		{"acesso negado", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrAcessoNegado, http.StatusForbidden},
-		{"conflito", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, application.ErrOrcamentoJaDecidido, http.StatusConflict},
-		{"ok", orcamentoID, cliente, `{"fornecedorId":"` + fornecedorID + `"}`, nil, http.StatusOK},
+		{"sem token", orcamentoID, "", "", nil, http.StatusUnauthorized},
+		{"orcamento ausente", orcamentoID, cliente, "", application.ErrOrcamentoNaoEncontrado, http.StatusNotFound},
+		{"acesso negado", orcamentoID, cliente, "", application.ErrAcessoNegado, http.StatusForbidden},
+		{"conflito", orcamentoID, cliente, "", application.ErrOrcamentoJaDecidido, http.StatusConflict},
+		{"ok", orcamentoID, cliente, "", nil, http.StatusOK},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

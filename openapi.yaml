@@ -93,9 +93,9 @@ paths:
       tags: [Orçamento]
       summary: Aprova um orçamento
       description: >-
-        Registra a aprovação do cliente, processa peças e insumos do orçamento para reserva e
-        compra do saldo faltante, e atualiza a OS para AGUARDANDO_EXECUCAO ou
-        AGUARDANDO_RECURSOS. Exige token de cliente com escopo `orcamentos:decidir`.
+        Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
+        e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Exige token de cliente com escopo `orcamentos:decidir`.
       security:
         - bearerAuth: []
       parameters:
@@ -103,11 +103,6 @@ paths:
           in: path
           required: true
           schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/AprovarOrcamento' }
       responses:
         '200':
           description: Orçamento aprovado
@@ -115,15 +110,15 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/OrcamentoAprovado' }
         '400':
-          description: Identificador, fornecedorId ou corpo inválido
+          description: Identificador inválido
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Cliente sem acesso ao orçamento desta OS }
-        '404': { description: Orçamento ou fornecedor não encontrado }
+        '404': { description: Orçamento não encontrado }
         '409':
-          description: Orçamento já decidido, OS fora de aprovação, fornecedor inativo ou complementar sem vínculo válido
+          description: Orçamento já decidido, OS fora de aprovação ou complementar sem vínculo válido
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -1356,15 +1351,6 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
-    AprovarOrcamento:
-      type: object
-      required: [fornecedorId]
-      additionalProperties: false
-      properties:
-        fornecedorId:
-          type: string
-          format: uuid
-          description: Fornecedor ativo usado para eventual pedido de compra de peças e insumos faltantes.
     OrcamentoAprovado:
       type: object
       properties:
@@ -1376,8 +1362,6 @@ components:
         statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
         clienteId: { type: string, format: uuid }
         dataAprovacao: { type: string, format: date-time }
-        fornecedorId: { type: string, format: uuid }
-        possuiCompraSolicitada: { type: boolean }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]

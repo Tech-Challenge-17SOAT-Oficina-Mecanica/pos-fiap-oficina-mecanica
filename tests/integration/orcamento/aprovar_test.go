@@ -70,18 +70,17 @@ func TestAprovarOrcamento(t *testing.T) {
 	handler := segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir,
 		orcamentoPresentation.NewAprovarHandler(application.NewAprovar(orcamentoInfra.NewPostgresRepository(db))))
 
-	body := `{"fornecedorId":"` + fornecedorID + `"}`
-	if response := postAprovacao(handler, orcamentoID, body, ""); response.Code != http.StatusUnauthorized {
+	if response := postAprovacao(handler, orcamentoID, ""); response.Code != http.StatusUnauthorized {
 		t.Fatalf("sem token=%d", response.Code)
 	}
-	if response := postAprovacao(handler, orcamentoID, body, tokenOutraOS); response.Code != http.StatusForbidden {
+	if response := postAprovacao(handler, orcamentoID, tokenOutraOS); response.Code != http.StatusForbidden {
 		t.Fatalf("outra os=%d body=%s", response.Code, response.Body.String())
 	}
-	response := postAprovacao(handler, orcamentoID, body, token)
+	response := postAprovacao(handler, orcamentoID, token)
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"statusOrdemServico":"AGUARDANDO_RECURSOS"`) {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
-	if replay := postAprovacao(handler, orcamentoID, body, token); replay.Code != http.StatusConflict {
+	if replay := postAprovacao(handler, orcamentoID, token); replay.Code != http.StatusConflict {
 		t.Fatalf("replay=%d body=%s", replay.Code, replay.Body.String())
 	}
 
@@ -100,7 +99,7 @@ func TestAprovarOrcamento(t *testing.T) {
 		t.Fatalf("saldo=%s err=%v", saldoReservado, err)
 	}
 	var pedidos, reservas int
-	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pedido_compra pc JOIN pedido_compra_item pci ON pci.pedido_compra_id = pc.id WHERE pc.fornecedor_id = $1 AND pci.item_estoque_id = $2", fornecedorID, pecaID).Scan(&pedidos); err != nil || pedidos != 1 {
+	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pedido_compra_item WHERE item_estoque_id = $1", pecaID).Scan(&pedidos); err != nil || pedidos != 0 {
 		t.Fatalf("pedidos=%d err=%v", pedidos, err)
 	}
 	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 1 {
@@ -108,8 +107,8 @@ func TestAprovarOrcamento(t *testing.T) {
 	}
 }
 
-func postAprovacao(handler http.Handler, orcamentoID, body, token string) *httptest.ResponseRecorder {
-	request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+orcamentoID+"/aprovar", strings.NewReader(body))
+func postAprovacao(handler http.Handler, orcamentoID, token string) *httptest.ResponseRecorder {
+	request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+orcamentoID+"/aprovar", nil)
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}

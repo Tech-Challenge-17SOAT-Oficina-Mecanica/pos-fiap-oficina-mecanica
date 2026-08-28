@@ -54,16 +54,14 @@ type Orcamento struct {
 }
 
 type Aprovacao struct {
-	OrcamentoID            string
-	OrdemServicoID         string
-	TipoOrcamento          string
-	OrcamentoOriginalID    string
-	StatusOrcamento        string
-	StatusOrdemServico     string
-	ClienteID              string
-	DataAprovacao          time.Time
-	FornecedorID           string
-	PossuiCompraSolicitada bool
+	OrcamentoID         string
+	OrdemServicoID      string
+	TipoOrcamento       string
+	OrcamentoOriginalID string
+	StatusOrcamento     string
+	StatusOrdemServico  string
+	ClienteID           string
+	DataAprovacao       time.Time
 }
 
 type Problema struct {

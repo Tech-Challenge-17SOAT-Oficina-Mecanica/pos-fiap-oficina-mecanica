@@ -26,7 +26,7 @@ func TestAprovarValidaEDelega(t *testing.T) {
 	if err != nil || resultado.OrcamentoID != idAprovacaoValido {
 		t.Fatalf("resultado=%+v erro=%v", resultado, err)
 	}
-	if repository.input.FornecedorID != "40000000-0000-0000-0000-000000000001" {
+	if repository.input.OrcamentoID != idAprovacaoValido {
 		t.Fatalf("input nao normalizado: %+v", repository.input)
 	}
 }
@@ -40,7 +40,6 @@ func TestAprovarValidacoes(t *testing.T) {
 		{"orcamento invalido", func(i *AprovarInput) { i.OrcamentoID = "x" }, ErrIdentificadorInvalido},
 		{"cliente invalido", func(i *AprovarInput) { i.ClienteID = "" }, ErrAcessoNegado},
 		{"os invalida", func(i *AprovarInput) { i.OrdemServicoID = "x" }, ErrAcessoNegado},
-		{"fornecedor invalido", func(i *AprovarInput) { i.FornecedorID = "x" }, ErrFornecedorIDInvalido},
 	}
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
@@ -69,6 +68,5 @@ func inputAprovacaoValido() AprovarInput {
 		OrcamentoID:    idAprovacaoValido,
 		ClienteID:      "20000000-0000-0000-0000-000000000001",
 		OrdemServicoID: "30000000-0000-0000-0000-000000000001",
-		FornecedorID:   "40000000-0000-0000-0000-000000000001",
 	}
 }

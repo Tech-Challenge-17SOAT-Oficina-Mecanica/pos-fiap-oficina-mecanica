@@ -11,9 +11,6 @@ import (
 
 var (
 	ErrIdentificadorInvalido       = errors.New("orcamentoId deve ser um UUID valido")
-	ErrFornecedorIDInvalido        = errors.New("fornecedorId deve ser um UUID valido")
-	ErrFornecedorNaoEncontrado     = errors.New("fornecedor inexistente")
-	ErrFornecedorInativo           = errors.New("fornecedor inativo")
 	ErrOrcamentoJaDecidido         = errors.New("orcamento ja aprovado ou recusado")
 	ErrOrdemServicoStatusInvalido  = errors.New("ordem de servico fora de AGUARDANDO_APROVACAO")
 	ErrOrcamentoComplementarSemPai = errors.New("orcamento complementar sem vinculo valido com o principal")
@@ -23,7 +20,6 @@ type AprovarInput struct {
 	OrcamentoID    string
 	ClienteID      string
 	OrdemServicoID string
-	FornecedorID   string
 }
 
 type AprovarRepository interface {
@@ -40,7 +36,6 @@ func (useCase Aprovar) Execute(ctx context.Context, input AprovarInput) (domain.
 	input.OrcamentoID = strings.TrimSpace(input.OrcamentoID)
 	input.ClienteID = strings.TrimSpace(input.ClienteID)
 	input.OrdemServicoID = strings.TrimSpace(input.OrdemServicoID)
-	input.FornecedorID = strings.TrimSpace(input.FornecedorID)
 
 	if !validation.IsUUID(input.OrcamentoID) {
 		return domain.Aprovacao{}, ErrIdentificadorInvalido
@@ -50,9 +45,6 @@ func (useCase Aprovar) Execute(ctx context.Context, input AprovarInput) (domain.
 	}
 	if input.OrdemServicoID != "" && !validation.IsUUID(input.OrdemServicoID) {
 		return domain.Aprovacao{}, ErrAcessoNegado
-	}
-	if !validation.IsUUID(input.FornecedorID) {
-		return domain.Aprovacao{}, ErrFornecedorIDInvalido
 	}
 	return useCase.repository.Aprovar(ctx, input)
 }
