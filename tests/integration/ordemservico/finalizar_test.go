@@ -64,7 +64,7 @@ func TestFinalizarServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, `INSERT INTO item_estoque (id,categoria_id,tipo,codigo,nome,descricao,descricao_normalizada,unidade_medida,saldo_fisico,saldo_reservado) VALUES
-		($1,$2,'PECA',$3,'Peca teste','Peca teste','peca teste','UN',10,3)`, itemID, categoriaID, fmt.Sprintf("PEC-%06x1", codigoBase)); err != nil {
+		($1,$2,'PECA',$3,'Peca teste','Peca teste','peca teste','UN',10,3)`, itemID, categoriaID, fmt.Sprintf("PEC%06x1", codigoBase)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO ordem_servico_item (id,ordem_servico_id,item_estoque_id,quantidade_necessaria,valor_unitario) VALUES ($1,$2,$3,3,10)",

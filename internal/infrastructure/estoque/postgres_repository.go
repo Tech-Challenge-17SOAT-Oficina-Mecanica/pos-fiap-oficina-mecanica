@@ -307,7 +307,7 @@ func recalcularStatusPedido(ctx context.Context, tx pgx.Tx, pedidoID string) (st
 	if pendentes == 0 {
 		status = "CONCLUIDO"
 	}
-	if _, err := tx.Exec(ctx, "UPDATE pedido_compra SET status = $2, recebido_em = CASE WHEN $2 = 'CONCLUIDO' THEN CURRENT_TIMESTAMP ELSE recebido_em END WHERE id = $1", pedidoID, status); err != nil {
+	if _, err := tx.Exec(ctx, "UPDATE pedido_compra SET status = $2, recebido_em = CASE WHEN $3 = 'CONCLUIDO' THEN CURRENT_TIMESTAMP ELSE recebido_em END WHERE id = $1", pedidoID, status, status); err != nil {
 		return "", err
 	}
 	return status, nil

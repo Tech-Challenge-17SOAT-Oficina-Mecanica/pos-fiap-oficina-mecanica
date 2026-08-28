@@ -1142,6 +1142,30 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /ordens-servico/{osId}:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos
+      description: >-
+        Exige o escopo `os:ler` ou `orcamentos:ler`. O cliente autenticado com token de escopo
+        reduzido só acessa a própria OS.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Detalhe consolidado da OS
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsultaOS' }
+        '400': { description: osId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo necessário, ou cliente consultando OS de outro cliente }
+        '404': { description: OS não encontrada }
   /ordens-servico/{osId}/insumos:
     post:
       tags: [Ordem de Serviço]
@@ -1262,6 +1286,70 @@ components:
         status: { type: string, enum: [FINALIZADA] }
         dataFinalizacao: { type: string, format: date-time }
         observacoes: { type: string }
+    ConsultaOS:
+      type: object
+      required: [ordemServicoId, statusOrdemServico, cliente, veiculo, problemas, orcamentos, valorTotalGeral, eventos]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string }
+        cliente:
+          type: object
+          properties:
+            clienteId: { type: string, format: uuid }
+            nome: { type: string }
+            documento: { type: string }
+        veiculo:
+          type: object
+          properties:
+            veiculoId: { type: string, format: uuid }
+            placa: { type: string }
+            marca: { type: string }
+            modelo: { type: string }
+            ano: { type: integer }
+        problemas:
+          type: array
+          items:
+            type: object
+            properties:
+              problemaId: { type: string, format: uuid }
+              descricao: { type: string }
+              orcamentoId: { type: string, format: uuid }
+              identificadoEm: { type: string, format: date-time }
+        orcamentos:
+          type: array
+          items:
+            type: object
+            properties:
+              orcamentoId: { type: string, format: uuid }
+              tipo: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+              orcamentoOriginalId: { type: string, format: uuid }
+              itens:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    tipo: { type: string }
+                    descricao: { type: string }
+                    quantidade: { type: number }
+                    valorUnitario: { type: number }
+                    valorTotal: { type: number }
+              valorTotal: { type: number }
+              dataGeracao: { type: string, format: date-time }
+        valorTotalGeral: { type: number }
+        eventos:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              agregado: { type: string }
+              agregadoId: { type: string, format: uuid }
+              ordemServicoId: { type: string, format: uuid }
+              tipoEvento: { type: string }
+              dados: { type: object }
+              metadados: { type: object }
+              ocorridoEm: { type: string, format: date-time }
+              registradoEm: { type: string, format: date-time }
     OrcamentoOS:
       type: object
       properties:

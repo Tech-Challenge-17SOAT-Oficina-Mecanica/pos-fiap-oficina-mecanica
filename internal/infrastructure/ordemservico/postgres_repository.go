@@ -20,6 +20,121 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+// Consultar monta o detalhe consolidado da OS: cliente, veiculo, problemas, orcamentos com itens
+// e a trilha de auditoria (`eventos`). Sem orcamento, sem problema ou sem evento nao e erro: a
+// consulta devolve as listas vazias.
+func (repository PostgresRepository) Consultar(ctx context.Context, ordemServicoID, clienteID string) (domain.ConsultaDetalhada, error) {
+	consulta := domain.ConsultaDetalhada{OrdemServicoID: ordemServicoID, Problemas: []domain.ProblemaConsulta{}, Orcamentos: []domain.OrcamentoConsulta{}, Eventos: []domain.EventoConsulta{}}
+	err := repository.db.QueryRow(ctx, `
+		SELECT os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo, v.ano
+		FROM ordem_servico os
+		JOIN cliente c ON c.id = os.cliente_id
+		JOIN veiculo v ON v.id = os.veiculo_id
+		WHERE os.id = $1`, ordemServicoID,
+	).Scan(&consulta.StatusOrdemServico, &consulta.Cliente.ID, &consulta.Cliente.Nome, &consulta.Cliente.Documento,
+		&consulta.Veiculo.ID, &consulta.Veiculo.Placa, &consulta.Veiculo.Marca, &consulta.Veiculo.Modelo, &consulta.Veiculo.Ano)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ConsultaDetalhada{}, application.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	if clienteID != "" && clienteID != consulta.Cliente.ID {
+		return domain.ConsultaDetalhada{}, application.ErrAcessoNegado
+	}
+
+	problemaRows, err := repository.db.Query(ctx, `
+		SELECT id, descricao, COALESCE(orcamento_id::text, ''), registrado_em
+		FROM problema_ordem_servico WHERE ordem_servico_id = $1 ORDER BY registrado_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for problemaRows.Next() {
+		var problema domain.ProblemaConsulta
+		if err = problemaRows.Scan(&problema.ID, &problema.Descricao, &problema.OrcamentoID, &problema.IdentificadoEm); err != nil {
+			problemaRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Problemas = append(consulta.Problemas, problema)
+	}
+	problemaRows.Close()
+	if err = problemaRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+
+	orcamentoRows, err := repository.db.Query(ctx, `
+		SELECT id, tipo_orcamento, COALESCE(orcamento_original_id::text, ''), criado_em
+		FROM orcamento WHERE ordem_servico_id = $1
+		ORDER BY CASE tipo_orcamento WHEN 'PRINCIPAL' THEN 0 ELSE 1 END, criado_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for orcamentoRows.Next() {
+		var orcamento domain.OrcamentoConsulta
+		if err = orcamentoRows.Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.OrcamentoOriginalID, &orcamento.DataGeracao); err != nil {
+			orcamentoRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Orcamentos = append(consulta.Orcamentos, orcamento)
+	}
+	orcamentoRows.Close()
+	if err = orcamentoRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for index := range consulta.Orcamentos {
+		itens, valorTotal, err := itensDoOrcamentoOS(ctx, repository.db, consulta.Orcamentos[index].ID)
+		if err != nil {
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Orcamentos[index].Itens = itens
+		consulta.Orcamentos[index].ValorTotal = valorTotal
+		consulta.ValorTotalGeral += valorTotal
+	}
+
+	eventoRows, err := repository.db.Query(ctx, `
+		SELECT id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em, registrado_em
+		FROM auditoria_ordem_servico WHERE ordem_servico_id = $1 ORDER BY ocorrido_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for eventoRows.Next() {
+		var evento domain.EventoConsulta
+		if err = eventoRows.Scan(&evento.ID, &evento.Agregado, &evento.AgregadoID, &evento.TipoEvento,
+			&evento.Dados, &evento.Metadados, &evento.OcorridoEm, &evento.RegistradoEm); err != nil {
+			eventoRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Eventos = append(consulta.Eventos, evento)
+	}
+	eventoRows.Close()
+	if err = eventoRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+
+	return consulta, nil
+}
+
+func itensDoOrcamentoOS(ctx context.Context, db *pgxpool.Pool, orcamentoID string) ([]domain.ItemOrcamentoConsulta, float64, error) {
+	rows, err := db.Query(ctx, `
+		SELECT tipo_item, descricao, quantidade, valor_unitario, valor_total
+		FROM orcamento_item WHERE orcamento_id = $1 ORDER BY id`, orcamentoID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	itens := []domain.ItemOrcamentoConsulta{}
+	var total float64
+	for rows.Next() {
+		var item domain.ItemOrcamentoConsulta
+		if err = rows.Scan(&item.Tipo, &item.Descricao, &item.Quantidade, &item.ValorUnitario, &item.ValorTotal); err != nil {
+			return nil, 0, err
+		}
+		total += item.ValorTotal
+		itens = append(itens, item)
+	}
+	return itens, total, rows.Err()
+}
+
 // Finalizar bloqueia enquanto houver servico pendente, orcamento complementar em aberto ou
 // reserva ativa sem baixa. A notificacao ao cliente e best-effort, apos o commit: nao ha
 // provedor de e-mail configurado neste repositorio, entao o envio e apenas registrado em log.
