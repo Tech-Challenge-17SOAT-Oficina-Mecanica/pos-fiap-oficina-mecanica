@@ -9,6 +9,7 @@ import (
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
+	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
 	sharedhttp "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/http"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
@@ -44,7 +45,7 @@ func NewFinalizarHandler(useCase application.Finalizar) http.HandlerFunc {
 			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "corpo da requisicao invalido", "")
 			return
 		}
-		resultado, err := useCase.Execute(request.Context(), application.FinalizarInput{OSID: osID, Observacoes: input.Observacoes})
+		resultado, err := useCase.Execute(request.Context(), application.FinalizarInput{OSID: osID, Observacoes: input.Observacoes, UsuarioID: seguranca.UsuarioID(request.Context())})
 		if err != nil {
 			writeFinalizarError(writer, err)
 			return

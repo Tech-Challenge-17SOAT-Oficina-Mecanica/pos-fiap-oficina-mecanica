@@ -73,6 +73,13 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 	).Scan(&dataFinalizacao); err != nil {
 		return domain.ResultadoFinalizacao{}, err
 	}
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'FINALIZACAO', jsonb_build_object('observacoes', COALESCE($3, '')), '{}'::jsonb, $4)`,
+		input.OSID, input.UsuarioID, input.Observacoes, dataFinalizacao,
+	); err != nil {
+		return domain.ResultadoFinalizacao{}, fmt.Errorf("registrar auditoria da finalizacao: %w", err)
+	}
 
 	if err = tx.Commit(ctx); err != nil {
 		return domain.ResultadoFinalizacao{}, err
