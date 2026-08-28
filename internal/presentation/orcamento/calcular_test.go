@@ -27,14 +27,22 @@ func (fake calcularFake) OrcamentosDaOrdem(context.Context, string) ([]orcamento
 	return fake.irmaos, nil
 }
 
-func (calcularFake) SalvarItens(context.Context, string, []orcamentoDomain.Item) error { return nil }
+func (calcularFake) SalvarItens(context.Context, string, []orcamentoDomain.Item, int) error {
+	return nil
+}
+
+func (fake calcularFake) DadosDaEstimativa(_ context.Context, _, _ string, capacidade int) (orcamentoDomain.DadosEstimativa, error) {
+	return orcamentoDomain.DadosEstimativa{CapacidadeDiaria: capacidade}, nil
+}
+
+func (calcularFake) EstimativaDoPrincipal(context.Context, string) (int, error) { return 0, nil }
 
 func calcular(t *testing.T, id string, fake calcularFake) *httptest.ResponseRecorder {
 	t.Helper()
 	response := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+id+"/calcular", nil)
 	request.SetPathValue("orcamentoId", id)
-	NewCalcularHandler(orcamento.NewCalcular(fake)).ServeHTTP(response, request)
+	NewCalcularHandler(orcamento.NewCalcular(fake, 0)).ServeHTTP(response, request)
 	return response
 }
 
@@ -56,9 +64,8 @@ func TestCalcularRetorna200(t *testing.T) {
 	if corpo["valorTotalGeral"] != 90.00 {
 		t.Fatalf("valorTotalGeral = %v, esperado 90", corpo["valorTotalGeral"])
 	}
-	// A estimativa fica fora desta entrega; não deve aparecer prometendo algo que não calcula.
-	if _, presente := corpo["estimativaEntregaDias"]; presente {
-		t.Fatal("estimativaEntregaDias não deveria estar na resposta ainda")
+	if _, presente := corpo["estimativaEntregaDias"]; !presente {
+		t.Fatal("estimativaEntregaDias deveria estar na resposta")
 	}
 }
 

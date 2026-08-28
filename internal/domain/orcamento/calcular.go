@@ -2,14 +2,7 @@ package orcamento
 
 import "errors"
 
-const (
-	TipoPrincipal    = "PRINCIPAL"
-	TipoComplementar = "COMPLEMENTAR"
-
-	StatusCriado   = "CRIADO"
-	StatusAprovado = "APROVADO"
-	StatusRecusado = "RECUSADO"
-)
+// Os tipos e status do orcamento sao declarados em orcamento.go, junto da entidade.
 
 var (
 	ErrStatusNaoCalculavel      = errors.New("apenas orcamento com status CRIADO pode ser calculado")
