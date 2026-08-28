@@ -57,7 +57,7 @@ func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.
 
 	rows, err := repository.db.Query(ctx, `
 		SELECT os.id, os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
-		ORDER BY os.criada_em DESC
+		ORDER BY os.criada_em DESC, os.id DESC
 		LIMIT $4 OFFSET $5`, filtros.Status, filtros.Documento, filtros.Placa, limite, deslocamento)
 	if err != nil {
 		return nil, 0, err

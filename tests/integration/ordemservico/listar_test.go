@@ -44,8 +44,25 @@ func TestListarOrdensDeServico(t *testing.T) {
 		osRecebidaID, osCanceladaID, clienteID, veiculoID, placa); err != nil {
 		t.Fatal(err)
 	}
+	clientePaginacaoID, veiculoPaginacaoID := id("f5000000-0000-0000-0000-"), id("f6000000-0000-0000-0000-")
+	documentoPaginacao := cpfValido((suffix + 1) % 1000000000)
+	placaPaginacao := fmt.Sprintf("PGN%04d", (suffix+1)%10000)
+	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Cliente Paginacao',$2,'CPF','11999999998')", clientePaginacaoID, documentoPaginacao); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = db.Exec(ctx, "INSERT INTO veiculo (id,cliente_id,placa,marca,modelo,ano) VALUES ($1,$2,$3,'VW','Gol',2020)", veiculoPaginacaoID, clientePaginacaoID, placaPaginacao); err != nil {
+		t.Fatal(err)
+	}
+	mesmoInstante := time.Now().UTC().Truncate(time.Second)
+	osPagina1ID, osPagina2ID := id("f7000000-0000-0000-0000-"), id("f8000000-0000-0000-0000-")
+	if _, err = db.Exec(ctx, "INSERT INTO ordem_servico (id,cliente_id,veiculo_id,placa_veiculo,status,criada_em) VALUES ($1,$3,$4,$5,'RECEBIDA',$6),($2,$3,$4,$5,'RECEBIDA',$6)",
+		osPagina1ID, osPagina2ID, clientePaginacaoID, veiculoPaginacaoID, placaPaginacao, mesmoInstante); err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
-		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE id IN ($1,$2)", osRecebidaID, osCanceladaID)
+		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE id IN ($1,$2,$3,$4)", osRecebidaID, osCanceladaID, osPagina1ID, osPagina2ID)
+		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", veiculoPaginacaoID)
+		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clientePaginacaoID)
 		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", veiculoID)
 		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clienteID)
 	})
@@ -119,6 +136,27 @@ func TestListarOrdensDeServico(t *testing.T) {
 	}
 	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || resposta.TotalElementos != 2 {
 		t.Fatalf("filtro por documento invalido: %s erro=%v", writer.Body.String(), err)
+	}
+
+	writer = requisitar("?placa="+placaPaginacao+"&status=RECEBIDA&tamanho=1&pagina=0", token)
+	if writer.Code != http.StatusOK {
+		t.Fatalf("paginacao pagina0=%d body=%s", writer.Code, writer.Body.String())
+	}
+	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || len(resposta.Data) != 1 {
+		t.Fatalf("paginacao pagina0 invalida: %s erro=%v", writer.Body.String(), err)
+	}
+	primeiraID, _ := resposta.Data[0]["ordemServicoId"].(string)
+
+	writer = requisitar("?placa="+placaPaginacao+"&status=RECEBIDA&tamanho=1&pagina=1", token)
+	if writer.Code != http.StatusOK {
+		t.Fatalf("paginacao pagina1=%d body=%s", writer.Code, writer.Body.String())
+	}
+	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || len(resposta.Data) != 1 {
+		t.Fatalf("paginacao pagina1 invalida: %s erro=%v", writer.Body.String(), err)
+	}
+	segundaID, _ := resposta.Data[0]["ordemServicoId"].(string)
+	if primeiraID == "" || segundaID == "" || primeiraID == segundaID {
+		t.Fatalf("paginacao instavel: primeira=%s segunda=%s", primeiraID, segundaID)
 	}
 }
 
