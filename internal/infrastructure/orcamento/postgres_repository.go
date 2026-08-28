@@ -240,8 +240,18 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 // principal para esse item especifico.
 func itensDoOrcamentoComplementar(ctx context.Context, tx pgx.Tx, orcamentoID string) ([]string, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT item_estoque_id FROM orcamento_item
-		WHERE orcamento_id = $1 AND tipo_item IN ('PECA', 'INSUMO') AND item_estoque_id IS NOT NULL`, orcamentoID)
+		SELECT oi.item_estoque_id
+		FROM orcamento_item oi
+		JOIN orcamento o ON o.id = $1
+		WHERE oi.orcamento_id = $1
+		  AND oi.tipo_item IN ('PECA', 'INSUMO')
+		  AND oi.item_estoque_id IS NOT NULL
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM orcamento_item oi_principal
+		      WHERE oi_principal.orcamento_id = o.orcamento_original_id
+		        AND oi_principal.item_estoque_id = oi.item_estoque_id
+		  )`, orcamentoID)
 	if err != nil {
 		return nil, err
 	}

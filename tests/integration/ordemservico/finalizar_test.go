@@ -76,6 +76,7 @@ func TestFinalizarServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
+		_, _ = db.Exec(ctx, "DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id IN ($1,$2,$3,$4,$5)", osOK, osServicoPendente, osComplementarPendente, osReservaPendente, osForaDeExecucao)
 		_, _ = db.Exec(ctx, "DELETE FROM reserva_estoque WHERE ordem_servico_item_id=$1", osItemID)
 		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico_item WHERE id=$1", osItemID)
 		_, _ = db.Exec(ctx, "DELETE FROM item_estoque WHERE id=$1", itemID)
@@ -92,7 +93,7 @@ func TestFinalizarServico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	token, err := jwt.Gerar("usuario", []string{"os:escrever"})
+	token, err := jwt.Gerar("90000000-0000-0000-0000-000000000001", []string{"os:escrever"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,6 +139,10 @@ func TestFinalizarServico(t *testing.T) {
 	var finalizadaEm *time.Time
 	if err = db.QueryRow(ctx, "SELECT status, finalizada_em FROM ordem_servico WHERE id=$1", osOK).Scan(&status, &finalizadaEm); err != nil || status != "FINALIZADA" || finalizadaEm == nil {
 		t.Fatalf("status=%q finalizadaEm=%v erro=%v", status, finalizadaEm, err)
+	}
+	var auditorias int
+	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM auditoria_ordem_servico WHERE ordem_servico_id=$1 AND usuario_id=$2 AND tipo_evento='FINALIZACAO'", osOK, "90000000-0000-0000-0000-000000000001").Scan(&auditorias); err != nil || auditorias != 1 {
+		t.Fatalf("auditorias=%d erro=%v", auditorias, err)
 	}
 
 	if writer = requisitar(osOK, `{}`); writer.Code != http.StatusConflict {

@@ -11,6 +11,9 @@ import (
 var (
 	ErrItemNaoEncontrado         = errors.New("item de estoque nao encontrado")
 	ErrItemInativo               = errors.New("item de estoque inativo")
+	ErrFornecedorNaoEncontrado   = errors.New("fornecedor nao encontrado")
+	ErrFornecedorInativo         = errors.New("fornecedor inativo")
+	ErrFornecedorDivergente      = errors.New("fornecedor do pedido de compra diverge do recebimento")
 	ErrDocumentoOrigemDuplicado  = errors.New("documentoOrigem ja registrado")
 	ErrPedidoCompraNaoEncontrado = errors.New("pedido de compra nao encontrado")
 	ErrItemForaDoPedido          = errors.New("item nao pertence ao pedido de compra informado")
@@ -52,6 +55,9 @@ func NewRegistrarEntrada(repository EntradaRepository) RegistrarEntrada {
 func (useCase RegistrarEntrada) Execute(ctx context.Context, input RegistrarEntradaInput) (Resultado, error) {
 	if !validation.IsUUID(input.IdempotencyKey) {
 		return Resultado{}, domain.ErrIdempotencyKeyObrigatoria
+	}
+	if input.FornecedorID != "" && !validation.IsUUID(input.FornecedorID) {
+		return Resultado{}, domain.ErrFornecedorIDInvalido
 	}
 	itens := make([]domain.ItemEntrada, 0, len(input.Itens))
 	for _, item := range input.Itens {

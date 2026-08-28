@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
 const MovimentacaoEntrada = "ENTRADA"
@@ -12,6 +14,7 @@ var ErrDocumentoOrigemObrigatorio = errors.New("documentoOrigem e obrigatorio")
 var ErrItensObrigatorios = errors.New("itens e obrigatorio")
 var ErrItensExcedemLimite = errors.New("itens excede o limite de 200 linhas")
 var ErrItemIDInvalido = errors.New("itemId invalido")
+var ErrFornecedorIDInvalido = errors.New("fornecedorId invalido")
 var ErrItemRepetido = errors.New("item repetido na requisicao")
 var ErrCustoInvalido = errors.New("custoUnitario deve ser maior que zero")
 var ErrIdempotencyKeyObrigatoria = errors.New("Idempotency-Key e obrigatorio e deve ser um uuid")
@@ -37,6 +40,10 @@ type EntradaCadastro struct {
 // carregado do banco e acontece no repositorio.
 func NovaEntradaCadastro(documentoOrigem, fornecedorID, pedidoCompraID string, confirmarDivergencia bool, itens []ItemEntrada) (EntradaCadastro, error) {
 	documentoOrigem = strings.TrimSpace(documentoOrigem)
+	fornecedorID = strings.TrimSpace(fornecedorID)
+	if fornecedorID != "" && !validation.IsUUID(fornecedorID) {
+		return EntradaCadastro{}, ErrFornecedorIDInvalido
+	}
 	if documentoOrigem == "" {
 		return EntradaCadastro{}, ErrDocumentoOrigemObrigatorio
 	}

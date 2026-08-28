@@ -73,6 +73,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
+		_, _ = db.Exec(ctx, "DELETE FROM auditoria_estoque WHERE item_estoque_id IN ($1,$2,$3)", insumoID, pecaInativaID, pecaPedidoID)
 		_, _ = db.Exec(ctx, "DELETE FROM movimentacao_estoque WHERE item_estoque_id IN ($1,$2,$3)", insumoID, pecaInativaID, pecaPedidoID)
 		_, _ = db.Exec(ctx, "DELETE FROM chave_idempotencia WHERE chave IN ($1,$2)", chaveSimples(suffix), chavePedido(suffix))
 		_, _ = db.Exec(ctx, "DELETE FROM reserva_estoque WHERE ordem_servico_item_id=$1", osItemID)
@@ -92,7 +93,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 
 	// Entrada simples, sem pedido: saldo fisico sobe, custo atualiza, sem alterar reservado.
 	resultado, err := useCase.Execute(ctx, application.RegistrarEntradaInput{
-		IdempotencyKey: chaveSimples(suffix), DocumentoOrigem: "NF-" + fmt.Sprintf("%012x", suffix),
+		IdempotencyKey: chaveSimples(suffix), DocumentoOrigem: "NF-" + fmt.Sprintf("%012x", suffix), FornecedorID: fornecedorID,
 		Itens: []application.ItemInput{{ItemID: insumoID, Quantidade: 5, CustoUnitario: 25.00}},
 	})
 	if err != nil {
@@ -107,6 +108,14 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 	var saldoFisico, custo float64
 	if err = db.QueryRow(ctx, "SELECT saldo_fisico, custo_unitario FROM item_estoque WHERE id=$1", insumoID).Scan(&saldoFisico, &custo); err != nil || saldoFisico != 15 || custo != 25.00 {
 		t.Fatalf("saldoFisico=%.2f custo=%.2f erro=%v", saldoFisico, custo, err)
+	}
+	var fornecedorMovimentacao string
+	if err = db.QueryRow(ctx, "SELECT fornecedor_id FROM movimentacao_estoque WHERE item_estoque_id=$1 AND documento_origem=$2", insumoID, "NF-"+fmt.Sprintf("%012x", suffix)).Scan(&fornecedorMovimentacao); err != nil || fornecedorMovimentacao != fornecedorID {
+		t.Fatalf("fornecedorMovimentacao=%q erro=%v", fornecedorMovimentacao, err)
+	}
+	var auditorias int
+	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM auditoria_estoque WHERE item_estoque_id=$1 AND documento_origem=$2", insumoID, "NF-"+fmt.Sprintf("%012x", suffix)).Scan(&auditorias); err != nil || auditorias != 1 {
+		t.Fatalf("auditorias=%d erro=%v", auditorias, err)
 	}
 
 	// Repetir a mesma Idempotency-Key: retorna a mesma resposta, sem duplicar saldo.
@@ -135,7 +144,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 	// Entrada vinculada ao pedido, cobrindo toda a necessidade: pedido conclui e a OS libera.
 	comPedido, err := useCase.Execute(ctx, application.RegistrarEntradaInput{
 		IdempotencyKey: chavePedido(suffix), DocumentoOrigem: "NF-PEDIDO-" + fmt.Sprintf("%012x", suffix),
-		PedidoCompraID: pedidoID, Itens: []application.ItemInput{{ItemID: pecaPedidoID, Quantidade: 5, CustoUnitario: 12.00}},
+		FornecedorID: fornecedorID, PedidoCompraID: pedidoID, Itens: []application.ItemInput{{ItemID: pecaPedidoID, Quantidade: 5, CustoUnitario: 12.00}},
 	})
 	if err != nil {
 		t.Fatalf("entrada com pedido: %v", err)
@@ -153,6 +162,13 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 	var saldoReservado int
 	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque WHERE ordem_servico_item_id=$1 AND status='ATIVA'", osItemID).Scan(&saldoReservado); err != nil || saldoReservado != 1 {
 		t.Fatalf("reservas ativas=%d erro=%v", saldoReservado, err)
+	}
+	var quantidadeReservada float64
+	if err = db.QueryRow(ctx, "SELECT quantidade_reservada FROM ordem_servico_item WHERE id=$1", osItemID).Scan(&quantidadeReservada); err != nil || quantidadeReservada != 5 {
+		t.Fatalf("quantidadeReservada=%v erro=%v", quantidadeReservada, err)
+	}
+	if err = db.QueryRow(ctx, "SELECT quantidade_reservada FROM pedido_compra_item WHERE id=$1", pedidoItemID).Scan(&quantidadeReservada); err != nil || quantidadeReservada != 5 {
+		t.Fatalf("quantidadeReservadaPedido=%v erro=%v", quantidadeReservada, err)
 	}
 }
 
