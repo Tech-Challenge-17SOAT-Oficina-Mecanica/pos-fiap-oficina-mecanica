@@ -1097,6 +1097,51 @@ paths:
         '403': { description: Usuário sem o escopo os:escrever }
         '404': { description: OS ou item não encontrado }
         '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/finalizar:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Finaliza a execução da OS
+      description: >-
+        Exige o escopo `os:escrever`. A OS precisa estar `EM_EXECUCAO`, sem serviços autorizados
+        pendentes, sem orçamento complementar aguardando decisão e sem reserva ativa da OS sem
+        baixa de estoque registrada.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                observacoes: { type: string, example: Todos os serviços autorizados foram concluídos. }
+      responses:
+        '200':
+          description: OS finalizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Finalizacao' }
+        '400':
+          description: osId ou corpo inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS não encontrada }
+        '409':
+          description: >-
+            OS fora de EM_EXECUCAO, serviço autorizado pendente, orçamento complementar aguardando
+            decisão, ou reserva ativa sem baixa de estoque (lista os itens em `erros`)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /ordens-servico/{osId}/insumos:
     post:
       tags: [Ordem de Serviço]
@@ -1209,6 +1254,14 @@ components:
             properties:
               itemId: { type: string, format: uuid }
               quantidade: { type: number, exclusiveMinimum: 0 }
+    Finalizacao:
+      type: object
+      required: [ordemServicoId, status, dataFinalizacao]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        status: { type: string, enum: [FINALIZADA] }
+        dataFinalizacao: { type: string, format: date-time }
+        observacoes: { type: string }
     OrcamentoOS:
       type: object
       properties:
