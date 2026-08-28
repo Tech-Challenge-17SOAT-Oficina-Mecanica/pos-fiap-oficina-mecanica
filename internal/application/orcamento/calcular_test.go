@@ -24,6 +24,11 @@ type calcularRepositoryFake struct {
 	itensSalvos []orcamento.Item
 	salvou      bool
 	operacoes   []string
+
+	dadosEstimativa     orcamento.DadosEstimativa
+	erroEstimativa      error
+	estimativaPrincipal int
+	estimativaSalva     int
 }
 
 func (fake *calcularRepositoryFake) BuscarParaCalculo(context.Context, string) (orcamento.Orcamento, string, error) {
@@ -36,11 +41,23 @@ func (fake *calcularRepositoryFake) OrcamentosDaOrdem(context.Context, string) (
 	return fake.irmaos, fake.erroIrmaos
 }
 
-func (fake *calcularRepositoryFake) SalvarItens(_ context.Context, _ string, itens []orcamento.Item) error {
+func (fake *calcularRepositoryFake) SalvarItens(_ context.Context, _ string, itens []orcamento.Item, estimativaDias int) error {
 	fake.operacoes = append(fake.operacoes, "salvar")
 	fake.salvou = true
 	fake.itensSalvos = itens
+	fake.estimativaSalva = estimativaDias
 	return nil
+}
+
+func (fake *calcularRepositoryFake) DadosDaEstimativa(_ context.Context, _, _ string, capacidade int) (orcamento.DadosEstimativa, error) {
+	fake.operacoes = append(fake.operacoes, "estimativa")
+	dados := fake.dadosEstimativa
+	dados.CapacidadeDiaria = capacidade
+	return dados, fake.erroEstimativa
+}
+
+func (fake *calcularRepositoryFake) EstimativaDoPrincipal(context.Context, string) (int, error) {
+	return fake.estimativaPrincipal, nil
 }
 
 // Cenário do seed: principal CRIADO com serviço + peça + insumo, complementar CRIADO
@@ -67,7 +84,7 @@ func TestCalcularSomaPrincipalEComplementarIgnorandoRecusado(t *testing.T) {
 		},
 	}
 
-	resultado, err := NewCalcular(fake).Execute(context.Background(), principalID)
+	resultado, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +109,7 @@ func TestCalcularSemComplementarUsaSoOPrincipal(t *testing.T) {
 		irmaos: []OrcamentoDaOS{{ID: principalID, Status: orcamento.StatusCriado}},
 	}
 
-	resultado, err := NewCalcular(fake).Execute(context.Background(), principalID)
+	resultado, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +133,7 @@ func TestCalcularUsaValoresRecalculadosDoAlvo(t *testing.T) {
 		},
 	}
 
-	resultado, err := NewCalcular(fake).Execute(context.Background(), principalID)
+	resultado, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +143,7 @@ func TestCalcularUsaValoresRecalculadosDoAlvo(t *testing.T) {
 }
 
 func TestCalcularRejeitaIdentificadorInvalido(t *testing.T) {
-	_, err := NewCalcular(&calcularRepositoryFake{}).Execute(context.Background(), "nao-e-uuid")
+	_, err := NewCalcular(&calcularRepositoryFake{}, 0).Execute(context.Background(), "nao-e-uuid")
 	if !errors.Is(err, ErrIdentificadorInvalido) {
 		t.Fatalf("erro = %v", err)
 	}
@@ -147,7 +164,7 @@ func TestCalcularPropagaRegrasDeDominio(t *testing.T) {
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
 			fake := &calcularRepositoryFake{alvo: caso.alvo, ordem: ordemID}
-			_, err := NewCalcular(fake).Execute(context.Background(), principalID)
+			_, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
 			if !errors.Is(err, caso.esperado) {
 				t.Fatalf("erro = %v, esperado %v", err, caso.esperado)
 			}
@@ -170,7 +187,7 @@ func TestCalcularNaoGravaQuandoLeituraFalha(t *testing.T) {
 		},
 	}
 
-	if _, err := NewCalcular(fake).Execute(context.Background(), principalID); err == nil {
+	if _, err := NewCalcular(fake, 0).Execute(context.Background(), principalID); err == nil {
 		t.Fatal("a falha na leitura dos irmãos deveria interromper o cálculo")
 	}
 	if fake.salvou {
@@ -188,10 +205,10 @@ func TestCalcularEscreveDepoisDeTodasAsLeituras(t *testing.T) {
 		irmaos: []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
 	}
 
-	if _, err := NewCalcular(fake).Execute(context.Background(), principalID); err != nil {
+	if _, err := NewCalcular(fake, 0).Execute(context.Background(), principalID); err != nil {
 		t.Fatal(err)
 	}
-	esperado := []string{"buscar", "irmaos", "salvar"}
+	esperado := []string{"buscar", "irmaos", "estimativa", "salvar"}
 	if len(fake.operacoes) != len(esperado) {
 		t.Fatalf("operações = %v, esperado %v", fake.operacoes, esperado)
 	}
@@ -199,5 +216,116 @@ func TestCalcularEscreveDepoisDeTodasAsLeituras(t *testing.T) {
 		if fake.operacoes[indice] != operacao {
 			t.Fatalf("operações = %v, esperado %v (a escrita precisa vir por último)", fake.operacoes, esperado)
 		}
+	}
+}
+
+// A estimativa precisa ser calculada e persistida junto com os itens (RNF-ORC-01).
+func TestCalcularPersisteAEstimativa(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem: ordemID,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos:          []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
+		dadosEstimativa: orcamento.DadosEstimativa{PrazoItensDias: 5, TempoServicosDias: 2, OSNaFrente: 3},
+	}
+
+	resultado, err := NewCalcular(fake, 3).Execute(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultado.EstimativaDias != 8 {
+		t.Fatalf("estimativa = %d, esperado 8 (5 + 2 + 1 de fila)", resultado.EstimativaDias)
+	}
+	if fake.estimativaSalva != 8 {
+		t.Fatalf("estimativa persistida = %d, esperado 8", fake.estimativaSalva)
+	}
+}
+
+// Sem capacidade configurada a fila não entra, e o cálculo segue em vez de travar.
+func TestCalcularSemCapacidadeConfigurada(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem: ordemID,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos:          []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
+		dadosEstimativa: orcamento.DadosEstimativa{PrazoItensDias: 5, TempoServicosDias: 2, OSNaFrente: 9},
+	}
+
+	resultado, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultado.EstimativaDias != 7 {
+		t.Fatalf("estimativa = %d, esperado 7 (5 + 2, sem fila)", resultado.EstimativaDias)
+	}
+}
+
+// Oficina nova, sem OS finalizada e sem histórico de compra: entrega zero em vez de erro.
+func TestCalcularSemNenhumDadoDeEstimativa(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem: ordemID,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos: []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
+	}
+
+	resultado, err := NewCalcular(fake, 0).Execute(context.Background(), principalID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultado.EstimativaDias != 0 {
+		t.Fatalf("estimativa = %d, esperado 0", resultado.EstimativaDias)
+	}
+}
+
+// O complementar parte da estimativa do principal (RF-ORC-40).
+func TestCalcularComplementarPartiuDoPrincipal(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem: ordemID,
+		alvo: orcamento.Orcamento{
+			ID: complementarID, Tipo: orcamento.TipoComplementar, Status: orcamento.StatusCriado,
+			OriginalID: principalID,
+			Itens:      []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos: []OrcamentoDaOS{
+			{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusAprovado},
+			{ID: complementarID, Tipo: orcamento.TipoComplementar, Status: orcamento.StatusCriado},
+		},
+		dadosEstimativa:     orcamento.DadosEstimativa{PrazoItensDias: 3, TempoServicosDias: 1, OSNaFrente: 9},
+		estimativaPrincipal: 8,
+	}
+
+	resultado, err := NewCalcular(fake, 3).Execute(context.Background(), complementarID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resultado.EstimativaDias != 12 {
+		t.Fatalf("estimativa = %d, esperado 12 (8 do principal + 3 + 1, sem recontar fila)", resultado.EstimativaDias)
+	}
+}
+
+// A falha ao montar a estimativa também precisa acontecer antes de qualquer escrita.
+func TestCalcularNaoGravaQuandoEstimativaFalha(t *testing.T) {
+	fake := &calcularRepositoryFake{
+		ordem:          ordemID,
+		erroEstimativa: context.DeadlineExceeded,
+		alvo: orcamento.Orcamento{
+			ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado,
+			Itens: []orcamento.Item{{ID: "i1", Quantidade: 1, ValorUnitario: 10}},
+		},
+		irmaos: []OrcamentoDaOS{{ID: principalID, Tipo: orcamento.TipoPrincipal, Status: orcamento.StatusCriado}},
+	}
+
+	if _, err := NewCalcular(fake, 3).Execute(context.Background(), principalID); err == nil {
+		t.Fatal("a falha ao montar a estimativa deveria interromper o cálculo")
+	}
+	if fake.salvou {
+		t.Fatal("nada podia ter sido gravado")
 	}
 }

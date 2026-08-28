@@ -24,8 +24,12 @@ type CalcularRepository interface {
 	BuscarParaCalculo(ctx context.Context, orcamentoID string) (orcamento.Orcamento, string, error)
 	// OrcamentosDaOrdem devolve todos os orcamentos da OS, com itens, para o total geral.
 	OrcamentosDaOrdem(ctx context.Context, ordemServicoID string) ([]OrcamentoDaOS, error)
-	// SalvarItens grava os valores recalculados e marca a atualizacao do orcamento.
-	SalvarItens(ctx context.Context, orcamentoID string, itens []orcamento.Item) error
+	// DadosDaEstimativa reune prazo dos itens, tempo medio e posicao na fila.
+	DadosDaEstimativa(ctx context.Context, orcamentoID, ordemServicoID string, capacidadeDiaria int) (orcamento.DadosEstimativa, error)
+	// EstimativaDoPrincipal e a base do complementar.
+	EstimativaDoPrincipal(ctx context.Context, principalID string) (int, error)
+	// SalvarItens grava os valores recalculados, a estimativa e marca a atualizacao.
+	SalvarItens(ctx context.Context, orcamentoID string, itens []orcamento.Item, estimativaDias int) error
 }
 
 type ResultadoCalculo struct {
@@ -33,14 +37,18 @@ type ResultadoCalculo struct {
 	OrdemServicoID  string
 	ValorTotal      float64
 	ValorTotalGeral float64
+	EstimativaDias  int
 }
 
 type Calcular struct {
 	repository CalcularRepository
+	// capacidadeDiaria vem de configuracao. Zero significa nao configurada, e entao a
+	// fila nao entra na estimativa em vez de impedir o calculo.
+	capacidadeDiaria int
 }
 
-func NewCalcular(repository CalcularRepository) Calcular {
-	return Calcular{repository: repository}
+func NewCalcular(repository CalcularRepository, capacidadeDiaria int) Calcular {
+	return Calcular{repository: repository, capacidadeDiaria: capacidadeDiaria}
 }
 
 func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (ResultadoCalculo, error) {
@@ -88,8 +96,24 @@ func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (Result
 		}
 	}
 
+	dados, err := useCase.repository.DadosDaEstimativa(ctx, orcamentoID, ordemServicoID, useCase.capacidadeDiaria)
+	if err != nil {
+		return ResultadoCalculo{}, err
+	}
+
+	estimativa := orcamento.EstimativaPrincipal(dados)
+	if alvo.Tipo == orcamento.TipoComplementar {
+		// O complementar parte da estimativa do principal e soma so o que acrescenta;
+		// a fila nao entra de novo, porque a OS ja esta na fila uma vez.
+		base, err := useCase.repository.EstimativaDoPrincipal(ctx, alvo.OriginalID)
+		if err != nil {
+			return ResultadoCalculo{}, err
+		}
+		estimativa = orcamento.EstimativaComplementar(base, dados)
+	}
+
 	// Unica escrita do fluxo, depois de tudo validado e calculado.
-	if err := useCase.repository.SalvarItens(ctx, orcamentoID, itens); err != nil {
+	if err := useCase.repository.SalvarItens(ctx, orcamentoID, itens, estimativa); err != nil {
 		return ResultadoCalculo{}, err
 	}
 
@@ -98,6 +122,7 @@ func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (Result
 		OrdemServicoID:  ordemServicoID,
 		ValorTotal:      total,
 		ValorTotalGeral: arredondar(totalGeral),
+		EstimativaDias:  estimativa,
 	}, nil
 }
 

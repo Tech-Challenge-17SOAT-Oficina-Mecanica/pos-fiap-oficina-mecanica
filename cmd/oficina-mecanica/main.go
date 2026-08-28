@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	estoqueApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/estoque"
@@ -54,6 +56,10 @@ func main() {
 		log.Fatal(err)
 	}
 	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
+	// Zero significa capacidade nao configurada: a fila fica fora da estimativa de
+	// entrega, em vez de impedir o calculo do orcamento.
+	capacidadeDiariaOS := inteiroDoAmbiente("CAPACIDADE_DIARIA_OS", 0)
+
 	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
 	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
 	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
@@ -130,7 +136,7 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("POST /ordens-servico/{osId}/finalizar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewFinalizarHandler(finalizarServico)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/calcular", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
-		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository))))
+		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewRecusarHandler(recusarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
@@ -175,6 +181,16 @@ func main() {
 	}
 	log.Println("API iniciada na porta 8080")
 	log.Fatal(server.ListenAndServe())
+}
+
+// inteiroDoAmbiente le uma configuracao numerica, caindo no padrao quando ausente ou
+// invalida — a API nao deve deixar de subir por causa de uma variavel malformada.
+func inteiroDoAmbiente(nome string, padrao int) int {
+	valor, err := strconv.Atoi(strings.TrimSpace(os.Getenv(nome)))
+	if err != nil || valor < 0 {
+		return padrao
+	}
+	return valor
 }
 
 func healthHandler(writer http.ResponseWriter, _ *http.Request) {

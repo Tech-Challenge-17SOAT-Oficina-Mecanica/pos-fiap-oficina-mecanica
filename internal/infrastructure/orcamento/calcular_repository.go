@@ -71,7 +71,7 @@ func (repository PostgresRepository) OrcamentosDaOrdem(ctx context.Context, orde
 
 // SalvarItens grava os valores recalculados. Roda em transacao para que o orcamento nao
 // fique com parte dos itens atualizada, e nao toca no status — recalcular nao e decidir.
-func (repository PostgresRepository) SalvarItens(ctx context.Context, orcamentoID string, itens []orcamento.Item) error {
+func (repository PostgresRepository) SalvarItens(ctx context.Context, orcamentoID string, itens []orcamento.Item, estimativaDias int) error {
 	transacao, err := repository.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -88,7 +88,9 @@ func (repository PostgresRepository) SalvarItens(ctx context.Context, orcamentoI
 	}
 
 	if _, err = transacao.Exec(ctx, `
-		UPDATE orcamento SET data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1`, orcamentoID); err != nil {
+		UPDATE orcamento
+		SET estimativa_entrega_dias = $2, data_atualizacao = CURRENT_TIMESTAMP
+		WHERE id = $1`, orcamentoID, estimativaDias); err != nil {
 		return err
 	}
 	return transacao.Commit(ctx)
@@ -113,4 +115,66 @@ func (repository PostgresRepository) itensDe(ctx context.Context, orcamentoID st
 		itens = append(itens, item)
 	}
 	return itens, linhas.Err()
+}
+
+// DadosDaEstimativa reune as entradas do prazo. Cada consulta degrada para zero quando
+// nao ha dado: oficina nova nao tem OS finalizada, item nunca comprado nao tem prazo.
+func (repository PostgresRepository) DadosDaEstimativa(ctx context.Context, orcamentoID, ordemServicoID string, capacidadeDiaria int) (orcamento.DadosEstimativa, error) {
+	dados := orcamento.DadosEstimativa{CapacidadeDiaria: capacidadeDiaria}
+
+	// Maior prazo entre os itens do orcamento que nao tem saldo disponivel. Os pedidos
+	// correm em paralelo, entao o que atrasa a OS e o item mais demorado. O prazo vem do
+	// fornecedor de quem o item ja foi comprado antes; sem historico, o item nao contribui.
+	if err := repository.db.QueryRow(ctx, `
+		SELECT COALESCE(MAX(f.prazo_entrega_dias), 0)
+		FROM orcamento_item oi
+		JOIN item_estoque i ON i.id = oi.item_estoque_id
+		JOIN LATERAL (
+			SELECT m.fornecedor_id
+			FROM movimentacao_estoque m
+			WHERE m.item_estoque_id = i.id AND m.fornecedor_id IS NOT NULL
+			ORDER BY m.id DESC
+			LIMIT 1
+		) ultima ON TRUE
+		JOIN fornecedor f ON f.id = ultima.fornecedor_id
+		WHERE oi.orcamento_id = $1
+		  AND oi.item_estoque_id IS NOT NULL
+		  AND (i.saldo_fisico - i.saldo_reservado) < oi.quantidade`,
+		orcamentoID).Scan(&dados.PrazoItensDias); err != nil {
+		return orcamento.DadosEstimativa{}, err
+	}
+
+	// Tempo medio por OS, e nao por servico: e o que o historico permite hoje, ja que
+	// ordem_servico_servico nao registra inicio e fim proprios.
+	if err := repository.db.QueryRow(ctx, `
+		SELECT COALESCE(CEIL(EXTRACT(EPOCH FROM AVG(finalizada_em - iniciada_em)) / 86400), 0)
+		FROM ordem_servico
+		WHERE finalizada_em IS NOT NULL AND iniciada_em IS NOT NULL`).
+		Scan(&dados.TempoServicosDias); err != nil {
+		return orcamento.DadosEstimativa{}, err
+	}
+
+	// OS abertas criadas antes desta. Finalizadas e entregues ja sairam da fila.
+	if err := repository.db.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM ordem_servico
+		WHERE finalizada_em IS NULL
+		  AND criada_em < (SELECT criada_em FROM ordem_servico WHERE id = $1)`,
+		ordemServicoID).Scan(&dados.OSNaFrente); err != nil {
+		return orcamento.DadosEstimativa{}, err
+	}
+
+	return dados, nil
+}
+
+// EstimativaDoPrincipal devolve a estimativa ja gravada no orcamento principal, usada
+// como base do complementar. Zero quando o principal ainda nao foi calculado.
+func (repository PostgresRepository) EstimativaDoPrincipal(ctx context.Context, principalID string) (int, error) {
+	var estimativa int
+	err := repository.db.QueryRow(ctx,
+		`SELECT COALESCE(estimativa_entrega_dias, 0) FROM orcamento WHERE id = $1`, principalID).Scan(&estimativa)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return estimativa, err
 }

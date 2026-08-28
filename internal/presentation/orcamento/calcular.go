@@ -9,13 +9,13 @@ import (
 	orcamentoDomain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
 )
 
-// calculoResponse devolve apenas o valorTotalGeral (RF-ORC-07). A estimativa de entrega
-// entra quando a modelagem de capacidade diaria e prazo de item estiver definida.
 type calculoResponse struct {
 	OrcamentoID     string  `json:"orcamentoId"`
 	OrdemServicoID  string  `json:"ordemServicoId"`
 	ValorTotal      float64 `json:"valorTotal"`
 	ValorTotalGeral float64 `json:"valorTotalGeral"`
+	// Em dias inteiros, sem data exata (RF-ORC-42, RNF-ORC-16).
+	EstimativaEntregaDias int `json:"estimativaEntregaDias"`
 }
 
 func NewCalcularHandler(useCase orcamento.Calcular) http.HandlerFunc {
@@ -32,6 +32,8 @@ func NewCalcularHandler(useCase orcamento.Calcular) http.HandlerFunc {
 			OrdemServicoID:  resultado.OrdemServicoID,
 			ValorTotal:      resultado.ValorTotal,
 			ValorTotalGeral: resultado.ValorTotalGeral,
+
+			EstimativaEntregaDias: resultado.EstimativaDias,
 		})
 	}
 }
