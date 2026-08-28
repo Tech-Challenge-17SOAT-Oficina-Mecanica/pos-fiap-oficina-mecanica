@@ -12,8 +12,9 @@ func ptr(valor string) *string { return &valor }
 
 func TestNovaAtualizacaoValida(t *testing.T) {
 	estoque := int64(6)
+	fornecedorID := "60000000-0000-0000-0000-000000000001"
 	atualizacao, err := NovaAtualizacao("Pastilha de freio", "Pastilha  de  freio  cerâmica",
-		categoriaTeste, ptr("Bosch"), ptr("199.90"), &estoque, false)
+		categoriaTeste, ptr("Bosch"), ptr("199.90"), &estoque, &fornecedorID, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,17 +31,20 @@ func TestNovaAtualizacaoValida(t *testing.T) {
 	if atualizacao.EstoqueMinimo != 6 {
 		t.Fatalf("estoqueMinimo = %d", atualizacao.EstoqueMinimo)
 	}
+	if atualizacao.FornecedorID == nil || *atualizacao.FornecedorID != fornecedorID {
+		t.Fatalf("fornecedorID = %v", atualizacao.FornecedorID)
+	}
 }
 
 // A situação só muda pelo DELETE, onde as validações de saldo e orçamento existem.
 // Vale para qualquer valor: o que importa é o campo ter vindo no corpo.
 func TestNovaAtualizacaoRecusaAtivo(t *testing.T) {
-	_, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, ptr("10"), nil, true)
+	_, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, ptr("10"), nil, nil, true)
 	if !errors.Is(err, ErrAtivoNaoEditavel) {
 		t.Fatalf("informar ativo deveria ser recusado, veio %v", err)
 	}
 
-	if _, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, ptr("10"), nil, false); err != nil {
+	if _, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, ptr("10"), nil, nil, false); err != nil {
 		t.Fatalf("omitir ativo deveria passar, veio %v", err)
 	}
 }
@@ -64,7 +68,7 @@ func TestNovaAtualizacaoPreco(t *testing.T) {
 
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
-			_, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, caso.preco, nil, false)
+			_, err := NovaAtualizacao("Peca", "Descricao valida", categoriaTeste, nil, caso.preco, nil, nil, false)
 			if !errors.Is(err, caso.esperado) {
 				t.Fatalf("erro = %v, esperado %v", err, caso.esperado)
 			}
@@ -78,16 +82,16 @@ func TestLimiteDeDescricaoIgualAoCadastro(t *testing.T) {
 	noLimite := strings.Repeat("a", 120)
 	acima := strings.Repeat("a", 121)
 
-	if _, err := NovaAtualizacao("Peca", noLimite, categoriaTeste, nil, ptr("10"), nil, false); err != nil {
+	if _, err := NovaAtualizacao("Peca", noLimite, categoriaTeste, nil, ptr("10"), nil, nil, false); err != nil {
 		t.Fatalf("120 caracteres deveriam passar na atualização: %v", err)
 	}
-	if _, err := NovoCadastro("Peca", noLimite, categoriaTeste, nil, nil, nil); err != nil {
+	if _, err := NovoCadastro("Peca", noLimite, categoriaTeste, nil, nil, nil, nil); err != nil {
 		t.Fatalf("120 caracteres deveriam passar no cadastro: %v", err)
 	}
-	if _, err := NovaAtualizacao("Peca", acima, categoriaTeste, nil, ptr("10"), nil, false); !errors.Is(err, ErrDescricaoInvalida) {
+	if _, err := NovaAtualizacao("Peca", acima, categoriaTeste, nil, ptr("10"), nil, nil, false); !errors.Is(err, ErrDescricaoInvalida) {
 		t.Fatalf("121 caracteres deveriam falhar na atualização, veio %v", err)
 	}
-	if _, err := NovoCadastro("Peca", acima, categoriaTeste, nil, nil, nil); !errors.Is(err, ErrDescricaoInvalida) {
+	if _, err := NovoCadastro("Peca", acima, categoriaTeste, nil, nil, nil, nil); !errors.Is(err, ErrDescricaoInvalida) {
 		t.Fatalf("121 caracteres deveriam falhar no cadastro, veio %v", err)
 	}
 }

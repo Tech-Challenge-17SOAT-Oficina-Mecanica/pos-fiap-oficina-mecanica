@@ -17,10 +17,13 @@ INSERT INTO usuario_escopo (usuario_id, escopo) VALUES
     ('90000000-0000-0000-0000-000000000001', 'compras:ler'),
     ('90000000-0000-0000-0000-000000000001', 'estoque:ler'),
     ('90000000-0000-0000-0000-000000000001', 'estoque:escrever'),
+    ('90000000-0000-0000-0000-000000000001', 'estoque:movimentar'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:ler'),
     ('90000000-0000-0000-0000-000000000001', 'clientes:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:escrever'),
     ('90000000-0000-0000-0000-000000000001', 'os:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'orcamentos:ler'),
+    ('90000000-0000-0000-0000-000000000001', 'orcamentos:decidir'),
     ('90000000-0000-0000-0000-000000000001', 'servicos:ler'),
     ('90000000-0000-0000-0000-000000000001', 'servicos:escrever')
 ON CONFLICT DO NOTHING;
@@ -71,6 +74,10 @@ INSERT INTO fornecedor (id, razao_social, nome_fantasia, documento, tipo_documen
     ('60000000-0000-0000-0000-000000000001', 'Auto Pecas Brasil LTDA', 'Auto Pecas Brasil', '55666777000190', 'CNPJ', '11999991001', 'vendas@autopecas.example.com', 5, TRUE, 1),
     ('60000000-0000-0000-0000-000000000002', 'Fornecedor Inativo LTDA', NULL, '99888777000111', 'CNPJ', '11999991002', 'contato@inativo.example.com', 7, FALSE, 1)
 ON CONFLICT (id) DO NOTHING;
+
+UPDATE item_estoque
+SET fornecedor_id = '60000000-0000-0000-0000-000000000001'
+WHERE fornecedor_id IS NULL;
 
 INSERT INTO ordem_servico (
     id, cliente_id, veiculo_id, mecanico_responsavel_id, placa_veiculo, status, custo_total_materiais, valor_final, criada_em, iniciada_em

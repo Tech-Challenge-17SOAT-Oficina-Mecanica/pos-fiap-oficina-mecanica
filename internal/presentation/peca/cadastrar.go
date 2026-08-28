@@ -13,6 +13,7 @@ type cadastroRequest struct {
 	Nome          string       `json:"nome"`
 	Descricao     string       `json:"descricao"`
 	CategoriaID   string       `json:"categoriaId"`
+	FornecedorID  *string      `json:"fornecedorId"`
 	Fabricante    *string      `json:"fabricante"`
 	PrecoVenda    *json.Number `json:"precoVenda"`
 	EstoqueMinimo *int64       `json:"estoqueMinimo"`
@@ -34,7 +35,7 @@ func NewCadastrarPecaHandler(useCase peca.CadastrarPeca) http.HandlerFunc {
 
 		cadastro, err := pecaDomain.NovoCadastro(
 			corpo.Nome, corpo.Descricao, corpo.CategoriaID,
-			corpo.Fabricante, precoVenda, corpo.EstoqueMinimo,
+			corpo.Fabricante, precoVenda, corpo.EstoqueMinimo, corpo.FornecedorID,
 		)
 		if err != nil {
 			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
@@ -58,6 +59,8 @@ func responderErroCadastro(writer http.ResponseWriter, err error) {
 	case errors.Is(err, peca.ErrCategoriaInvalida),
 		errors.Is(err, peca.ErrIdentificadorInvalido):
 		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "categoriaId")
+	case errors.Is(err, peca.ErrFornecedorInvalido):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedorId")
 	case errors.Is(err, peca.ErrDescricaoDuplicada):
 		problema(writer, http.StatusConflict, "Conflito", err.Error(), "descricao")
 	default:
