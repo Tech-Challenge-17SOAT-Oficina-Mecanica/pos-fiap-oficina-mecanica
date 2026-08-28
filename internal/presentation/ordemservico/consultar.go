@@ -51,15 +51,15 @@ type orcamentoConsultaResponse struct {
 }
 
 type eventoConsultaResponse struct {
-	ID           string          `json:"id"`
-	Agregado     string          `json:"agregado"`
-	AgregadoID   string          `json:"agregadoId"`
-	OrdemServico string          `json:"ordemServicoId"`
-	TipoEvento   string          `json:"tipoEvento"`
-	Dados        json.RawMessage `json:"dados"`
-	Metadados    json.RawMessage `json:"metadados"`
-	OcorridoEm   string          `json:"ocorridoEm"`
-	RegistradoEm string          `json:"registradoEm"`
+	ID             string `json:"id"`
+	Agregado       string `json:"agregado"`
+	AgregadoID     string `json:"agregadoId"`
+	OrdemServico   string `json:"ordemServicoId"`
+	TipoEvento     string `json:"tipoEvento"`
+	StatusAnterior string `json:"statusAnterior,omitempty"`
+	StatusNovo     string `json:"statusNovo,omitempty"`
+	OcorridoEm     string `json:"ocorridoEm"`
+	RegistradoEm   string `json:"registradoEm"`
 }
 
 type consultaResponse struct {
@@ -107,7 +107,7 @@ func newConsultaResponse(consulta domain.ConsultaDetalhada) consultaResponse {
 	response := consultaResponse{
 		OrdemServicoID:     consulta.OrdemServicoID,
 		StatusOrdemServico: consulta.StatusOrdemServico,
-		Cliente:            clienteResumoResponse{ClienteID: consulta.Cliente.ID, Nome: consulta.Cliente.Nome, Documento: consulta.Cliente.Documento},
+		Cliente:            clienteResumoResponse{ClienteID: consulta.Cliente.ID, Nome: consulta.Cliente.Nome, Documento: mascararDocumento(consulta.Cliente.Documento)},
 		Veiculo:            veiculoResumoResponse{VeiculoID: consulta.Veiculo.ID, Placa: consulta.Veiculo.Placa, Marca: consulta.Veiculo.Marca, Modelo: consulta.Veiculo.Modelo, Ano: consulta.Veiculo.Ano},
 		Problemas:          make([]problemaConsultaResponse, 0, len(consulta.Problemas)),
 		Orcamentos:         make([]orcamentoConsultaResponse, 0, len(consulta.Orcamentos)),
@@ -134,11 +134,37 @@ func newConsultaResponse(consulta domain.ConsultaDetalhada) consultaResponse {
 		})
 	}
 	for _, evento := range consulta.Eventos {
+		statusAnterior, statusNovo := extrairStatusTransicao(evento.Dados)
 		response.Eventos = append(response.Eventos, eventoConsultaResponse{
 			ID: evento.ID, Agregado: evento.Agregado, AgregadoID: evento.AgregadoID, OrdemServico: consulta.OrdemServicoID,
-			TipoEvento: evento.TipoEvento, Dados: evento.Dados, Metadados: evento.Metadados,
+			TipoEvento: evento.TipoEvento, StatusAnterior: statusAnterior, StatusNovo: statusNovo,
 			OcorridoEm: evento.OcorridoEm.Format(time.RFC3339), RegistradoEm: evento.RegistradoEm.Format(time.RFC3339),
 		})
 	}
 	return response
+}
+
+func mascararDocumento(documento string) string {
+	digitos := validation.OnlyDigits(documento)
+	switch len(digitos) {
+	case 11:
+		return validation.MascararDocumento(documento, "CPF")
+	case 14:
+		return validation.MascararDocumento(documento, "CNPJ")
+	default:
+		return documento
+	}
+}
+
+func extrairStatusTransicao(payload json.RawMessage) (string, string) {
+	if len(payload) == 0 {
+		return "", ""
+	}
+	var dados map[string]any
+	if err := json.Unmarshal(payload, &dados); err != nil {
+		return "", ""
+	}
+	statusAnterior, _ := dados["statusAnterior"].(string)
+	statusNovo, _ := dados["statusNovo"].(string)
+	return statusAnterior, statusNovo
 }

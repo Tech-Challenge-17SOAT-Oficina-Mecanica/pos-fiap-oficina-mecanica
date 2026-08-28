@@ -48,14 +48,16 @@ type OrcamentoConsulta struct {
 // `eventos`. Nao ha colunas separadas de statusAnterior/statusNovo no schema: quando presentes,
 // esses dados vivem dentro de `Dados`.
 type EventoConsulta struct {
-	ID           string
-	Agregado     string
-	AgregadoID   string
-	TipoEvento   string
-	Dados        json.RawMessage
-	Metadados    json.RawMessage
-	OcorridoEm   time.Time
-	RegistradoEm time.Time
+	ID             string
+	Agregado       string
+	AgregadoID     string
+	TipoEvento     string
+	StatusAnterior string
+	StatusNovo     string
+	Dados          json.RawMessage
+	Metadados      json.RawMessage
+	OcorridoEm     time.Time
+	RegistradoEm   time.Time
 }
 
 // ConsultaDetalhada e o retorno de GET /ordens-servico/{osId}.
