@@ -103,7 +103,7 @@ func TestAprovarOrcamento(t *testing.T) {
 	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM pedido_compra pc JOIN pedido_compra_item pci ON pci.pedido_compra_id = pc.id WHERE pc.fornecedor_id = $1 AND pci.item_estoque_id = $2", fornecedorID, pecaID).Scan(&pedidos); err != nil || pedidos != 1 {
 		t.Fatalf("pedidos=%d err=%v", pedidos, err)
 	}
-	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 2 {
+	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 1 {
 		t.Fatalf("reservas=%d err=%v", reservas, err)
 	}
 }

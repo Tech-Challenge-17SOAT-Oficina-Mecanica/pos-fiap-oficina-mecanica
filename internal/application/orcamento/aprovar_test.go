@@ -26,7 +26,7 @@ func TestAprovarValidaEDelega(t *testing.T) {
 	if err != nil || resultado.OrcamentoID != idAprovacaoValido {
 		t.Fatalf("resultado=%+v erro=%v", resultado, err)
 	}
-	if repository.input.FornecedorID != "40000000-0000-0000-0000-000000000001" || repository.input.IdempotencySeed == "" {
+	if repository.input.FornecedorID != "40000000-0000-0000-0000-000000000001" {
 		t.Fatalf("input nao normalizado: %+v", repository.input)
 	}
 }

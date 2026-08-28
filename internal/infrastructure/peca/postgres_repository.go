@@ -320,6 +320,9 @@ func (repository PostgresRepository) SolicitarCompraEReservar(ctx context.Contex
 	if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $2 WHERE id = $1`, solicitacao.OrdemServicoID, resultado.StatusOrdemServico); err != nil {
 		return pecaApplication.ResultadoCompraReserva{}, err
 	}
+	if err = registrarAuditoriaProcessamento(ctx, tx, solicitacao, resultado); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
 	if err = gravarRespostaIdempotente(ctx, tx, solicitacao, resultado); err != nil {
 		return pecaApplication.ResultadoCompraReserva{}, err
 	}
@@ -523,28 +526,25 @@ func solicitarCompra(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO pedido_compra_item (
 			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada
-		) VALUES ($1, $2, $3, $3, $3)
+		) VALUES ($1, $2, $3, $3, 0)
 		RETURNING id`, pedidoID, processamento.ItemID, processamento.QuantidadeCompra,
 	).Scan(&pedidoItemID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
-		VALUES ($1, $2, $3)`, pedidoItemID, osItemID, processamento.QuantidadeCompra); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE ordem_servico_item
-		SET quantidade_reservada = quantidade_reservada + $2
-		WHERE id = $1`, osItemID, processamento.QuantidadeCompra); err != nil {
-		return err
-	}
-	var reservaID string
-	return tx.QueryRow(ctx, `
-		INSERT INTO reserva_estoque (ordem_servico_item_id, item_estoque_id, pedido_compra_item_id, quantidade, status)
-		VALUES ($1, $2, $3, $4, 'ATIVA')
-		RETURNING id`, osItemID, processamento.ItemID, pedidoItemID, processamento.QuantidadeCompra,
-	).Scan(&reservaID)
+		VALUES ($1, $2, $3)`, pedidoItemID, osItemID, processamento.QuantidadeCompra)
+	return err
+}
+
+func registrarAuditoriaProcessamento(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva, resultado pecaApplication.ResultadoCompraReserva) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
+		VALUES ($1, NULL, 'ESTOQUE', $1, 'PECAS_RESERVA_COMPRA_PROCESSADA', $2::jsonb, CURRENT_TIMESTAMP)`,
+		solicitacao.OrdemServicoID,
+		fmt.Sprintf(`{"fornecedorId":"%s","statusOrdemServico":"%s","pecasReservadas":%d,"pecasCompraSolicitada":%d}`,
+			solicitacao.FornecedorID, resultado.StatusOrdemServico, len(resultado.PecasReservadas), len(resultado.PecasCompraSolicitada)))
+	return err
 }
 
 func gravarRespostaIdempotente(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva, resultado pecaApplication.ResultadoCompraReserva) error {
@@ -572,4 +572,102 @@ func valorParcial(preco *string, quantidade int64) float64 {
 		return 0
 	}
 	return valor * float64(quantidade)
+}
+
+// Atualizar aplica as alteracoes sob lock otimista, em transacao: le a linha com
+// FOR UPDATE para saber o preco anterior e a version corrente, atualiza, e grava o
+// historico quando o preco muda — sem que exista preco novo sem o registro.
+func (repository PostgresRepository) Atualizar(ctx context.Context, id string, version int, atualizacao peca.Atualizacao, usuarioID string) (peca.Peca, error) {
+	transacao, err := repository.db.Begin(ctx)
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	defer func() { _ = transacao.Rollback(ctx) }()
+
+	var ativa bool
+	err = transacao.QueryRow(ctx, `SELECT ativa FROM categoria WHERE id = $1`, atualizacao.CategoriaID).Scan(&ativa)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	if !ativa {
+		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+
+	var precoAnterior *string
+	var versionAtual int
+	err = transacao.QueryRow(ctx, `
+		SELECT preco_venda::text, version FROM item_estoque
+		WHERE id = $1 AND tipo = 'PECA' AND ativo
+		FOR UPDATE`, id).Scan(&precoAnterior, &versionAtual)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return peca.Peca{}, pecaApplication.ErrNaoEncontrada
+	}
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	if versionAtual != version {
+		return peca.Peca{}, pecaApplication.ErrVersaoDivergente
+	}
+
+	var dataAtualizacao time.Time
+	var usuarioAtualizacao *string
+	err = transacao.QueryRow(ctx, `
+		UPDATE item_estoque
+		SET nome = $2,
+			descricao = $3,
+			descricao_normalizada = $4,
+			categoria_id = $5,
+			fabricante = $6,
+			preco_venda = $7::NUMERIC,
+			estoque_minimo = $8,
+			data_atualizacao = CURRENT_TIMESTAMP,
+			usuario_atualizacao = NULLIF($9, '')::UUID,
+			version = version + 1
+		WHERE id = $1
+		RETURNING data_atualizacao, usuario_atualizacao::text`,
+		id, atualizacao.Nome, atualizacao.Descricao, atualizacao.DescricaoNormalizada,
+		atualizacao.CategoriaID, atualizacao.Fabricante, atualizacao.PrecoVenda,
+		atualizacao.EstoqueMinimo, usuarioID).Scan(&dataAtualizacao, &usuarioAtualizacao)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.Code == "23505" {
+			return peca.Peca{}, pecaApplication.ErrDescricaoDuplicada
+		}
+		return peca.Peca{}, err
+	}
+
+	if precoAnterior == nil || !mesmoPreco(*precoAnterior, atualizacao.PrecoVenda) {
+		if _, err = transacao.Exec(ctx, `
+			INSERT INTO historico_preco_item (item_estoque_id, preco_anterior, preco_novo, usuario_id)
+			VALUES ($1, $2::NUMERIC, $3::NUMERIC, NULLIF($4, '')::UUID)`,
+			id, precoAnterior, atualizacao.PrecoVenda, usuarioID); err != nil {
+			return peca.Peca{}, err
+		}
+	}
+
+	if err = transacao.Commit(ctx); err != nil {
+		return peca.Peca{}, err
+	}
+
+	atualizada, err := repository.BuscarPorID(ctx, id)
+	if err != nil {
+		return peca.Peca{}, err
+	}
+	atualizada.DataAtualizacao = &dataAtualizacao
+	atualizada.UsuarioAtualizacao = usuarioAtualizacao
+	return atualizada, nil
+}
+
+// mesmoPreco compara valor, nao texto: o banco devolve "180.00" onde o cliente mandou
+// "180", e um historico por diferenca de formatacao seria ruido.
+func mesmoPreco(anterior, novo string) bool {
+	valorAnterior, erroAnterior := strconv.ParseFloat(anterior, 64)
+	valorNovo, erroNovo := strconv.ParseFloat(novo, 64)
+	if erroAnterior != nil || erroNovo != nil {
+		return anterior == novo
+	}
+	return valorAnterior == valorNovo
 }

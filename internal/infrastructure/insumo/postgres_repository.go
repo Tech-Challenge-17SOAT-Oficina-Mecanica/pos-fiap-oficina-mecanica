@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
+	"math/big"
 	"strings"
 	"time"
 
@@ -233,7 +233,7 @@ func (repository PostgresRepository) SolicitarCompraEReservar(ctx context.Contex
 	}
 
 	var pedidoID string
-	totalCompra := 0.0
+	totalCompra := new(big.Rat)
 	for _, item := range itens {
 		if item.tipo != insumo.Tipo || !item.ativo || !item.vinculado {
 			return insumoApplication.ResultadoCompraReserva{}, insumoApplication.ErrItemProcessamentoInvalido
@@ -275,7 +275,7 @@ func (repository PostgresRepository) SolicitarCompraEReservar(ctx context.Contex
 				return insumoApplication.ResultadoCompraReserva{}, err
 			}
 			valorParcial := valorParcial(item.custoUnitario, processamento.QuantidadeCompra)
-			totalCompra += valorParcial
+			totalCompra.Add(totalCompra, valorParcial)
 			resultado.InsumosCompraSolicitada = append(resultado.InsumosCompraSolicitada, insumoApplication.ItemCompraSolicitada{
 				ItemID:       item.id,
 				Quantidade:   json.Number(processamento.QuantidadeCompra),
@@ -290,6 +290,9 @@ func (repository PostgresRepository) SolicitarCompraEReservar(ctx context.Contex
 		resultado.StatusOrdemServico = "AGUARDANDO_RECURSOS"
 	}
 	if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $2 WHERE id = $1`, solicitacao.OrdemServicoID, resultado.StatusOrdemServico); err != nil {
+		return insumoApplication.ResultadoCompraReserva{}, err
+	}
+	if err = registrarAuditoriaProcessamento(ctx, tx, solicitacao, resultado); err != nil {
 		return insumoApplication.ResultadoCompraReserva{}, err
 	}
 	if err = gravarRespostaIdempotente(ctx, tx, solicitacao, resultado); err != nil {
@@ -495,28 +498,25 @@ func solicitarCompra(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO pedido_compra_item (
 			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada, custo_unitario
-		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, $3::NUMERIC, $4::NUMERIC)
+		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, 0, $4::NUMERIC)
 		RETURNING id`, pedidoID, processamento.ItemID, processamento.QuantidadeCompra, valorTexto(custoUnitario),
 	).Scan(&pedidoItemID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
+	_, err := tx.Exec(ctx, `
 		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
-		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, processamento.QuantidadeCompra); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE ordem_servico_item
-		SET quantidade_reservada = quantidade_reservada + $2::NUMERIC
-		WHERE id = $1`, osItemID, processamento.QuantidadeCompra); err != nil {
-		return err
-	}
-	var reservaID string
-	return tx.QueryRow(ctx, `
-		INSERT INTO reserva_estoque (ordem_servico_item_id, item_estoque_id, pedido_compra_item_id, quantidade, status)
-		VALUES ($1, $2, $3, $4::NUMERIC, 'ATIVA')
-		RETURNING id`, osItemID, processamento.ItemID, pedidoItemID, processamento.QuantidadeCompra,
-	).Scan(&reservaID)
+		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, processamento.QuantidadeCompra)
+	return err
+}
+
+func registrarAuditoriaProcessamento(ctx context.Context, tx pgx.Tx, solicitacao insumoApplication.SolicitacaoCompraReserva, resultado insumoApplication.ResultadoCompraReserva) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
+		VALUES ($1, NULL, 'ESTOQUE', $1, 'INSUMOS_RESERVA_COMPRA_PROCESSADA', $2::jsonb, CURRENT_TIMESTAMP)`,
+		solicitacao.OrdemServicoID,
+		fmt.Sprintf(`{"fornecedorId":"%s","statusOrdemServico":"%s","insumosReservados":%d,"insumosCompraSolicitada":%d}`,
+			solicitacao.FornecedorID, resultado.StatusOrdemServico, len(resultado.InsumosReservados), len(resultado.InsumosCompraSolicitada)))
+	return err
 }
 
 func gravarRespostaIdempotente(ctx context.Context, tx pgx.Tx, solicitacao insumoApplication.SolicitacaoCompraReserva, resultado insumoApplication.ResultadoCompraReserva) error {
@@ -538,20 +538,20 @@ func valorTexto(valor *string) string {
 	return strings.TrimSpace(*valor)
 }
 
-func valorParcial(custo *string, quantidade string) float64 {
-	valor, err := strconv.ParseFloat(valorTexto(custo), 64)
-	if err != nil {
-		return 0
-	}
-	qtd, err := strconv.ParseFloat(quantidade, 64)
-	if err != nil {
-		return 0
-	}
-	return valor * qtd
+func valorParcial(custo *string, quantidade string) *big.Rat {
+	return new(big.Rat).Mul(decimal(valorTexto(custo)), decimal(quantidade))
 }
 
-func formatarValor(valor float64) string {
-	return strconv.FormatFloat(valor, 'f', 2, 64)
+func decimal(valor string) *big.Rat {
+	resultado, ok := new(big.Rat).SetString(valor)
+	if !ok {
+		return new(big.Rat)
+	}
+	return resultado
+}
+
+func formatarValor(valor *big.Rat) string {
+	return valor.FloatString(2)
 }
 
 type scanner interface {

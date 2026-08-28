@@ -25,8 +25,11 @@ type Peca struct {
 	UsuarioDesativacao   *string
 	Version              int
 	PossuiPedidoEmAberto bool
-	// DataCriacao so e carregada no cadastro; consultar e desativar nao a devolvem.
-	DataCriacao *time.Time
+	// DataCriacao so e carregada no cadastro; DataAtualizacao e UsuarioAtualizacao so na
+	// atualizacao. Consultar e desativar nao devolvem nenhum dos tres.
+	DataCriacao        *time.Time
+	DataAtualizacao    *time.Time
+	UsuarioAtualizacao *string
 }
 
 func (peca Peca) Desativar(usuarioID string, momento time.Time) (Peca, error) {

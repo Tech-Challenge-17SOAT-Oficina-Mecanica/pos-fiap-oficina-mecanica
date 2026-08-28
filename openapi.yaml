@@ -37,6 +37,52 @@ paths:
         '403': { description: Usuário sem o escopo os:escrever }
         '404': { description: Cliente ou veículo não encontrado }
         '409': { description: Veículo não vinculado ao cliente informado }
+  /ordens-servico/{osId}/problema-relatado:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra o problema relatado pelo cliente
+      description: >-
+        Registra o relato inicial em uma OS RECEBIDA e, na mesma operação, altera o status
+        para EM_DIAGNOSTICO e grava a data de início do diagnóstico. Exige o escopo `os:escrever`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: osId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descricao]
+              additionalProperties: false
+              properties:
+                descricao: { type: string, minLength: 1, example: Veículo apresenta ruído ao frear }
+                observacoes: { type: string, example: O problema começou há uma semana }
+      responses:
+        '201':
+          description: Problema relatado registrado e diagnóstico iniciado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ordemServicoId: { type: string, format: uuid }
+                  problemaRelatado:
+                    type: object
+                    properties:
+                      descricao: { type: string }
+                      observacoes: { type: string }
+                  status: { type: string, enum: [EM_DIAGNOSTICO] }
+                  dataInicioDiagnostico: { type: string, format: date-time }
+        '400': { description: Identificador ou corpo inválido }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: Ordem de serviço não encontrada }
+        '409': { description: OS fora de RECEBIDA ou problema relatado já registrado }
   /health:
     get:
       summary: Verifica a disponibilidade da API
@@ -859,6 +905,60 @@ paths:
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo estoque:ler }
         '404': { description: Peça não encontrada }
+    put:
+      tags: [Estoque]
+      summary: Atualiza os dados cadastrais da peça
+      description: >-
+        Exige o escopo `estoque:escrever` e o header `If-Match` com a `version` atual.
+        Não altera `ativo`, `codigo` nem saldo: a situação muda apenas pelo `DELETE`, onde
+        as validações de reserva e orçamento existem. Quando `precoVenda` muda, a alteração
+        é registrada no histórico de preço.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: pecaId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: If-Match
+          in: header
+          required: true
+          schema: { type: string }
+          description: 'Version atual da peça. Aceita `3` ou `"3"`.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AtualizarPeca' }
+      responses:
+        '200':
+          description: Peça atualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Peca' }
+        '400':
+          description: Dados inválidos, `ativo` no corpo, categoria inexistente ou inativa, ou If-Match malformado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:escrever }
+        '404': { description: Peça não encontrada }
+        '409':
+          description: Já existe peça ativa com a mesma descrição na categoria
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '412':
+          description: If-Match diverge da version atual
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '428':
+          description: If-Match não informado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
     delete:
       tags: [Estoque]
       summary: Desativa a peça (exclusão lógica)
@@ -1112,6 +1212,78 @@ paths:
                   expiresIn: { type: integer, example: 3600 }
         '400': { description: Dados inválidos }
         '401': { description: Credenciais inválidas }
+  /ordens-servico/{osId}/pecas:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra peças necessárias na OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarItensOS'
+      responses:
+        '201': { description: Peças registradas e orçamento atualizado }
+        '400': { description: Dados inválidos ou tipo de item divergente }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS ou item não encontrado }
+        '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/insumos:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra insumos necessários na OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrarItensOS'
+      responses:
+        '201': { description: Insumos registrados e orçamento atualizado }
+        '400': { description: Dados inválidos ou tipo de item divergente }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS ou item não encontrado }
+        '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/orcamento:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Consulta os orçamentos da OS
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamentos principal e complementares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrcamentoOS'
+        '400': { description: osId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:ler }
+        '404': { description: OS não encontrada }
 components:
   securitySchemes:
     bearerAuth:
@@ -1119,6 +1291,55 @@ components:
       scheme: bearer
       bearerFormat: JWT
   schemas:
+    RegistrarItensOS:
+      type: object
+      required: [itens]
+      additionalProperties: false
+      properties:
+        itens:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, exclusiveMinimum: 0 }
+    OrcamentoOS:
+      type: object
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        orcamentoId: { type: string, format: uuid }
+        orcamentoOriginalId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        statusOrcamento: { type: string, enum: [CRIADO, APROVADO, RECUSADO] }
+        itensRegistrados:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemOrcamentoOS'
+        valorOrcamento: { type: number, format: double }
+        valorTotalGeral: { type: number, format: double }
+    ItemOrcamentoOS:
+      type: object
+      properties:
+        itemId: { type: string, format: uuid }
+        codigo: { type: string }
+        descricao: { type: string }
+        tipo: { type: string, enum: [PECA, INSUMO] }
+        quantidade: { type: number }
+        valorUnitario: { type: number, format: double }
+        valorItem: { type: number, format: double }
+    ServicoLista:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        codigo: { type: string, pattern: '^SER-[0-9]{6}$' }
+        nome: { type: string }
+        descricao: { type: string }
+        valor: { type: number, format: double }
+        tempoEstimadoMinutos: { type: integer }
+        ativo: { type: boolean }
     Problema:
       type: object
       description: Resposta de erro no formato application/problem+json.
@@ -1157,6 +1378,22 @@ components:
         dataAprovacao: { type: string, format: date-time }
         fornecedorId: { type: string, format: uuid }
         possuiCompraSolicitada: { type: boolean }
+    AtualizarPeca:
+      type: object
+      required: [nome, descricao, categoriaId, precoVenda]
+      properties:
+        nome: { type: string, minLength: 2, maxLength: 150 }
+        descricao: { type: string, minLength: 3, maxLength: 120 }
+        categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fabricante: { type: string, maxLength: 150, nullable: true }
+        precoVenda:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          multipleOf: 0.01
+          description: Obrigatório na atualização, maior que zero e com no máximo 2 casas decimais.
+        estoqueMinimo: { type: integer, minimum: 0, default: 0 }
+      additionalProperties: false
     CadastrarPeca:
       type: object
       required: [nome, descricao, categoriaId]
@@ -1165,7 +1402,7 @@ components:
         descricao:
           type: string
           minLength: 3
-          maxLength: 500
+          maxLength: 120
           description: Usada na regra de duplicidade, após normalização.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
         fabricante: { type: string, maxLength: 150, nullable: true }
@@ -1199,6 +1436,14 @@ components:
           type: string
           format: date-time
           description: Devolvida apenas no cadastro.
+        atualizadoEm:
+          type: string
+          format: date-time
+          description: Devolvida apenas na atualização.
+        atualizadoPor:
+          type: string
+          format: uuid
+          description: Devolvida apenas na atualização.
     SolicitarCompraReservaPecas:
       type: object
       required: [ordemServicoId, fornecedorId, itens]

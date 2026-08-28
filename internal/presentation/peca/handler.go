@@ -34,8 +34,11 @@ type pecaResponse struct {
 	PossuiPedidoEmAberto bool         `json:"possuiPedidoEmAberto"`
 	Ativo                bool         `json:"ativo"`
 	Version              int          `json:"version"`
-	// Só o cadastro devolve dataCriacao; consultar e deletar a omitem.
-	DataCriacao *time.Time `json:"dataCriacao,omitempty"`
+	// Só o cadastro devolve dataCriacao e só a atualização devolve os dois campos de
+	// atualização; consultar e deletar omitem os três.
+	DataCriacao   *time.Time `json:"dataCriacao,omitempty"`
+	AtualizadoEm  *time.Time `json:"atualizadoEm,omitempty"`
+	AtualizadoPor *string    `json:"atualizadoPor,omitempty"`
 }
 
 func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
@@ -130,6 +133,8 @@ func montarResponse(encontrada pecaDomain.Peca, quantidade *int64) pecaResponse 
 		Ativo:                encontrada.Ativo,
 		Version:              encontrada.Version,
 		DataCriacao:          encontrada.DataCriacao,
+		AtualizadoEm:         encontrada.DataAtualizacao,
+		AtualizadoPor:        encontrada.UsuarioAtualizacao,
 	}
 	if encontrada.PrecoVenda != nil {
 		preco := json.Number(*encontrada.PrecoVenda)

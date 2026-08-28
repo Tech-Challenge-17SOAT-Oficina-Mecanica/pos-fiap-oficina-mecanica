@@ -274,24 +274,14 @@ func solicitarCompra(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, 
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO pedido_compra_item (
 			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada, custo_unitario
-		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, $3::NUMERIC, $4::NUMERIC)
+		) VALUES ($1, $2, $3::NUMERIC, $3::NUMERIC, 0, $4::NUMERIC)
 		RETURNING id`, pedidoID, item.id, quantidade, item.valorUnitario,
 	).Scan(&pedidoItemID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec(ctx, `
-		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
-		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, quantidade); err != nil {
-		return err
-	}
-	if _, err := tx.Exec(ctx, `
-		UPDATE ordem_servico_item SET quantidade_reservada = quantidade_reservada + $2::NUMERIC
-		WHERE id = $1`, osItemID, quantidade); err != nil {
-		return err
-	}
 	_, err := tx.Exec(ctx, `
-		INSERT INTO reserva_estoque (ordem_servico_item_id, item_estoque_id, pedido_compra_item_id, quantidade, status)
-		VALUES ($1, $2, $3, $4::NUMERIC, 'ATIVA')`, osItemID, item.id, pedidoItemID, quantidade)
+		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
+		VALUES ($1, $2, $3::NUMERIC)`, pedidoItemID, osItemID, quantidade)
 	return err
 }
 

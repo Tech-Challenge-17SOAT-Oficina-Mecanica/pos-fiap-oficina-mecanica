@@ -20,11 +20,10 @@ var (
 )
 
 type AprovarInput struct {
-	OrcamentoID     string
-	ClienteID       string
-	OrdemServicoID  string
-	FornecedorID    string
-	IdempotencySeed string
+	OrcamentoID    string
+	ClienteID      string
+	OrdemServicoID string
+	FornecedorID   string
 }
 
 type AprovarRepository interface {
@@ -55,6 +54,5 @@ func (useCase Aprovar) Execute(ctx context.Context, input AprovarInput) (domain.
 	if !validation.IsUUID(input.FornecedorID) {
 		return domain.Aprovacao{}, ErrFornecedorIDInvalido
 	}
-	input.IdempotencySeed = input.OrcamentoID + ":" + input.ClienteID
 	return useCase.repository.Aprovar(ctx, input)
 }
