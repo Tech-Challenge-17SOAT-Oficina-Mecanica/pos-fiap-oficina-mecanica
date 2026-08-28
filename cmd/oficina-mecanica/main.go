@@ -86,6 +86,7 @@ func main() {
 	registrarProblemaRelatado := ordemServicoApplication.NewRegistrarProblemaRelatado(ordemServicoRepository)
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
+	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoInfrastructure.NewPostgresRepository(db))
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 
@@ -94,6 +95,8 @@ func main() {
 	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoComprasEscrever, fornecedorPresentation.NewCadastrarHandler(
 		fornecedorApplication.NewCadastrar(fornecedorRepository),
 	)))
+	mux.Handle("POST /ordens-servico/{osId}/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarPecasHandler(registrarItensOS)))
+	mux.Handle("POST /ordens-servico/{osId}/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarInsumosHandler(registrarItensOS)))
 	mux.Handle("GET /fornecedores", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoComprasLer, fornecedorPresentation.NewListarHandler(
 		fornecedorApplication.NewConsultarFornecedores(fornecedorRepository),
 	)))
