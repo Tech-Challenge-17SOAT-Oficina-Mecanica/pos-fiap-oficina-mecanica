@@ -105,6 +105,7 @@ func main() {
 	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
 	consultarTempoExecucao := ordemServicoApplication.NewConsultarTempoExecucaoDaOS(ordemServicoRepository)
 	consultarTempoMedioExecucao := ordemServicoApplication.NewConsultarTempoMedioExecucao(ordemServicoRepository)
+	consultarFila := ordemServicoApplication.NewConsultarFila(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
 	aprovarOrcamento := orcamentoApplication.NewAprovar(orcamentoRepository)
@@ -152,8 +153,7 @@ func main() {
 		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
 	mux.Handle("GET /ordens-servico/{osId}", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, ordemServicoPresentation.NewConsultarHandler(consultarOS)))
 	mux.Handle("GET /ordens-servico", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewListarHandler(listarOS)))
-	mux.Handle("POST /orcamentos/{orcamentoId}/calcular", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
-		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
+	mux.Handle("GET /fila-atendimento", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewConsultarFilaHandler(consultarFila)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewAprovarHandler(aprovarOrcamento)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewRecusarHandler(recusarOrcamento)))

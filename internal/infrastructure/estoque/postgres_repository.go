@@ -385,7 +385,7 @@ func liberarOrdensServico(ctx context.Context, tx pgx.Tx, ordensAfetadas map[str
 		novoStatus := statusAtual
 		if itensPendentes == 0 {
 			novoStatus = "AGUARDANDO_EXECUCAO"
-			if _, err := tx.Exec(ctx, "UPDATE ordem_servico SET status = $2 WHERE id = $1", ordemServicoID, novoStatus); err != nil {
+			if _, err := tx.Exec(ctx, "UPDATE ordem_servico SET status = $2, data_entrada_fila = CURRENT_TIMESTAMP WHERE id = $1", ordemServicoID, novoStatus); err != nil {
 				return nil, err
 			}
 		}
