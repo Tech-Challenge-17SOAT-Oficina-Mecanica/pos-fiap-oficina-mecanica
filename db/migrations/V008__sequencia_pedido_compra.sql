@@ -1,0 +1,1 @@
+CREATE SEQUENCE IF NOT EXISTS seq_pedido_compra_numero START WITH 1;

@@ -39,6 +39,7 @@ type Resultado struct {
 
 // Item, Orcamento, Problema, Cliente e Consulta sustentam GET /ordens-servico/{osId}/orcamento.
 type Item struct {
+	ID            string
 	Tipo          string
 	Descricao     string
 	Quantidade    float64
@@ -56,6 +57,17 @@ type Orcamento struct {
 	Itens          []Item
 	Problemas      []Problema
 	ValorTotal     float64
+}
+
+type Aprovacao struct {
+	OrcamentoID         string
+	OrdemServicoID      string
+	TipoOrcamento       string
+	OrcamentoOriginalID string
+	StatusOrcamento     string
+	StatusOrdemServico  string
+	ClienteID           string
+	DataAprovacao       time.Time
 }
 
 type Problema struct {

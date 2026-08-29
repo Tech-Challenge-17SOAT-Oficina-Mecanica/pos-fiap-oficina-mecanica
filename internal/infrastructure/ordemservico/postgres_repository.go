@@ -20,6 +20,263 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+func (repository PostgresRepository) Entregar(ctx context.Context, input application.EntregarInput) (domain.ResultadoEntrega, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var status, clienteOriginalID string
+	if err = tx.QueryRow(ctx, `SELECT status, cliente_id FROM ordem_servico WHERE id = $1 FOR UPDATE`, input.OSID).
+		Scan(&status, &clienteOriginalID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ResultadoEntrega{}, application.ErrOrdemServicoNaoEncontrada
+		}
+		return domain.ResultadoEntrega{}, err
+	}
+	if err = domain.ValidarEntrega(status); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+
+	clienteRetiradaID := input.ClienteID
+	if clienteRetiradaID == "" {
+		clienteRetiradaID = clienteOriginalID
+	} else {
+		var ativo bool
+		if err = tx.QueryRow(ctx, `SELECT ativo FROM cliente WHERE id = $1`, clienteRetiradaID).Scan(&ativo); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.ResultadoEntrega{}, application.ErrClienteNaoEncontrado
+			}
+			return domain.ResultadoEntrega{}, err
+		}
+		if !ativo {
+			return domain.ResultadoEntrega{}, application.ErrClienteNaoEncontrado
+		}
+	}
+
+	var quantidadeOrcamentos int
+	var valorFinal float64
+	if err = tx.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT o.id), COALESCE(SUM(oi.valor_total), 0)
+		FROM orcamento o
+		LEFT JOIN orcamento_item oi ON oi.orcamento_id = o.id
+		WHERE o.ordem_servico_id = $1 AND o.status = 'APROVADO'`, input.OSID,
+	).Scan(&quantidadeOrcamentos, &valorFinal); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	if quantidadeOrcamentos == 0 {
+		return domain.ResultadoEntrega{}, domain.ErrValorFinalIndisponivel
+	}
+
+	var dataEntrega time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE ordem_servico
+		SET status = $2, valor_final = $3, entregue_em = CURRENT_TIMESTAMP,
+		    responsavel_entrega_id = NULLIF($4, '')::uuid,
+		    cliente_retirada_id = $5, observacoes_entrega = NULLIF($6, '')
+		WHERE id = $1
+		RETURNING entregue_em`, input.OSID, domain.StatusEntregue, valorFinal,
+		input.UsuarioID, clienteRetiradaID, input.Observacoes,
+	).Scan(&dataEntrega); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico
+		(ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'VEICULO_ENTREGUE',
+		        jsonb_build_object('status', $3::text, 'valorFinal', $4::numeric,
+		                           'clienteRetiradaId', $5::text, 'observacoes', COALESCE($6, '')),
+		        '{}'::jsonb, $7)`, input.OSID, input.UsuarioID, domain.StatusEntregue,
+		valorFinal, clienteRetiradaID, input.Observacoes, dataEntrega,
+	); err != nil {
+		return domain.ResultadoEntrega{}, fmt.Errorf("registrar auditoria da entrega: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	return domain.ResultadoEntrega{
+		OrdemServicoID: input.OSID, Status: domain.StatusEntregue, ValorFinal: valorFinal,
+		ResponsavelEntregaID: input.UsuarioID, ClienteID: clienteRetiradaID,
+		DataEntrega: dataEntrega, Observacoes: input.Observacoes,
+	}, nil
+}
+
+// Listar aplica os filtros de GET /ordens-servico. Documento ou placa sem cadastro correspondente
+// retornam erro (404), diferente de filtro sem resultado, que devolve lista vazia (200).
+func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.FiltrosListagem, limite, deslocamento int) ([]domain.ItemListagem, int, error) {
+	if filtros.Documento != "" {
+		var existe bool
+		if err := repository.db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM cliente WHERE documento = $1)", filtros.Documento).Scan(&existe); err != nil {
+			return nil, 0, err
+		}
+		if !existe {
+			return nil, 0, application.ErrClienteNaoEncontrado
+		}
+	}
+	if filtros.Placa != "" {
+		var existe bool
+		if err := repository.db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM veiculo WHERE placa = $1)", filtros.Placa).Scan(&existe); err != nil {
+			return nil, 0, err
+		}
+		if !existe {
+			return nil, 0, application.ErrVeiculoNaoEncontrado
+		}
+	}
+
+	const filtro = `
+		FROM ordem_servico os
+		JOIN cliente c ON c.id = os.cliente_id
+		JOIN veiculo v ON v.id = os.veiculo_id
+		WHERE ($1 = '' OR os.status = $1)
+		  AND ($2 = '' OR c.documento = $2)
+		  AND ($3 = '' OR v.placa = $3)`
+
+	var total int
+	if err := repository.db.QueryRow(ctx, "SELECT COUNT(*) "+filtro, filtros.Status, filtros.Documento, filtros.Placa).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := repository.db.Query(ctx, `
+		SELECT os.id, os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
+		ORDER BY os.criada_em DESC, os.id DESC
+		LIMIT $4 OFFSET $5`, filtros.Status, filtros.Documento, filtros.Placa, limite, deslocamento)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	itens := []domain.ItemListagem{}
+	for rows.Next() {
+		var item domain.ItemListagem
+		if err = rows.Scan(&item.OrdemServicoID, &item.Status, &item.ClienteID, &item.ClienteNome, &item.ClienteDocumento,
+			&item.VeiculoID, &item.Placa, &item.Marca, &item.Modelo); err != nil {
+			return nil, 0, err
+		}
+		itens = append(itens, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return itens, total, nil
+}
+
+// Consultar monta o detalhe consolidado da OS: cliente, veiculo, problemas, orcamentos com itens
+// e a trilha de auditoria (`eventos`). Sem orcamento, sem problema ou sem evento nao e erro: a
+// consulta devolve as listas vazias.
+func (repository PostgresRepository) Consultar(ctx context.Context, ordemServicoID, clienteID string) (domain.ConsultaDetalhada, error) {
+	consulta := domain.ConsultaDetalhada{OrdemServicoID: ordemServicoID, Problemas: []domain.ProblemaConsulta{}, Orcamentos: []domain.OrcamentoConsulta{}, Eventos: []domain.EventoConsulta{}}
+	err := repository.db.QueryRow(ctx, `
+		SELECT os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo, v.ano
+		FROM ordem_servico os
+		JOIN cliente c ON c.id = os.cliente_id
+		JOIN veiculo v ON v.id = os.veiculo_id
+		WHERE os.id = $1`, ordemServicoID,
+	).Scan(&consulta.StatusOrdemServico, &consulta.Cliente.ID, &consulta.Cliente.Nome, &consulta.Cliente.Documento,
+		&consulta.Veiculo.ID, &consulta.Veiculo.Placa, &consulta.Veiculo.Marca, &consulta.Veiculo.Modelo, &consulta.Veiculo.Ano)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ConsultaDetalhada{}, application.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	if clienteID != "" && clienteID != consulta.Cliente.ID {
+		return domain.ConsultaDetalhada{}, application.ErrAcessoNegado
+	}
+
+	problemaRows, err := repository.db.Query(ctx, `
+		SELECT id, descricao, COALESCE(orcamento_id::text, ''), registrado_em
+		FROM problema_ordem_servico WHERE ordem_servico_id = $1 ORDER BY registrado_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for problemaRows.Next() {
+		var problema domain.ProblemaConsulta
+		if err = problemaRows.Scan(&problema.ID, &problema.Descricao, &problema.OrcamentoID, &problema.IdentificadoEm); err != nil {
+			problemaRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Problemas = append(consulta.Problemas, problema)
+	}
+	problemaRows.Close()
+	if err = problemaRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+
+	orcamentoRows, err := repository.db.Query(ctx, `
+		SELECT id, tipo_orcamento, COALESCE(orcamento_original_id::text, ''), criado_em
+		FROM orcamento WHERE ordem_servico_id = $1
+		ORDER BY CASE tipo_orcamento WHEN 'PRINCIPAL' THEN 0 ELSE 1 END, criado_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for orcamentoRows.Next() {
+		var orcamento domain.OrcamentoConsulta
+		if err = orcamentoRows.Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.OrcamentoOriginalID, &orcamento.DataGeracao); err != nil {
+			orcamentoRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Orcamentos = append(consulta.Orcamentos, orcamento)
+	}
+	orcamentoRows.Close()
+	if err = orcamentoRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for index := range consulta.Orcamentos {
+		itens, valorTotal, err := itensDoOrcamentoOS(ctx, repository.db, consulta.Orcamentos[index].ID)
+		if err != nil {
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Orcamentos[index].Itens = itens
+		consulta.Orcamentos[index].ValorTotal = valorTotal
+		consulta.ValorTotalGeral += valorTotal
+	}
+
+	eventoRows, err := repository.db.Query(ctx, `
+		SELECT id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em, registrado_em
+		FROM auditoria_ordem_servico WHERE ordem_servico_id = $1 ORDER BY ocorrido_em`, ordemServicoID)
+	if err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+	for eventoRows.Next() {
+		var evento domain.EventoConsulta
+		if err = eventoRows.Scan(&evento.ID, &evento.Agregado, &evento.AgregadoID, &evento.TipoEvento,
+			&evento.Dados, &evento.Metadados, &evento.OcorridoEm, &evento.RegistradoEm); err != nil {
+			eventoRows.Close()
+			return domain.ConsultaDetalhada{}, err
+		}
+		consulta.Eventos = append(consulta.Eventos, evento)
+	}
+	eventoRows.Close()
+	if err = eventoRows.Err(); err != nil {
+		return domain.ConsultaDetalhada{}, err
+	}
+
+	return consulta, nil
+}
+
+func itensDoOrcamentoOS(ctx context.Context, db *pgxpool.Pool, orcamentoID string) ([]domain.ItemOrcamentoConsulta, float64, error) {
+	rows, err := db.Query(ctx, `
+		SELECT tipo_item, descricao, quantidade, valor_unitario, valor_total
+		FROM orcamento_item WHERE orcamento_id = $1 ORDER BY id`, orcamentoID)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	itens := []domain.ItemOrcamentoConsulta{}
+	var total float64
+	for rows.Next() {
+		var item domain.ItemOrcamentoConsulta
+		if err = rows.Scan(&item.Tipo, &item.Descricao, &item.Quantidade, &item.ValorUnitario, &item.ValorTotal); err != nil {
+			return nil, 0, err
+		}
+		total += item.ValorTotal
+		itens = append(itens, item)
+	}
+	return itens, total, rows.Err()
+}
+
 // Finalizar bloqueia enquanto houver servico pendente, orcamento complementar em aberto ou
 // reserva ativa sem baixa. A notificacao ao cliente e best-effort, apos o commit: nao ha
 // provedor de e-mail configurado neste repositorio, entao o envio e apenas registrado em log.
