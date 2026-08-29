@@ -38,14 +38,14 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		}
 		return fmt.Sprintf("%s-%x", prefix, bytes)
 	}
-	placa := fmt.Sprintf("ENT1A%02d", suffix%100)
+	placa := fmt.Sprintf("E%06X", suffix&0xffffff)
 
 	if _, err = db.Exec(ctx, "INSERT INTO categoria (id,nome,ativa) VALUES ($1,$2,true)", categoriaID, fmt.Sprintf("Categoria %x", suffix)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, `INSERT INTO item_estoque (id,categoria_id,tipo,codigo,nome,descricao,descricao_normalizada,unidade_medida,saldo_fisico,saldo_reservado,ativo,custo_unitario) VALUES
 		($1,$4,'INSUMO',$5,'Insumo entrada','Insumo entrada','insumo entrada','L',10,0,true,20.00),
-		($2,$4,'PECA','x',$6,'Peca inativa','peca inativa','UN',5,0,false,10.00),
+		($2,$4,'PECA',$6,'Peca inativa','Peca inativa','peca inativa','UN',5,0,false,10.00),
 		($3,$4,'PECA',$7,'Peca pedido','Peca pedido','peca pedido','UN',0,0,true,10.00)`,
 		insumoID, pecaInativaID, pecaPedidoID, categoriaID,
 		codigo("INS"), codigo("PEC"), codigo("PEC")); err != nil {

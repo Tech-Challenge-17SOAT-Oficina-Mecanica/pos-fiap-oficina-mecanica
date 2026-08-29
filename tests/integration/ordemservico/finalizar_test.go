@@ -34,7 +34,7 @@ func TestFinalizarServico(t *testing.T) {
 	clienteID, veiculoID, categoriaID := id("d1000000-0000-0000-0000-"), id("d2000000-0000-0000-0000-"), id("d3000000-0000-0000-0000-")
 	osOK, osServicoPendente, osComplementarPendente, osReservaPendente, osForaDeExecucao := id("d4000000-0000-0000-0000-"), id("d5000000-0000-0000-0000-"), id("d6000000-0000-0000-0000-"), id("d7000000-0000-0000-0000-"), id("d8000000-0000-0000-0000-")
 	servicoID, itemID, osItemID := id("d9000000-0000-0000-0000-"), id("da000000-0000-0000-0000-"), id("db000000-0000-0000-0000-")
-	placa := fmt.Sprintf("FIN1A%02d", suffix%100)
+	placa := placaMercosul("FIN", suffix)
 	codigoBase := suffix & 0xffffff
 
 	if _, err = db.Exec(ctx, "INSERT INTO categoria (id,nome,ativa) VALUES ($1,$2,true)", categoriaID, fmt.Sprintf("Categoria %x", codigoBase)); err != nil {

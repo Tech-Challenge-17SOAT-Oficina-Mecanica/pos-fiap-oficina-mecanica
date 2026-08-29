@@ -115,7 +115,7 @@ func (repository PostgresRepository) processarEntrada(ctx context.Context, input
 		}
 		if _, err = tx.Exec(ctx, `
 			INSERT INTO auditoria_estoque (item_estoque_id, fornecedor_id, pedido_compra_id, usuario_id, tipo_evento, documento_origem, dados, ocorrido_em)
-			VALUES ($1, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, NULLIF($4, '')::uuid, 'ENTRADA_ESTOQUE', $5, jsonb_build_object('quantidade', $6, 'custoUnitario', $7), CURRENT_TIMESTAMP)`,
+			VALUES ($1, NULLIF($2, '')::uuid, NULLIF($3, '')::uuid, NULLIF($4, '')::uuid, 'ENTRADA_ESTOQUE', $5, jsonb_build_object('quantidade', $6::numeric, 'custoUnitario', $7::numeric), CURRENT_TIMESTAMP)`,
 			item.id, cadastro.FornecedorID, cadastro.PedidoCompraID, input.UsuarioID, cadastro.DocumentoOrigem, requisitado.Quantidade, requisitado.CustoUnitario,
 		); err != nil {
 			return domain.ResultadoEntrada{}, fmt.Errorf("registrar auditoria de entrada: %w", err)
@@ -279,17 +279,20 @@ func efetivarReservas(ctx context.Context, tx pgx.Tx, pedidoCompraItemID, itemEs
 		SELECT pcio.ordem_servico_item_id,
 		       pcio.quantidade_atendida,
 		       osi.ordem_servico_id,
-		       COALESCE(SUM(r.quantidade), 0) AS ja_reservado
+		       reserva.ja_reservado
 		FROM pedido_compra_item_os pcio
 		JOIN ordem_servico_item osi ON osi.id = pcio.ordem_servico_item_id
-		LEFT JOIN reserva_estoque r ON r.ordem_servico_item_id = pcio.ordem_servico_item_id
-			AND r.pedido_compra_item_id = pcio.pedido_compra_item_id
-			AND r.status = $2
+		CROSS JOIN LATERAL (
+			SELECT COALESCE(SUM(r.quantidade), 0) AS ja_reservado
+			FROM reserva_estoque r
+			WHERE r.ordem_servico_item_id = pcio.ordem_servico_item_id
+				AND r.pedido_compra_item_id = pcio.pedido_compra_item_id
+				AND r.status = $2
+		) reserva
 		WHERE pcio.pedido_compra_item_id = $1
-		GROUP BY pcio.ordem_servico_item_id, pcio.quantidade_atendida, osi.ordem_servico_id
-		HAVING COALESCE(SUM(r.quantidade), 0) < pcio.quantidade_atendida
+			AND reserva.ja_reservado < pcio.quantidade_atendida
 		ORDER BY pcio.ordem_servico_item_id
-		FOR UPDATE OF osi`, pedidoCompraItemID, domain.ReservaAtiva)
+		FOR UPDATE OF pcio, osi`, pedidoCompraItemID, domain.ReservaAtiva)
 	if err != nil {
 		return 0, nil, err
 	}
