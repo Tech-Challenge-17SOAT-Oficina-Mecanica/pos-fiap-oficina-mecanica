@@ -66,11 +66,13 @@ func main() {
 	pecaRepository := pecaInfrastructure.NewPostgresRepository(db)
 	consultarPecas := pecaApplication.NewConsultarPecas(pecaRepository)
 	cadastrarPeca := pecaApplication.NewCadastrarPeca(pecaRepository)
+	processarPecas := pecaApplication.NewSolicitarCompraEReservarPecas(pecaRepository)
 	atualizarPeca := pecaApplication.NewAtualizarPeca(pecaRepository)
 	insumoRepository := insumoInfrastructure.NewPostgresRepository(db)
 	cadastrarInsumo := insumoApplication.NewCadastrarInsumo(insumoRepository)
 	consultarInsumos := insumoApplication.NewConsultarInsumos(insumoRepository)
 	desativarInsumo := insumoApplication.NewDesativarInsumo(insumoRepository)
+	processarInsumos := insumoApplication.NewSolicitarCompraEReservarInsumos(insumoRepository)
 	desativarPeca := pecaApplication.NewDesativarPeca(pecaRepository)
 	clienteRepository := clienteInfrastructure.NewPostgresRepository(db)
 	cadastrarCliente := clienteApplication.NewCadastrar(clienteRepository)
@@ -90,9 +92,10 @@ func main() {
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
-	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
+	aprovarOrcamento := orcamentoApplication.NewAprovar(orcamentoRepository)
+	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
 	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
@@ -130,6 +133,7 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("POST /ordens-servico/{osId}/finalizar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewFinalizarHandler(finalizarServico)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
+	mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewAprovarHandler(aprovarOrcamento)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewRecusarHandler(recusarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
 	mux.Handle("PUT /veiculos/{veiculoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosEscrever, veiculoPresentation.NewAtualizarHandler(atualizar)))
@@ -148,8 +152,12 @@ func main() {
 	mux.Handle("POST /servicos/{servicoId}/reativacao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoServicosEscrever, servicoPresentation.NewReativarHandler(reativarServico)))
 	mux.Handle("POST /estoque/pecas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		pecaPresentation.NewCadastrarPecaHandler(cadastrarPeca)))
+	mux.Handle("POST /estoque/solicitacoes-compra-reserva", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
+		pecaPresentation.NewSolicitarCompraEReservarPecasHandler(processarPecas)))
 	mux.Handle("POST /estoque/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueEscrever,
 		insumoPresentation.NewCadastrarInsumoHandler(cadastrarInsumo)))
+	mux.Handle("POST /estoque/solicitacoes-compra-reserva-insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
+		insumoPresentation.NewSolicitarCompraEReservarInsumosHandler(processarInsumos)))
 	mux.Handle("GET /estoque/insumos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,
 		insumoPresentation.NewConsultarInsumosHandler(consultarInsumos)))
 	mux.Handle("GET /estoque/insumos/{insumoId}", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer,
