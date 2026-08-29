@@ -2,12 +2,17 @@
 
 POSTGRES_SERVICE := postgres
 POSTGRES_CONTAINER := oficina-postgres
-POSTGRES_USER := oficina
-POSTGRES_DB := oficina
+DB_NAME ?= oficina
+DB_USER ?= oficina
+DB_PASSWORD ?= oficina
+JWT_SECRET ?= segredo-local
+POSTGRES_USER := $(DB_USER)
+POSTGRES_DB := $(DB_NAME)
 MIGRATIONS := $(sort $(wildcard db/migrations/*.sql))
 SEED := db/seeds/V900__dados_iniciais.sql
 SONAR_SCANNER_IMAGE ?= sonarsource/sonar-scanner-cli:latest
 SONAR_PROJECT_KEY ?= oficina-mecanica
+export DB_NAME DB_USER DB_PASSWORD JWT_SECRET SONAR_PROJECT_KEY
 
 ifneq (,$(wildcard .env))
 include .env
