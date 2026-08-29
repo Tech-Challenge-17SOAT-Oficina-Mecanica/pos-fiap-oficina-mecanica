@@ -20,6 +20,90 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+func (repository PostgresRepository) Entregar(ctx context.Context, input application.EntregarInput) (domain.ResultadoEntrega, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var status, clienteOriginalID string
+	if err = tx.QueryRow(ctx, `SELECT status, cliente_id FROM ordem_servico WHERE id = $1 FOR UPDATE`, input.OSID).
+		Scan(&status, &clienteOriginalID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ResultadoEntrega{}, application.ErrOrdemServicoNaoEncontrada
+		}
+		return domain.ResultadoEntrega{}, err
+	}
+	if err = domain.ValidarEntrega(status); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+
+	clienteRetiradaID := input.ClienteID
+	if clienteRetiradaID == "" {
+		clienteRetiradaID = clienteOriginalID
+	} else {
+		var ativo bool
+		if err = tx.QueryRow(ctx, `SELECT ativo FROM cliente WHERE id = $1`, clienteRetiradaID).Scan(&ativo); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.ResultadoEntrega{}, application.ErrClienteNaoEncontrado
+			}
+			return domain.ResultadoEntrega{}, err
+		}
+		if !ativo {
+			return domain.ResultadoEntrega{}, application.ErrClienteNaoEncontrado
+		}
+	}
+
+	var quantidadeOrcamentos int
+	var valorFinal float64
+	if err = tx.QueryRow(ctx, `
+		SELECT COUNT(DISTINCT o.id), COALESCE(SUM(oi.valor_total), 0)
+		FROM orcamento o
+		LEFT JOIN orcamento_item oi ON oi.orcamento_id = o.id
+		WHERE o.ordem_servico_id = $1 AND o.status = 'APROVADO'`, input.OSID,
+	).Scan(&quantidadeOrcamentos, &valorFinal); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	if quantidadeOrcamentos == 0 {
+		return domain.ResultadoEntrega{}, domain.ErrValorFinalIndisponivel
+	}
+
+	var dataEntrega time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE ordem_servico
+		SET status = $2, valor_final = $3, entregue_em = CURRENT_TIMESTAMP,
+		    responsavel_entrega_id = NULLIF($4, '')::uuid,
+		    cliente_retirada_id = $5, observacoes_entrega = NULLIF($6, '')
+		WHERE id = $1
+		RETURNING entregue_em`, input.OSID, domain.StatusEntregue, valorFinal,
+		input.UsuarioID, clienteRetiradaID, input.Observacoes,
+	).Scan(&dataEntrega); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico
+		(ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'VEICULO_ENTREGUE',
+		        jsonb_build_object('status', $3::text, 'valorFinal', $4::numeric,
+		                           'clienteRetiradaId', $5::text, 'observacoes', COALESCE($6, '')),
+		        '{}'::jsonb, $7)`, input.OSID, input.UsuarioID, domain.StatusEntregue,
+		valorFinal, clienteRetiradaID, input.Observacoes, dataEntrega,
+	); err != nil {
+		return domain.ResultadoEntrega{}, fmt.Errorf("registrar auditoria da entrega: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return domain.ResultadoEntrega{}, err
+	}
+	return domain.ResultadoEntrega{
+		OrdemServicoID: input.OSID, Status: domain.StatusEntregue, ValorFinal: valorFinal,
+		ResponsavelEntregaID: input.UsuarioID, ClienteID: clienteRetiradaID,
+		DataEntrega: dataEntrega, Observacoes: input.Observacoes,
+	}, nil
+}
+
 // Listar aplica os filtros de GET /ordens-servico. Documento ou placa sem cadastro correspondente
 // retornam erro (404), diferente de filtro sem resultado, que devolve lista vazia (200).
 func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.FiltrosListagem, limite, deslocamento int) ([]domain.ItemListagem, int, error) {
