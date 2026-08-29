@@ -19,6 +19,7 @@ var (
 type AprovarInput struct {
 	OrcamentoID    string
 	ClienteID      string
+	UsuarioID      string
 	OrdemServicoID string
 }
 
@@ -35,12 +36,16 @@ func NewAprovar(repository AprovarRepository) Aprovar {
 func (useCase Aprovar) Execute(ctx context.Context, input AprovarInput) (domain.Aprovacao, error) {
 	input.OrcamentoID = strings.TrimSpace(input.OrcamentoID)
 	input.ClienteID = strings.TrimSpace(input.ClienteID)
+	input.UsuarioID = strings.TrimSpace(input.UsuarioID)
 	input.OrdemServicoID = strings.TrimSpace(input.OrdemServicoID)
 
 	if !validation.IsUUID(input.OrcamentoID) {
 		return domain.Aprovacao{}, ErrIdentificadorInvalido
 	}
-	if !validation.IsUUID(input.ClienteID) {
+	if input.ClienteID != "" && !validation.IsUUID(input.ClienteID) {
+		return domain.Aprovacao{}, ErrAcessoNegado
+	}
+	if input.ClienteID == "" && !validation.IsUUID(input.UsuarioID) {
 		return domain.Aprovacao{}, ErrAcessoNegado
 	}
 	if input.OrdemServicoID != "" && !validation.IsUUID(input.OrdemServicoID) {

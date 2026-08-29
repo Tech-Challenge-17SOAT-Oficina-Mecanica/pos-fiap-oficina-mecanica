@@ -93,6 +93,8 @@ func TestAprovarHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 	cliente, _ := jwt.GerarCliente(clienteID, osID)
+	mecanicoID := "40000000-0000-0000-0000-000000000001"
+	mecanico, _ := jwt.Gerar(mecanicoID, []string{"orcamentos:decidir"})
 	result := domain.Aprovacao{
 		OrcamentoID:        orcamentoID,
 		OrdemServicoID:     osID,
@@ -112,6 +114,7 @@ func TestAprovarHandler(t *testing.T) {
 		{"acesso negado", orcamentoID, cliente, "", application.ErrAcessoNegado, http.StatusForbidden},
 		{"conflito", orcamentoID, cliente, "", application.ErrOrcamentoJaDecidido, http.StatusConflict},
 		{"ok", orcamentoID, cliente, "", nil, http.StatusOK},
+		{"mecanico", orcamentoID, mecanico, "", nil, http.StatusOK},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -129,6 +132,9 @@ func TestAprovarHandler(t *testing.T) {
 			}
 			if test.want == http.StatusOK && !strings.Contains(writer.Body.String(), `"statusOrcamento":"APROVADO"`) {
 				t.Fatalf("body=%s", writer.Body.String())
+			}
+			if test.name == "mecanico" && (stub.input.ClienteID != "" || stub.input.UsuarioID != mecanicoID) {
+				t.Fatalf("input=%+v", stub.input)
 			}
 		})
 	}

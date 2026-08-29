@@ -38,7 +38,7 @@ func TestAprovarValidacoes(t *testing.T) {
 		erro  error
 	}{
 		{"orcamento invalido", func(i *AprovarInput) { i.OrcamentoID = "x" }, ErrIdentificadorInvalido},
-		{"cliente invalido", func(i *AprovarInput) { i.ClienteID = "" }, ErrAcessoNegado},
+		{"decisor ausente", func(i *AprovarInput) { i.ClienteID, i.UsuarioID = "", "" }, ErrAcessoNegado},
 		{"os invalida", func(i *AprovarInput) { i.OrdemServicoID = "x" }, ErrAcessoNegado},
 	}
 	for _, caso := range casos {
@@ -50,6 +50,17 @@ func TestAprovarValidacoes(t *testing.T) {
 				t.Fatalf("erro=%v, esperado %v", err, caso.erro)
 			}
 		})
+	}
+}
+
+func TestAprovarAceitaMecanico(t *testing.T) {
+	repository := &aprovarRepositoryFake{}
+	input := inputAprovacaoValido()
+	input.ClienteID = ""
+	input.UsuarioID = "30000000-0000-0000-0000-000000000001"
+
+	if _, err := NewAprovar(repository).Execute(context.Background(), input); err != nil || repository.input.UsuarioID != input.UsuarioID {
+		t.Fatalf("input=%+v erro=%v", repository.input, err)
 	}
 }
 

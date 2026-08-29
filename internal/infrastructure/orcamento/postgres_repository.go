@@ -57,7 +57,7 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 	if err != nil {
 		return domain.Aprovacao{}, err
 	}
-	if resultado.ClienteID != input.ClienteID || (input.OrdemServicoID != "" && input.OrdemServicoID != resultado.OrdemServicoID) {
+	if (input.ClienteID != "" && resultado.ClienteID != input.ClienteID) || (input.OrdemServicoID != "" && input.OrdemServicoID != resultado.OrdemServicoID) {
 		return domain.Aprovacao{}, application.ErrAcessoNegado
 	}
 	if statusOS != "AGUARDANDO_APROVACAO" {
@@ -90,7 +90,7 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 		UPDATE orcamento
 		SET status = 'APROVADO',
 		    aprovado_em = CURRENT_TIMESTAMP,
-		    cliente_aprovador_id = $2,
+		    cliente_aprovador_id = NULLIF($2, '')::uuid,
 		    data_atualizacao = CURRENT_TIMESTAMP
 		WHERE id = $1
 		RETURNING aprovado_em`, resultado.OrcamentoID, input.ClienteID,
@@ -103,8 +103,8 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 	}
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
-		VALUES ($1, NULL, 'ORCAMENTO', $2, 'ORCAMENTO_APROVADO', $3::jsonb, CURRENT_TIMESTAMP)`,
-		resultado.OrdemServicoID, resultado.OrcamentoID,
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORCAMENTO', $3, 'ORCAMENTO_APROVADO', $4::jsonb, CURRENT_TIMESTAMP)`,
+		resultado.OrdemServicoID, input.UsuarioID, resultado.OrcamentoID,
 		fmt.Sprintf(`{"clienteId":"%s","statusOrdemServico":"%s","possuiPendenciaCompra":%t}`,
 			input.ClienteID, resultado.StatusOrdemServico, possuiPendenciaCompra)); err != nil {
 		return domain.Aprovacao{}, err

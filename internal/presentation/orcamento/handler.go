@@ -27,9 +27,14 @@ type aprovacaoResponse struct {
 func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		claims := seguranca.Claims(request.Context())
+		usuarioID := ""
+		if claims.ClienteID == "" {
+			usuarioID = claims.UsuarioID
+		}
 		resultado, err := useCase.Execute(request.Context(), application.AprovarInput{
 			OrcamentoID:    request.PathValue("orcamentoId"),
 			ClienteID:      claims.ClienteID,
+			UsuarioID:      usuarioID,
 			OrdemServicoID: claims.OrdemServicoID,
 		})
 		if err != nil {
