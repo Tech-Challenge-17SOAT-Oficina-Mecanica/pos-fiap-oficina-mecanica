@@ -108,7 +108,8 @@ PUT /estoque/pecas/{pecaId}
 | Header | `If-Match`      | string  | **Obrigatório.** `version` atual do registro, para controle de concorrência |
 | Body   | `nome`          | string  | Obrigatório; nome curto da peça                            |
 | Body   | `descricao`     | string  | Obrigatório, 3 a 120 caracteres                            |
-| Body   | `categoria`     | string  | Categoria da peça                                          |
+| Body   | `categoriaId`   | uuid    | Categoria ativa da peça                                    |
+| Body   | `fornecedorId`  | uuid    | Opcional; fornecedor padrão ativo para compra automática    |
 | Body   | `fabricante`    | string  | Fabricante da peça                                         |
 | Body   | `precoVenda`    | decimal | Obrigatório, maior que zero, até 2 casas decimais          |
 | Body   | `estoqueMinimo` | int     | Maior ou igual a zero                                      |
@@ -119,6 +120,7 @@ PUT /estoque/pecas/{pecaId}
   "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira cerâmica",
   "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+  "fornecedorId": "60000000-0000-0000-0000-000000000001",
   "fabricante": "Bosch",
   "precoVenda": 199.9,
   "estoqueMinimo": 6
@@ -140,6 +142,7 @@ _Técnicas_
 - `pecaId` existe e é do tipo `PECA`.
 - `nome` obrigatório.
 - `descricao` obrigatória, de 3 a 120 caracteres.
+- `fornecedorId`, quando informado, deve ser uuid de fornecedor ativo.
 - `precoVenda` obrigatório, maior que zero, com no máximo 2 casas decimais.
 - `estoqueMinimo` inteiro maior ou igual a zero.
 - `If-Match` é obrigatório e deve bater com a `version` atual do registro.

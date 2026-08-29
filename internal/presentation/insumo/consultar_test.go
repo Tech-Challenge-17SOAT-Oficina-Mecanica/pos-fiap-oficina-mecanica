@@ -31,11 +31,12 @@ func (fake consultarRepositorioFake) BuscarPorID(context.Context, string) (insum
 
 func insumoExemplo() insumoDomain.Insumo {
 	custo := "32.00"
+	fornecedorID := "60000000-0000-0000-0000-000000000001"
 	return insumoDomain.Insumo{
 		ID: "50000000-0000-0000-0000-000000000003", Codigo: "INS-000001",
 		Nome: "Oleo 5W30", Descricao: "Oleo sintetico 5W30",
 		CategoriaID: "10000000-0000-0000-0000-000000000002", Categoria: "Lubrificantes",
-		UnidadeMedida: "L", CustoUnitario: &custo,
+		FornecedorID: &fornecedorID, UnidadeMedida: "L", CustoUnitario: &custo,
 		SaldoFisico: "20.000", SaldoReservado: "2.000", EstoqueMinimo: "5.000",
 		Ativo: true, Version: 1,
 	}
@@ -60,6 +61,7 @@ func TestConsultarInsumosRetornaEnvelopeCompleto(t *testing.T) {
 		Data []struct {
 			Codigo               string      `json:"codigo"`
 			Tipo                 string      `json:"tipo"`
+			FornecedorID         string      `json:"fornecedorId"`
 			CustoUnitario        json.Number `json:"custoUnitario"`
 			SaldoDisponivel      json.Number `json:"saldoDisponivel"`
 			QuantidadeDesejada   json.Number `json:"quantidadeDesejada"`
@@ -77,6 +79,9 @@ func TestConsultarInsumosRetornaEnvelopeCompleto(t *testing.T) {
 	item := corpo.Data[0]
 	if item.Tipo != "INSUMO" || item.Codigo != "INS-000001" || item.CustoUnitario.String() != "32.00" {
 		t.Fatalf("identificação incorreta: %+v", item)
+	}
+	if item.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorId = %q", item.FornecedorID)
 	}
 	if item.SaldoDisponivel.String() != "18" || item.QuantidadeDesejada.String() != "18" {
 		t.Fatalf("decimais incorretos: %+v", item)

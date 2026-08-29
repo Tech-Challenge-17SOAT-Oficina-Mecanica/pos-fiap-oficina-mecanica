@@ -2,14 +2,13 @@ package orcamento
 
 import (
 	"context"
-	"errors"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
-// ErrOrcamentoNaoEncontrado ja existe em consultar.go e serve aos dois fluxos.
-var ErrIdentificadorInvalido = errors.New("identificador deve ser um UUID valido")
+// ErrIdentificadorInvalido e ErrOrcamentoNaoEncontrado sao declarados em aprovar.go e
+// consultar.go, e servem aos tres fluxos.
 
 // OrcamentoDaOS e um orcamento irmao, usado apenas para somar o total geral da OS.
 type OrcamentoDaOS struct {

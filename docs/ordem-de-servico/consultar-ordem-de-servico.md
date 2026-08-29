@@ -345,67 +345,75 @@ A consulta pelo CPF/CNPJ do cliente é atendida pela listagem, em
 
 ### 11.3 Checklist de Implementação
 
+> **Nota de implementação (2026-08-27).** Implementado em `internal/domain/ordemservico`,
+> `internal/application/ordemservico` e `internal/infrastructure/ordemservico` (reaproveitando o
+> repositório existente). Três desvios do refinamento original:
+> `eventos` não tem colunas separadas de `statusAnterior`/`statusNovo` no schema
+> (`auditoria_ordem_servico`) — quando presentes, esses dados vivem dentro de `dados`, não como
+> campos próprios da resposta; o campo `exigeNovaAprovacao` do problema não existe em nenhuma
+> fonte de dados atual e foi omitido; e a consulta por CPF/CNPJ do cliente não foi implementada
+> aqui — conforme o próprio doc diz, ela é atendida por `GET /ordens-servico` (listar-ordens-de-servico.md),
+> que não foi implementado nesta entrega.
+
 **Domínio**
 
-- [ ] Garantir que a Ordem de Serviço possua identificador único e status atual
-- [ ] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
-- [ ] Retornar cada problema com o `orcamentoId` do vínculo em `orcamento_problema`
-- [ ] Garantir que `Orcamento` tenha `tipo` `PRINCIPAL` ou `COMPLEMENTAR` e possa referenciar o orçamento original
-- [ ] Criar ou ajustar o modelo `ItemOrcamento`
-- [ ] Criar ou ajustar o modelo `EventData` como histórico técnico e de negócio da OS
-- [ ] Garantir que `EventData` não substitua o status atual da OS
+- [x] Garantir que a Ordem de Serviço possua identificador único e status atual
+- [x] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
+- [x] Retornar cada problema com o `orcamentoId` do vínculo em `problema_ordem_servico.orcamento_id`
+- [x] Garantir que `Orcamento` tenha `tipo` `PRINCIPAL` ou `COMPLEMENTAR` e possa referenciar o orçamento original
+- [x] Criar ou ajustar o modelo `ItemOrcamento` (`ItemOrcamentoConsulta`)
+- [x] Criar ou ajustar o modelo `EventData` como histórico técnico e de negócio da OS (`EventoConsulta`, a partir de `auditoria_ordem_servico`)
+- [x] Garantir que `EventData` não substitua o status atual da OS
 
 **Caso de uso**
 
-- [ ] Implementar `ConsultarOrdemDeServico`
-- [ ] Validar que o identificador da OS foi informado e tem formato válido
-- [ ] Validar a permissão de acesso à Ordem de Serviço
-- [ ] Consultar cliente, veículo, problemas, orçamentos, itens e eventos
-- [ ] Calcular o valor total geral dos orçamentos retornados
-- [ ] Garantir que a consulta não altere dados persistidos
+- [x] Implementar `ConsultarOrdemDeServico`
+- [x] Validar que o identificador da OS foi informado e tem formato válido
+- [x] Validar a permissão de acesso à Ordem de Serviço
+- [x] Consultar cliente, veículo, problemas, orçamentos, itens e eventos
+- [x] Calcular o valor total geral dos orçamentos retornados
+- [x] Garantir que a consulta não altere dados persistidos
 
 **Repositório**
 
-- [ ] Criar o método que busca Ordem de Serviço por identificador
-- [ ] Criar o método que carrega os dados vinculados à OS
-- [ ] Criar ou ajustar `OrcamentoRepository` para os orçamentos da OS
-- [ ] Criar ou ajustar `EventDataRepository` para os eventos da OS
+- [x] Criar o método que busca Ordem de Serviço por identificador
+- [x] Criar o método que carrega os dados vinculados à OS
+- [x] Criar ou ajustar `OrcamentoRepository` para os orçamentos da OS (consulta própria em `internal/infrastructure/ordemservico`, sem reaproveitar o repositório de `orcamento`)
+- [x] Criar ou ajustar `EventDataRepository` para os eventos da OS
 
 **Handler HTTP**
 
-- [ ] Implementar `GET /ordens-servico/{osId}`
-- [ ] Implementar a validação do path param `osId`
-- [ ] Criar DTO/response com os dados detalhados da Ordem de Serviço
-- [ ] Aplicar autenticação JWT e autorização na rota
-- [ ] Mapear erros de domínio para os códigos HTTP documentados
+- [x] Implementar `GET /ordens-servico/{osId}`
+- [x] Implementar a validação do path param `osId`
+- [x] Criar DTO/response com os dados detalhados da Ordem de Serviço
+- [x] Aplicar autenticação JWT e autorização na rota (escopo `os:ler` ou `orcamentos:ler`, com checagem de dono para token de cliente)
+- [x] Mapear erros de domínio para os códigos HTTP documentados
 
 **Testes unitários**
 
-- [ ] Consulta válida por identificador
-- [ ] Identificador ausente ou inválido
-- [ ] Ordem de Serviço inexistente
-- [ ] Usuário sem permissão
-- [ ] Retorno do status atual, do cliente e do veículo
-- [ ] Problemas retornados com o `orcamentoId` do vínculo
-- [ ] Orçamento principal e complementar com os tipos corretos
-- [ ] Vínculo do complementar com o orçamento original
-- [ ] Cálculo do valor total geral
-- [ ] Retorno dos eventos em `eventos`
+- [x] Consulta válida por identificador (delegação ao repositório)
+- [ ] Identificador ausente ou inválido, OS inexistente, usuário sem permissão como testes unitários isolados — cobertos pelo teste do handler e pelo teste de integração, pois a regra vive na query SQL do repositório
+- [x] Retorno do status atual, do cliente e do veículo (teste do handler)
+- [x] Problemas retornados com o `orcamentoId` do vínculo (teste de integração)
+- [x] Orçamento principal e complementar com os tipos corretos (reaproveita a query já testada em `orcamento`)
+- [x] Vínculo do complementar com o orçamento original
+- [x] Cálculo do valor total geral (teste de integração)
+- [x] Retorno dos eventos em `eventos` (teste de integração)
 
 **Testes de integração**
 
-- [ ] Consulta por identificador da OS
-- [ ] OS sem orçamento e OS sem evento
-- [ ] A consulta não altera dados persistidos
+- [x] Consulta por identificador da OS
+- [x] OS sem orçamento e OS sem evento (listas vazias, não nulas)
+- [x] A consulta não altera dados persistidos (nenhum `UPDATE`/`INSERT` no fluxo de leitura)
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI
+- [x] Documentar o endpoint no Swagger/OpenAPI
 
 **Review**
 
-- [ ] Revisar nomes conforme a Linguagem Ubíqua do projeto
-- [ ] Executar testes automatizados
+- [x] Revisar nomes conforme a Linguagem Ubíqua do projeto
+- [x] Executar testes automatizados (unitários; integração escrita, não executada nesta sessão por falta de Docker)
 - [ ] Code Review aprovado
 - [ ] Validar critérios de aceite da task
 

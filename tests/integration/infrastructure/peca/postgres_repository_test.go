@@ -2,10 +2,13 @@ package peca_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
+	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
 	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
 )
@@ -108,5 +111,33 @@ func TestBuscarPorIDCarregaPeca(t *testing.T) {
 	}
 	if encontrada.Codigo != codigoFiltro || encontrada.Fabricante == nil || *encontrada.Fabricante != "Mann" {
 		t.Fatalf("peca carregada incorretamente: %+v", encontrada)
+	}
+}
+
+func TestCadastrarComFornecedor(t *testing.T) {
+	fornecedorID := "60000000-0000-0000-0000-000000000001"
+	fabricante := "Teste"
+	precoVenda := "123.45"
+	estoqueMinimo := int64(1)
+	sufixo := time.Now().UnixNano()
+	cadastro, err := peca.NovoCadastro(
+		fmt.Sprintf("Bomba teste %d", sufixo),
+		fmt.Sprintf("Bomba de agua teste fornecedor %d", sufixo),
+		"10000000-0000-0000-0000-000000000001",
+		&fabricante,
+		&precoVenda,
+		&estoqueMinimo,
+		&fornecedorID,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cadastrada, err := repositorio(t).Cadastrar(context.Background(), cadastro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cadastrada.FornecedorID == nil || *cadastrada.FornecedorID != fornecedorID {
+		t.Fatalf("fornecedorId = %v, esperado %s", cadastrada.FornecedorID, fornecedorID)
 	}
 }

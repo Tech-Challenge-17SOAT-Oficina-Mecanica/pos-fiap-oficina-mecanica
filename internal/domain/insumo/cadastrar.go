@@ -45,12 +45,13 @@ type Cadastro struct {
 	Descricao            string
 	DescricaoNormalizada string
 	CategoriaID          string
+	FornecedorID         *string
 	UnidadeMedida        string
 	CustoUnitario        string
 	EstoqueMinimo        string
 }
 
-func NovoCadastro(nome, descricao, categoriaID, unidadeMedida string, custoUnitario, estoqueMinimo *string) (Cadastro, error) {
+func NovoCadastro(nome, descricao, categoriaID, unidadeMedida string, custoUnitario, estoqueMinimo, fornecedorID *string) (Cadastro, error) {
 	cadastro := Cadastro{
 		Nome:          strings.TrimSpace(nome),
 		Descricao:     validation.ColapsarEspacos(descricao),
@@ -68,6 +69,12 @@ func NovoCadastro(nome, descricao, categoriaID, unidadeMedida string, custoUnita
 	}
 	if cadastro.CategoriaID == "" {
 		return Cadastro{}, ErrCategoriaObrigatoria
+	}
+	if fornecedorID != nil {
+		limpo := strings.TrimSpace(*fornecedorID)
+		if limpo != "" {
+			cadastro.FornecedorID = &limpo
+		}
 	}
 	if !slices.Contains(UnidadesMedida, cadastro.UnidadeMedida) {
 		return Cadastro{}, ErrUnidadeInvalida

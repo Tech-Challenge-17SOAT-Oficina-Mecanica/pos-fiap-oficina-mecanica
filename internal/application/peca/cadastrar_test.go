@@ -52,6 +52,22 @@ func TestCadastrarPecaRejeitaCategoriaNaoUUID(t *testing.T) {
 	}
 }
 
+func TestCadastrarPecaRejeitaFornecedorNaoUUID(t *testing.T) {
+	fake := &cadastrarRepositoryFake{}
+	fornecedorID := "nao-e-uuid"
+
+	_, err := NewCadastrarPeca(fake).Execute(context.Background(), peca.Cadastro{
+		CategoriaID:  "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+		FornecedorID: &fornecedorID,
+	})
+	if !errors.Is(err, ErrFornecedorInvalido) {
+		t.Fatalf("erro = %v, esperado %v", err, ErrFornecedorInvalido)
+	}
+	if fake.chamado {
+		t.Fatal("repositório não deveria ser chamado com fornecedor inválido")
+	}
+}
+
 func TestCadastrarPecaPropagaErro(t *testing.T) {
 	fake := &cadastrarRepositoryFake{erro: ErrDescricaoDuplicada}
 
