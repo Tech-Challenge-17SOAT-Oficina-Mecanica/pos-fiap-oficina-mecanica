@@ -11,12 +11,36 @@ Este guia explica como iniciar e testar a API Go e o PostgreSQL localmente.
 
 - Docker Desktop instalado e em execucao.
 
+## Configuracao local
+
+Os comandos do `Makefile` ja possuem valores locais padrao para banco e JWT. Para iniciar sem
+customizacao, basta usar:
+
+```bash
+make setup
+```
+
+Crie um `.env` somente quando precisar sobrescrever algum valor local ou salvar o token do Sonar:
+
+```bash
+cp .env.example .env
+```
+
+No Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+O `.env` nao deve ser versionado. Quando existir, ele sobrescreve os valores padrao usados pelo `Makefile`.
+Se executar `docker compose` diretamente, sem `make`, informe as variaveis no terminal ou crie o `.env`.
+
 ## Como iniciar
 
 Na raiz do repositorio, execute:
 
 ```bash
-docker compose up --build
+make up
 ```
 
 O Docker cria a imagem da API, inicia o PostgreSQL e aguarda o banco ficar saudavel antes de iniciar a aplicacao.
@@ -48,6 +72,28 @@ make db-down
 ```
 
 No Windows, instale GNU Make ou execute os comandos por Git Bash/WSL antes de usar o `Makefile`.
+
+## SonarQube local
+
+Suba o SonarQube:
+
+```bash
+make sonar-up
+```
+
+Execute coverage e analise:
+
+```bash
+make sonar
+```
+
+Gere o relatorio local em `reports/sonar-report.md` e `reports/sonar-report.html`:
+
+```bash
+make sonar-report
+```
+
+Para `make sonar` e `make sonar-report`, informe `SONAR_TOKEN` no terminal ou salve no `.env`.
 
 ## Como testar a API
 
@@ -104,6 +150,9 @@ Para sair, use:
 | `DB_NAME` | `oficina` |
 | `DB_USER` | `oficina` |
 | `DB_PASSWORD` | `oficina` |
+| `JWT_SECRET` | `segredo-local` |
+| `SONAR_PROJECT_KEY` | `oficina-mecanica` |
+| `SONAR_TOKEN` | token local do SonarQube |
 
 As variaveis sao entregues ao container da API pelo `docker-compose.yml`.
 

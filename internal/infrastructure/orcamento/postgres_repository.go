@@ -315,6 +315,9 @@ func decimal(valor string) *big.Rat {
 }
 
 func normalizarDecimal(valor string) string {
+	if strings.TrimSpace(valor) == "-0" {
+		return "0"
+	}
 	valor = strings.TrimRight(valor, "0")
 	valor = strings.TrimRight(valor, ".")
 	if valor == "" || valor == "-0" {
@@ -501,7 +504,9 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 	}
 
 	if novoStatusOS != statusOS {
-		if _, err = tx.Exec(ctx, "UPDATE ordem_servico SET status = $1 WHERE id = $2", novoStatusOS, ordemServicoID); err != nil {
+		if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $1,
+			data_entrada_fila = CASE WHEN $1 = 'AGUARDANDO_EXECUCAO' THEN CURRENT_TIMESTAMP ELSE data_entrada_fila END
+			WHERE id = $2`, novoStatusOS, ordemServicoID); err != nil {
 			return domain.Decisao{}, err
 		}
 	}

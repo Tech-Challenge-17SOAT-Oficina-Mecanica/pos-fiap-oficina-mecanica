@@ -126,7 +126,11 @@ INSERT INTO orcamento_item (id, orcamento_id, servico_id, item_estoque_id, tipo_
     ('75000000-0000-0000-0000-000000000006', '74000000-0000-0000-0000-000000000004', NULL, '50000000-0000-0000-0000-000000000004', 'INSUMO', 'Desengraxante multiuso', 1, 18.00, 18.00),
     ('75000000-0000-0000-0000-000000000007', '74000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000001', NULL, 'SERVICO', 'Troca de oleo e filtro', 1, 150.00, 150.00),
     -- Item do complementar recusado: existe no banco, mas fica fora do total geral.
-    ('75000000-0000-0000-0000-000000000008', '74000000-0000-0000-0000-000000000006', NULL, '50000000-0000-0000-0000-000000000002', 'PECA', 'Correia dentada do motor', 1, 180.00, 180.00)
+    ('75000000-0000-0000-0000-000000000008', '74000000-0000-0000-0000-000000000006', NULL, '50000000-0000-0000-0000-000000000002', 'PECA', 'Correia dentada do motor', 1, 180.00, 180.00),
+    -- Itens do principal CRIADO da OS 4, com valor_total desatualizado de proposito para
+    -- o calculo ter o que corrigir: 2 x 45.00 deve virar 90.00, nao 45.00.
+    ('75000000-0000-0000-0000-000000000009', '74000000-0000-0000-0000-000000000005', '40000000-0000-0000-0000-000000000001', NULL, 'SERVICO', 'Troca de oleo e filtro', 1, 150.00, 150.00),
+    ('75000000-0000-0000-0000-000000000010', '74000000-0000-0000-0000-000000000005', NULL, '50000000-0000-0000-0000-000000000001', 'PECA', 'Filtro de oleo do motor', 2, 45.00, 45.00)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO pedido_compra (id, fornecedor_id, numero, status, solicitado_em) VALUES

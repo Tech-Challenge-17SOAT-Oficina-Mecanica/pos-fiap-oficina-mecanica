@@ -2,18 +2,32 @@
 
 POSTGRES_SERVICE := postgres
 POSTGRES_CONTAINER := oficina-postgres
-POSTGRES_USER := oficina
-POSTGRES_DB := oficina
+DB_NAME ?= oficina
+DB_USER ?= oficina
+DB_PASSWORD ?= oficina
+JWT_SECRET ?= segredo-local
+POSTGRES_USER := $(DB_USER)
+POSTGRES_DB := $(DB_NAME)
 MIGRATIONS := $(sort $(wildcard db/migrations/*.sql))
 SEED := db/seeds/V900__dados_iniciais.sql
+SONAR_SCANNER_IMAGE ?= sonarsource/sonar-scanner-cli:latest
+SONAR_PROJECT_KEY ?= oficina-mecanica
+export DB_NAME DB_USER DB_PASSWORD JWT_SECRET SONAR_PROJECT_KEY
+
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
 
 ifeq ($(OS),Windows_NT)
 DOCKER ?= docker.exe
+POWERSHELL ?= powershell.exe
 else
 DOCKER ?= docker
+POWERSHELL ?= pwsh
 endif
 
-.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test
+.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test coverage sonar-up sonar sonar-report
 
 help: ## Lista os comandos disponiveis
 	@echo "Uso: make <alvo>"
@@ -27,6 +41,11 @@ help: ## Lista os comandos disponiveis
 	@echo "  db-seed        Carrega os dados iniciais apos aplicar a migration"
 	@echo "  db-init        Cria um banco local vazio com schema e seed"
 	@echo "  db-verify      Exibe contagens essenciais para verificar a carga"
+	@echo "  test           Executa todos os testes no container Go"
+	@echo "  coverage       Gera coverage.out para o SonarQube"
+	@echo "  sonar-up       Sobe o SonarQube local"
+	@echo "  sonar          Executa a analise SonarQube via Docker"
+	@echo "  sonar-report   Gera reports/sonar-report.md e reports/sonar-report.html"
 
 setup: db-init ## Prepara e sobe todo o projeto apos o primeiro clone
 	$(DOCKER) compose up -d --build
@@ -52,6 +71,18 @@ db-migrate: db-up ## Aplica as migrations no banco vazio
 
 test: ## Executa testes com cobertura no container Go
 	$(DOCKER) compose run --rm --build test
+
+coverage: ## Gera coverage.out para o SonarQube
+	$(DOCKER) compose run --rm --build test sh -c "go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/..."
+
+sonar-up: ## Sobe o SonarQube local
+	$(DOCKER) compose up -d sonarqube
+
+sonar: coverage ## Executa a analise SonarQube via Docker
+	$(DOCKER) compose run --rm sonar-scanner
+
+sonar-report: ## Gera relatorio local do SonarQube
+	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/sonar-report.ps1
 
 db-seed: db-up ## Carrega os dados iniciais apos aplicar a migration
 	$(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $(SEED)
