@@ -93,10 +93,12 @@ type PedidoCompraResultado struct {
 
 // OrdemServicoLiberada informa se uma OS vinculada ao pedido mudou de status.
 type OrdemServicoLiberada struct {
-	OrdemServicoID string `json:"ordemServicoId"`
-	StatusAnterior string `json:"statusAnterior"`
-	Status         string `json:"status"`
-	ItensPendentes int    `json:"itensPendentes"`
+	OrdemServicoID  string     `json:"ordemServicoId"`
+	StatusAnterior  string     `json:"statusAnterior"`
+	Status          string     `json:"status"`
+	ItensPendentes  int        `json:"itensPendentes"`
+	DataEntradaFila *time.Time `json:"dataEntradaFila,omitempty"`
+	Version         int        `json:"version,omitempty"`
 }
 
 // ResultadoEntrada e o retorno de RegistrarEntrada.

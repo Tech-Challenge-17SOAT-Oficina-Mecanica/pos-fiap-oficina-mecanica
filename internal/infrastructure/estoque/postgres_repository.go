@@ -380,14 +380,23 @@ func liberarOrdensServico(ctx context.Context, tx pgx.Tx, ordensAfetadas map[str
 			return nil, err
 		}
 		novoStatus := statusAtual
+		var dataEntradaFila time.Time
+		var dataEntradaFilaPtr *time.Time
+		var versao int
 		if itensPendentes == 0 {
 			novoStatus = "AGUARDANDO_EXECUCAO"
-			if _, err := tx.Exec(ctx, "UPDATE ordem_servico SET status = $2 WHERE id = $1", ordemServicoID, novoStatus); err != nil {
+			if err := tx.QueryRow(ctx, `
+				UPDATE ordem_servico
+				SET status = $2, data_entrada_fila = CURRENT_TIMESTAMP, version = version + 1
+				WHERE id = $1
+				RETURNING data_entrada_fila, version`, ordemServicoID, novoStatus).Scan(&dataEntradaFila, &versao); err != nil {
 				return nil, err
 			}
+			dataEntradaFilaPtr = &dataEntradaFila
 		}
 		resultado = append(resultado, domain.OrdemServicoLiberada{
 			OrdemServicoID: ordemServicoID, StatusAnterior: statusAtual, Status: novoStatus, ItensPendentes: itensPendentes,
+			DataEntradaFila: dataEntradaFilaPtr, Version: versao,
 		})
 	}
 	return resultado, nil

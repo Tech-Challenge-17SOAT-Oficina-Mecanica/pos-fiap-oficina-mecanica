@@ -1051,8 +1051,9 @@ paths:
       summary: Registra a entrada de peças e insumos, compartilhada entre os dois contextos
       description: >-
         Exige o escopo `estoque:movimentar`. Aumenta o saldo físico dos itens recebidos,
-        efetiva as reservas vinculadas a pedido de compra e libera para `AGUARDANDO_EXECUCAO`
-        as ordens de serviço sem itens pendentes de compra. O header `Idempotency-Key` é
+        efetiva as reservas vinculadas a pedido de compra e inclui na fila as ordens de serviço
+        sem itens pendentes de compra, alterando-as para `AGUARDANDO_EXECUCAO` e gravando a data
+        de entrada na fila. O header `Idempotency-Key` é
         obrigatório: a repetição da mesma chave devolve `200` com a resposta original.
       security:
         - bearerAuth: []
@@ -1589,6 +1590,8 @@ components:
               statusAnterior: { type: string }
               status: { type: string }
               itensPendentes: { type: integer }
+              dataEntradaFila: { type: string, format: date-time, nullable: true }
+              version: { type: integer }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
