@@ -14,6 +14,7 @@ type Peca struct {
 	Descricao            string
 	CategoriaID          string
 	Categoria            string
+	FornecedorID         *string
 	Fabricante           *string
 	UnidadeMedida        string
 	PrecoVenda           *string

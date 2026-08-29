@@ -207,6 +207,7 @@ GET /estoque/insumos/550e8400-e29b-41d4-a716-446655440000?quantidadeDesejada=3
       "descricao": "Óleo lubrificante 15W40 mineral",
       "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
       "categoria": "Lubrificantes",
+      "fornecedorId": "60000000-0000-0000-0000-000000000001",
       "unidadeMedida": "L",
       "quantidadeDesejada": 3.0,
       "saldoFisico": 10.0,

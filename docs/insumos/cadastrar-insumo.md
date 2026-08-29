@@ -124,6 +124,7 @@ POST /estoque/insumos
 | Body | `nome` | string | Obrigatório; nome do insumo. |
 | Body | `descricao` | string | Obrigatória; descrição usada na regra de duplicidade. |
 | Body | `categoriaId` | uuid | Obrigatório; categoria ativa do catálogo. |
+| Body | `fornecedorId` | uuid | Opcional; fornecedor padrão ativo para compra automática. |
 | Body | `unidadeMedida` | enum | Obrigatória; `UN` \| `L` \| `ML` \| `KG` \| `G` \| `M`. |
 | Body | `custoUnitario` | decimal | Obrigatório; não pode ser negativo. |
 | Body | `estoqueMinimo` | decimal | Maior ou igual a zero; aceita casas decimais. |
@@ -133,6 +134,7 @@ POST /estoque/insumos
   "nome": "Óleo 5W30",
   "descricao": "Óleo sintético 5W30 API SN",
   "categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
+  "fornecedorId": "60000000-0000-0000-0000-000000000001",
   "unidadeMedida": "L",
   "custoUnitario": 45.0,
   "estoqueMinimo": 20.0
@@ -170,6 +172,7 @@ sistema ou de outros fluxos.
 - `nome` obrigatório.
 - `descricao` obrigatória.
 - `categoriaId` obrigatório, no formato uuid.
+- `fornecedorId`, quando informado, no formato uuid.
 - `unidadeMedida` obrigatória e pertencente ao enum. Não há conversão entre unidades: cada uma é
   um item independente.
 - `custoUnitario` não pode ser negativo.
@@ -178,6 +181,7 @@ sistema ou de outros fluxos.
 *Negócio*
 
 - O `codigo` gerado é único no catálogo.
+- O fornecedor padrão informado deve existir e estar ativo.
 - Não pode existir outro insumo **ativo** com a mesma descrição normalizada — sem acento, sem
   espaço duplo, em minúsculas — na mesma categoria e unidade de medida.
 - O cadastro não movimenta estoque e não aceita saldo inicial.

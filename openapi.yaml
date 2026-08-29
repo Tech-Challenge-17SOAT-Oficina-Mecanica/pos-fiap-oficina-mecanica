@@ -9,6 +9,7 @@ tags:
   - name: Fornecedores
   - name: Estoque
   - name: Mecânico
+  - name: Orçamento
   - name: Serviço
 paths:
   /ordens-servico:
@@ -128,6 +129,40 @@ paths:
       summary: Verifica a disponibilidade da API
       responses:
         '200': { description: API disponível }
+  /orcamentos/{orcamentoId}/aprovar:
+    post:
+      tags: [Orçamento]
+      summary: Aprova um orçamento
+      description: >-
+        Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
+        e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Exige token de cliente com escopo `orcamentos:decidir`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orcamentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento aprovado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrcamentoAprovado' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Cliente sem acesso ao orçamento desta OS }
+        '404': { description: Orçamento não encontrado }
+        '409':
+          description: Orçamento já decidido, OS fora de aprovação ou complementar sem vínculo válido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /servicos:
     post:
       tags: [Serviço]
@@ -828,6 +863,55 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/solicitacoes-compra-reserva:
+    post:
+      tags: [Estoque]
+      summary: Reserva peças disponíveis e solicita compra do faltante
+      description: >-
+        Exige o escopo `estoque:movimentar` e o header `Idempotency-Key`. Processa apenas
+        itens do tipo `PECA` de uma OS com orçamento aprovado: reserva o saldo disponível,
+        cria pedido de compra para a quantidade faltante e atualiza a OS para
+        `AGUARDANDO_EXECUCAO` ou `AGUARDANDO_RECURSOS`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SolicitarCompraReservaPecas' }
+      responses:
+        '201':
+          description: Reservas e/ou pedido de compra criados
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoCompraReservaPecas' }
+        '200':
+          description: Mesma Idempotency-Key reprocessada; resposta original devolvida
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoCompraReservaPecas' }
+        '400':
+          description: Header, corpo, identificadores, lista de itens ou quantidade inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404':
+          description: Ordem de serviço, fornecedor ou peça não encontrada
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '409':
+          description: OS sem orçamento aprovado, fornecedor inativo, item inativo, item fora da OS/orçamento ou processamento duplicado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /estoque/pecas/{pecaId}:
     get:
       tags: [Estoque]
@@ -941,6 +1025,51 @@ paths:
         '404': { description: Peça não encontrada }
         '409':
           description: Peça já inativa, com saldo reservado em OS ou em orçamento
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/solicitacoes-compra-reserva-insumos:
+    post:
+      tags: [Estoque]
+      summary: Processa insumos para reserva e compra
+      description: >-
+        Reserva o saldo disponível dos insumos de uma OS com orçamento aprovado e cria pedido
+        de compra apenas para a quantidade faltante. Exige `Idempotency-Key` e o escopo
+        `estoque:movimentar`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: Chave UUID que impede reprocessamento da mesma solicitação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProcessarInsumosCompraReserva' }
+      responses:
+        '201':
+          description: Reservas e/ou solicitação de compra criadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoProcessarInsumosCompraReserva' }
+        '200':
+          description: Resposta original de uma solicitação idempotente já processada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoProcessarInsumosCompraReserva' }
+        '400':
+          description: Header ou corpo inválido, lista vazia, item repetido ou quantidade inválida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404': { description: OS, fornecedor ou insumo não encontrado }
+        '409':
+          description: OS sem orçamento aprovado, fornecedor/insumo inativo, item fora da OS/orçamento ou processamento duplicado
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
@@ -1523,6 +1652,17 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
+    OrcamentoAprovado:
+      type: object
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        orcamentoOriginalId: { type: string, format: uuid }
+        statusOrcamento: { type: string, enum: [APROVADO] }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        clienteId: { type: string, format: uuid }
+        dataAprovacao: { type: string, format: date-time }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]
@@ -1530,6 +1670,7 @@ components:
         nome: { type: string, minLength: 2, maxLength: 150 }
         descricao: { type: string, minLength: 3, maxLength: 120 }
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         fabricante: { type: string, maxLength: 150, nullable: true }
         precoVenda:
           type: number
@@ -1550,6 +1691,7 @@ components:
           maxLength: 120
           description: Usada na regra de duplicidade, após normalização.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         fabricante: { type: string, maxLength: 150, nullable: true }
         precoVenda: { type: number, format: double, minimum: 0, nullable: true }
         estoqueMinimo: { type: integer, minimum: 0, default: 0 }
@@ -1563,6 +1705,7 @@ components:
         descricao: { type: string }
         categoriaId: { type: string, format: uuid }
         categoria: { type: string }
+        fornecedorId: { type: string, format: uuid, nullable: true }
         fabricante: { type: string, nullable: true }
         unidadeMedida: { type: string, example: UN }
         precoVenda: { type: number, format: double, nullable: true }
@@ -1589,6 +1732,50 @@ components:
           type: string
           format: uuid
           description: Devolvida apenas na atualização.
+    SolicitarCompraReservaPecas:
+      type: object
+      required: [ordemServicoId, fornecedorId, itens]
+      additionalProperties: false
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        fornecedorId: { type: string, format: uuid }
+        itens:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: integer, minimum: 1 }
+    ResultadoCompraReservaPecas:
+      type: object
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        pecasReservadas:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: integer, minimum: 1 }
+              saldoDisponivelApos: { type: integer, minimum: 0 }
+        pecasCompraSolicitada:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: integer, minimum: 1 }
+              valorParcial: { type: number, format: double, minimum: 0 }
+        fornecedor:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+        valorTotalCompraParcial: { type: number, format: double, minimum: 0 }
     ListaPecas:
       type: object
       description: Envelope paginado padrão da API.
@@ -1620,6 +1807,7 @@ components:
           maxLength: 500
           description: Usada na regra de duplicidade, junto da categoria e da unidade.
         categoriaId: { type: string, format: uuid, description: Categoria existente e ativa. }
+        fornecedorId: { type: string, format: uuid, nullable: true, description: Fornecedor padrão ativo para compra automática. }
         unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
         custoUnitario: { type: number, format: double, minimum: 0 }
         estoqueMinimo:
@@ -1638,6 +1826,7 @@ components:
         descricao: { type: string }
         categoriaId: { type: string, format: uuid }
         categoria: { type: string }
+        fornecedorId: { type: string, format: uuid, nullable: true }
         unidadeMedida: { type: string, enum: [UN, L, ML, KG, G, M] }
         custoUnitario: { type: number, format: double, nullable: true }
         saldoFisico: { type: number, format: double }
@@ -1690,6 +1879,55 @@ components:
         tamanho: { type: integer }
         totalElementos: { type: integer }
         totalPaginas: { type: integer }
+    ProcessarInsumosCompraReserva:
+      type: object
+      required: [ordemServicoId, fornecedorId, itens]
+      additionalProperties: false
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        fornecedorId: { type: string, format: uuid }
+        itens:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade:
+                type: number
+                format: double
+                minimum: 0
+                exclusiveMinimum: true
+                example: 2.5
+    ResultadoProcessarInsumosCompraReserva:
+      type: object
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        insumosReservados:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double }
+              saldoDisponivelApos: { type: number, format: double }
+        insumosCompraSolicitada:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double }
+              valorParcial: { type: number, format: double }
+        fornecedor:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+        valorTotalCompraParcial: { type: number, format: double }
     RegistrarEntrada:
       type: object
       required: [documentoOrigem, itens]

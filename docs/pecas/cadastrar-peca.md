@@ -146,6 +146,7 @@ POST /estoque/pecas
 | Body | `nome` | string | Obrigatório; nome da peça. |
 | Body | `descricao` | string | Obrigatória; respeita o limite de tamanho definido. |
 | Body | `categoriaId` | uuid | Obrigatório; categoria ativa do catálogo. Usada na regra de duplicidade. |
+| Body | `fornecedorId` | uuid | Opcional; fornecedor padrão ativo para compra automática. |
 | Body | `fabricante` | string | Opcional; respeita o limite de tamanho definido. |
 | Body | `precoVenda` | decimal | Obrigatório; maior ou igual a zero. |
 | Body | `estoqueMinimo` | int | Opcional; inteiro maior ou igual a zero. Default `0`. |
@@ -155,6 +156,7 @@ POST /estoque/pecas
   "nome": "Pastilha de freio",
   "descricao": "Pastilha de freio dianteira",
   "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+  "fornecedorId": "60000000-0000-0000-0000-000000000001",
   "fabricante": "Fabricante X",
   "precoVenda": 180.0,
   "estoqueMinimo": 4
@@ -192,6 +194,7 @@ dados são responsabilidade do sistema ou de outros fluxos.
 - `nome` obrigatório.
 - `descricao` obrigatória, dentro do limite de tamanho definido.
 - `categoriaId` obrigatório, no formato uuid.
+- `fornecedorId`, quando informado, no formato uuid.
 - `precoVenda` maior ou igual a zero.
 - `estoqueMinimo`, quando informado, inteiro maior ou igual a zero.
 - `fabricante`, quando informado, dentro do limite de tamanho definido.
@@ -200,6 +203,7 @@ dados são responsabilidade do sistema ou de outros fluxos.
 
 - Não pode existir outra peça **ativa** com a mesma descrição normalizada — sem acento, sem espaço
   duplo, em minúsculas — dentro da mesma categoria.
+- O fornecedor padrão informado deve existir e estar ativo.
 - O `codigo` gerado deve ser único no catálogo.
 - O cadastro não movimenta estoque e não aceita saldo inicial.
 

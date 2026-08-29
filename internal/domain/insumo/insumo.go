@@ -19,6 +19,7 @@ type Insumo struct {
 	Descricao            string
 	CategoriaID          string
 	Categoria            string
+	FornecedorID         *string
 	UnidadeMedida        string
 	CustoUnitario        *string
 	SaldoFisico          string

@@ -18,6 +18,7 @@ type consultaResponse struct {
 	Descricao            string       `json:"descricao"`
 	CategoriaID          string       `json:"categoriaId"`
 	Categoria            string       `json:"categoria"`
+	FornecedorID         *string      `json:"fornecedorId,omitempty"`
 	UnidadeMedida        string       `json:"unidadeMedida"`
 	CustoUnitario        *json.Number `json:"custoUnitario"`
 	QuantidadeDesejada   *json.Number `json:"quantidadeDesejada,omitempty"`
@@ -109,6 +110,7 @@ func montarConsultaResponse(encontrado insumoDomain.Insumo, quantidade *string) 
 		Descricao:            encontrado.Descricao,
 		CategoriaID:          encontrado.CategoriaID,
 		Categoria:            encontrado.Categoria,
+		FornecedorID:         encontrado.FornecedorID,
 		UnidadeMedida:        encontrado.UnidadeMedida,
 		SaldoFisico:          json.Number(encontrado.SaldoFisico),
 		SaldoReservado:       json.Number(encontrado.SaldoReservado),

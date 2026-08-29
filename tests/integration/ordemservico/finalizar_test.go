@@ -52,7 +52,7 @@ func TestFinalizarServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO servico (id,codigo,nome,nome_normalizado,valor,tempo_estimado_minutos,ativo) VALUES ($1,$2,'Servico teste',$2,100,30,true)",
-		servicoID, fmt.Sprintf("S%06x1", codigoBase)); err != nil {
+		servicoID, fmt.Sprintf("S%06x", codigoBase)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO ordem_servico_servico (id,ordem_servico_id,servico_id,descricao,valor_unitario,status) VALUES ($1,$2,$3,'Servico teste',100,'NECESSARIO')",
@@ -64,7 +64,7 @@ func TestFinalizarServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, `INSERT INTO item_estoque (id,categoria_id,tipo,codigo,nome,descricao,descricao_normalizada,unidade_medida,saldo_fisico,saldo_reservado) VALUES
-		($1,$2,'PECA',$3,'Peca teste','Peca teste','peca teste','UN',10,3)`, itemID, categoriaID, fmt.Sprintf("PEC%06x1", codigoBase)); err != nil {
+		($1,$2,'PECA',$3,'Peca teste','Peca teste','peca teste','UN',10,3)`, itemID, categoriaID, fmt.Sprintf("PEC-%06x", codigoBase)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO ordem_servico_item (id,ordem_servico_id,item_estoque_id,quantidade_necessaria,valor_unitario) VALUES ($1,$2,$3,3,10)",
