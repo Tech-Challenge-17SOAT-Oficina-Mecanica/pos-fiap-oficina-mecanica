@@ -72,7 +72,7 @@ func TestRegistrarEntregaDoVeiculo(t *testing.T) {
 		t.Fatal(err)
 	}
 	handler := segurancaPresentation.RequireScope(jwt, "os:escrever",
-		presentation.NewEntregarHandler(application.NewEntregar(infrastructure.NewPostgresRepository(db))))
+		presentation.NewEntregarHandler(application.NewEntregar(infrastructure.NewPostgresRepository(db), nil, nil)))
 
 	request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osID+"/entrega",
 		strings.NewReader(`{"clienteId":"`+clienteAna+`","observacoes":" sem ressalvas "}`))

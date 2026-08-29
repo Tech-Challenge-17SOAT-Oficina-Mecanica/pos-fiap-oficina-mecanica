@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -323,11 +322,12 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 	}
 
 	var dataFinalizacao time.Time
+	var clienteID string
 	if err = tx.QueryRow(ctx, `
 		UPDATE ordem_servico SET status = $2, finalizada_em = CURRENT_TIMESTAMP, observacoes_finalizacao = NULLIF($3, '')
 		WHERE id = $1
-		RETURNING finalizada_em`, input.OSID, domain.StatusFinalizada, input.Observacoes,
-	).Scan(&dataFinalizacao); err != nil {
+		RETURNING finalizada_em, cliente_id`, input.OSID, domain.StatusFinalizada, input.Observacoes,
+	).Scan(&dataFinalizacao, &clienteID); err != nil {
 		return domain.ResultadoFinalizacao{}, err
 	}
 	if _, err = tx.Exec(ctx, `
@@ -342,10 +342,12 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 		return domain.ResultadoFinalizacao{}, err
 	}
 
+	// A notificacao nao acontece aqui: quem finaliza so devolve o cliente, e o caso de
+	// uso enfileira o aviso depois do commit (RNF-OS-44).
 	resultado := domain.ResultadoFinalizacao{
-		OrdemServicoID: input.OSID, Status: domain.StatusFinalizada, DataFinalizacao: dataFinalizacao, Observacoes: input.Observacoes,
+		OrdemServicoID: input.OSID, ClienteID: clienteID, Status: domain.StatusFinalizada,
+		DataFinalizacao: dataFinalizacao, Observacoes: input.Observacoes,
 	}
-	resultado.NotificacaoEnviada = notificarClienteVeiculoDisponivel(input.OSID)
 	return resultado, nil
 }
 
@@ -370,13 +372,6 @@ func reservasAtivasDaOS(ctx context.Context, tx pgx.Tx, ordemServicoID string) (
 		itens = append(itens, item)
 	}
 	return itens, rows.Err()
-}
-
-// notificarClienteVeiculoDisponivel e um envio best-effort: sem provedor de e-mail configurado
-// neste projeto, o "envio" e apenas registrado em log, e uma falha aqui nunca desfaz a finalizacao.
-func notificarClienteVeiculoDisponivel(ordemServicoID string) bool {
-	log.Printf("notificacao: veiculo da OS %s disponivel para retirada", ordemServicoID)
-	return true
 }
 
 func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Context, ordemServicoID string, problema domain.ProblemaRelatado) (resultado domain.OrdemDeServico, err error) {

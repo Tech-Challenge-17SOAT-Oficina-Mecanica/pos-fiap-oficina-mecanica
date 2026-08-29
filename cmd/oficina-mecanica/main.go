@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	estoqueApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/estoque"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	insumoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
+	notificacaoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/notificacao"
 	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	ordemServicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
@@ -24,6 +27,7 @@ import (
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	insumoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/insumo"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
+	notificacaoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/notificacao"
 	orcamentoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/orcamento"
 	ordemServicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
@@ -98,8 +102,10 @@ func main() {
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
-	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
-	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository)
+	notificacaoRepository := notificacaoInfrastructure.NewPostgresRepository(db)
+	enfileirarNotificacao := notificacaoApplication.NewEnfileirar(notificacaoRepository)
+	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository, enfileirarNotificacao, nil)
+	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository, enfileirarNotificacao, nil)
 	consultarOS := ordemServicoApplication.NewConsultar(ordemServicoRepository)
 	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
@@ -191,6 +197,16 @@ func main() {
 	mux.Handle("POST /estoque/entradas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
 		estoquePresentation.NewRegistrarEntradaHandler(registrarEntrada)))
 
+	// A fila de notificacoes e consumida em segundo plano: enfileirar acontece na
+	// requisicao, enviar nao. Se o processo cair, o que estava PENDENTE continua no
+	// banco e sai na proxima subida.
+	processador := notificacaoApplication.NewProcessar(notificacaoRepository, notificacaoInfrastructure.NewLogEnviador(log.Default()))
+	contexto, encerrar := context.WithCancel(context.Background())
+	defer encerrar()
+	go consumirNotificacoes(contexto, processador,
+		time.Duration(inteiroDoAmbiente("NOTIFICACAO_INTERVALO_SEGUNDOS", 30))*time.Second,
+		inteiroDoAmbiente("NOTIFICACAO_LOTE", 20))
+
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: sharedhttp.CORS(mux),
@@ -207,6 +223,29 @@ func inteiroDoAmbiente(nome string, padrao int) int {
 		return padrao
 	}
 	return valor
+}
+
+// consumirNotificacoes roda ate o contexto ser cancelado. Uma rodada que falha nao
+// derruba o laco: a proxima tenta de novo, e as notificacoes seguem na fila.
+func consumirNotificacoes(ctx context.Context, processador notificacaoApplication.Processar, intervalo time.Duration, lote int) {
+	relogio := time.NewTicker(intervalo)
+	defer relogio.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-relogio.C:
+			resultado, err := processador.Execute(ctx, lote)
+			if err != nil {
+				log.Printf("processamento de notificacoes falhou: %v", err)
+				continue
+			}
+			if resultado.Processadas > 0 {
+				log.Printf("notificacoes processadas: %d enviadas, %d falhas", resultado.Enviadas, resultado.Falhas)
+			}
+		}
+	}
 }
 
 func healthHandler(writer http.ResponseWriter, _ *http.Request) {

@@ -47,7 +47,7 @@ func TestEntregarHandler(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.nome, func(t *testing.T) {
-			useCase := application.NewEntregar(entregarRepositoryStub{resultado: sucesso, err: tc.err})
+			useCase := application.NewEntregar(entregarRepositoryStub{resultado: sucesso, err: tc.err}, nil, nil)
 			mux := http.NewServeMux()
 			mux.Handle("POST /ordens-servico/{osId}/entrega", NewEntregarHandler(useCase))
 			request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+tc.id+"/entrega", strings.NewReader(tc.corpo))

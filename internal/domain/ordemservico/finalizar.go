@@ -28,6 +28,7 @@ func (erro ErroReservasPendentes) Error() string {
 // ResultadoFinalizacao e o retorno do caso de uso Finalizar.
 type ResultadoFinalizacao struct {
 	OrdemServicoID     string
+	ClienteID          string
 	Status             string
 	DataFinalizacao    time.Time
 	Observacoes        string
