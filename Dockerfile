@@ -15,11 +15,7 @@ FROM alpine:3.21
 
 WORKDIR /app
 
-RUN addgroup -S oficina && adduser -S -G oficina oficina
-
-COPY --from=build --chown=oficina:oficina /app/oficina-mecanica .
-
-USER oficina
+COPY --from=build /app/oficina-mecanica .
 
 EXPOSE 8080
 

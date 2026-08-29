@@ -8,10 +8,10 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-oficina}
-      DB_USER: ${DB_USER:-oficina}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatoria}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatorio}
+      DB_NAME: oficina
+      DB_USER: oficina
+      DB_PASSWORD: oficina
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,8 +69,8 @@ services:
       context: .
       target: build
     environment:
-      DATABASE_URL: postgres://${DB_USER:-oficina}:${DB_PASSWORD:?DB_PASSWORD obrigatoria}@postgres:5432/${DB_NAME:-oficina}?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatorio}
+      DATABASE_URL: postgres://oficina:oficina@postgres:5432/oficina?sslmode=disable
+      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
     volumes:
       - .:/app
     depends_on:
@@ -82,9 +82,9 @@ services:
     image: postgres:16-alpine
     container_name: oficina-postgres
     environment:
-      POSTGRES_DB: ${DB_NAME:-oficina}
-      POSTGRES_USER: ${DB_USER:-oficina}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatoria}
+      POSTGRES_DB: oficina
+      POSTGRES_USER: oficina
+      POSTGRES_PASSWORD: oficina
     ports:
       - "5432:5432"
     volumes:
