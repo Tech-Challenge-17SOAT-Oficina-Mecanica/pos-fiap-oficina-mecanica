@@ -1,0 +1,7 @@
+.env
+coverage.out
+coverage-*.out
+coverage
+.gocache/
+.scannerwork/
+reports/
