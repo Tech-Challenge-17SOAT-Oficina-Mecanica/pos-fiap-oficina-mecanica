@@ -37,7 +37,7 @@ func TestRegistrarProblemaEncontrado(t *testing.T) {
 	osFechadaID := fmt.Sprintf("84000000-0000-0000-0000-%012x", suffix)
 	osExecucaoID := fmt.Sprintf("85000000-0000-0000-0000-%012x", suffix)
 	orcamentoPrincipalID := fmt.Sprintf("86000000-0000-0000-0000-%012x", suffix)
-	placa := fmt.Sprintf("TST1A%02d", suffix%100)
+	placa := placaMercosul("TST", suffix)
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", suffix%100000000000)); err != nil {
 		t.Fatal(err)
 	}

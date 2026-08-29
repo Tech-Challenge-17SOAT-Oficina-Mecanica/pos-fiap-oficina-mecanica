@@ -37,7 +37,7 @@ func TestRegistrarServicosNecessarios(t *testing.T) {
 	osFechadaID, osSemOrcamentoID, osRollbackID := id("95000000-0000-0000-0000-"), id("96000000-0000-0000-0000-"), id("97000000-0000-0000-0000-")
 	orcamentoDiagnosticoID, orcamentoPrincipalID, orcamentoComplementarID, orcamentoRollbackID := id("98000000-0000-0000-0000-"), id("99000000-0000-0000-0000-"), id("9a000000-0000-0000-0000-"), id("9b000000-0000-0000-0000-")
 	servico1ID, servico2ID, servicoInativoID := id("9c000000-0000-0000-0000-"), id("9d000000-0000-0000-0000-"), id("9e000000-0000-0000-0000-")
-	plaque := fmt.Sprintf("SRV1A%02d", suffix%100)
+	plaque := placaMercosul("SRV", suffix)
 
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", suffix%100000000000)); err != nil {
 		t.Fatal(err)
