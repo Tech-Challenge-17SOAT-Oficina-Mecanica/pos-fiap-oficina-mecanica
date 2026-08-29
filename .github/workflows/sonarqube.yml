@@ -10,6 +10,25 @@ jobs:
   sonarqube:
     name: SonarQube
     runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: oficina
+      JWT_SECRET: segredo-local
+      DATABASE_URL: postgres://oficina:oficina@localhost:5432/oficina?sslmode=disable
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: oficina
+          POSTGRES_USER: oficina
+          POSTGRES_PASSWORD: oficina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oficina -d oficina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -23,10 +42,10 @@ jobs:
           go-version-file: go.mod
 
       - name: Test coverage
-        run: go test -covermode=atomic -coverprofile=coverage.out ./cmd/... ./internal/...
+        run: go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
 
       - name: SonarQube scan
         uses: SonarSource/sonarqube-scan-action@v8.1.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL || 'https://sonarcloud.io' }}
