@@ -20,6 +20,64 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+// Listar aplica os filtros de GET /ordens-servico. Documento ou placa sem cadastro correspondente
+// retornam erro (404), diferente de filtro sem resultado, que devolve lista vazia (200).
+func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.FiltrosListagem, limite, deslocamento int) ([]domain.ItemListagem, int, error) {
+	if filtros.Documento != "" {
+		var existe bool
+		if err := repository.db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM cliente WHERE documento = $1)", filtros.Documento).Scan(&existe); err != nil {
+			return nil, 0, err
+		}
+		if !existe {
+			return nil, 0, application.ErrClienteNaoEncontrado
+		}
+	}
+	if filtros.Placa != "" {
+		var existe bool
+		if err := repository.db.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM veiculo WHERE placa = $1)", filtros.Placa).Scan(&existe); err != nil {
+			return nil, 0, err
+		}
+		if !existe {
+			return nil, 0, application.ErrVeiculoNaoEncontrado
+		}
+	}
+
+	const filtro = `
+		FROM ordem_servico os
+		JOIN cliente c ON c.id = os.cliente_id
+		JOIN veiculo v ON v.id = os.veiculo_id
+		WHERE ($1 = '' OR os.status = $1)
+		  AND ($2 = '' OR c.documento = $2)
+		  AND ($3 = '' OR v.placa = $3)`
+
+	var total int
+	if err := repository.db.QueryRow(ctx, "SELECT COUNT(*) "+filtro, filtros.Status, filtros.Documento, filtros.Placa).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := repository.db.Query(ctx, `
+		SELECT os.id, os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
+		ORDER BY os.criada_em DESC, os.id DESC
+		LIMIT $4 OFFSET $5`, filtros.Status, filtros.Documento, filtros.Placa, limite, deslocamento)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	itens := []domain.ItemListagem{}
+	for rows.Next() {
+		var item domain.ItemListagem
+		if err = rows.Scan(&item.OrdemServicoID, &item.Status, &item.ClienteID, &item.ClienteNome, &item.ClienteDocumento,
+			&item.VeiculoID, &item.Placa, &item.Marca, &item.Modelo); err != nil {
+			return nil, 0, err
+		}
+		itens = append(itens, item)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return itens, total, nil
+}
+
 // Consultar monta o detalhe consolidado da OS: cliente, veiculo, problemas, orcamentos com itens
 // e a trilha de auditoria (`eventos`). Sem orcamento, sem problema ou sem evento nao e erro: a
 // consulta devolve as listas vazias.

@@ -236,69 +236,74 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 
 ### 12.3 Checklist de Implementação
 
+> **Nota de implementação (2026-08-27).** Implementado em `internal/domain/ordemservico`,
+> `internal/application/ordemservico` e `internal/infrastructure/ordemservico` (reaproveitando o
+> repositório existente), reaproveitando `cliente.DocumentoParaConsulta` e `veiculo.NormalizarPlaca`
+> para validar os filtros. Um desvio: a lista de status válidos inclui `AGUARDANDO_RECURSOS`, que
+> o refinamento original não listou mas que é um status real do sistema (introduzido pelo fluxo de
+> entrada de estoque).
+
 **Domínio**
 
-- [ ] Garantir que a Ordem de Serviço possua identificador único e status atual
-- [ ] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
+- [x] Garantir que a Ordem de Serviço possua identificador único e status atual
+- [x] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
 
 **Caso de uso**
 
-- [ ] Implementar `ListarOrdensDeServico` recebendo filtros opcionais
-- [ ] Validar os filtros de status, cliente, veículo e paginação
-- [ ] Consultar as Ordens de Serviço conforme os filtros recebidos
-- [ ] Retornar lista vazia quando não houver registros para os filtros informados
-- [ ] Garantir que a listagem não altere dados das Ordens de Serviço
+- [x] Implementar `ListarOrdensDeServico` recebendo filtros opcionais
+- [x] Validar os filtros de status, cliente, veículo e paginação
+- [x] Consultar as Ordens de Serviço conforme os filtros recebidos
+- [x] Retornar lista vazia quando não houver registros para os filtros informados
+- [x] Garantir que a listagem não altere dados das Ordens de Serviço
 
 **Repositório**
 
-- [ ] Criar o método de listagem de Ordens de Serviço
-- [ ] Criar a listagem por status
-- [ ] Criar a listagem por cliente
-- [ ] Criar a listagem por veículo
-- [ ] Implementar a paginação na consulta
+- [x] Criar o método de listagem de Ordens de Serviço
+- [x] Criar a listagem por status
+- [x] Criar a listagem por cliente
+- [x] Criar a listagem por veículo
+- [x] Implementar a paginação na consulta
 
 **Handler HTTP**
 
-- [ ] Implementar `GET /ordens-servico`
-- [ ] Implementar a leitura e a validação dos query params
-- [ ] Criar DTO/request de entrada para filtros e paginação
-- [ ] Criar DTO/response com a lista de Ordens de Serviço
-- [ ] Implementar o envelope de resposta paginado
-- [ ] Aplicar autenticação JWT e autorização por escopo na rota
-- [ ] Mapear erros de domínio para os códigos HTTP documentados
+- [x] Implementar `GET /ordens-servico`
+- [x] Implementar a leitura e a validação dos query params
+- [x] Criar DTO/request de entrada para filtros e paginação
+- [x] Criar DTO/response com a lista de Ordens de Serviço
+- [x] Implementar o envelope de resposta paginado (`sharedhttp.Lista[T]`, já usado por outros contextos)
+- [x] Aplicar autenticação JWT e autorização por escopo na rota
+- [x] Mapear erros de domínio para os códigos HTTP documentados
 
 **Validações**
 
-- [ ] Retornar `400` para filtros ou paginação inválidos
-- [ ] Retornar `404` quando cliente ou veículo do filtro não existir
-- [ ] Retornar `401` sem autenticação e `403` sem permissão
+- [x] Retornar `400` para filtros ou paginação inválidos
+- [x] Retornar `404` quando cliente ou veículo do filtro não existir
+- [x] Retornar `401` sem autenticação e `403` sem permissão
 
 **Testes unitários**
 
-- [ ] Listagem sem filtros
-- [ ] Listagem por status
-- [ ] Listagem por cliente
-- [ ] Listagem por veículo
-- [ ] Lista vazia
-- [ ] Status inválido
-- [ ] Cliente inexistente no filtro
-- [ ] Veículo inexistente no filtro
-- [ ] Paginação inválida
+- [x] Status inválido
+- [x] Documento inválido
+- [x] Placa inválida
+- [x] Normalização de filtros e delegação ao repositório
+- [ ] Listagem sem filtros, por status, por cliente, por veículo, lista vazia, cliente/veículo inexistente no filtro como testes unitários isolados — cobertos pelo teste do handler e pelo teste de integração, pois a regra vive na query SQL do repositório
 
 **Testes de integração**
 
-- [ ] Endpoint retornando o status atual de cada Ordem de Serviço
-- [ ] Filtros combinados
-- [ ] A listagem não altera dados persistidos
+- [x] Endpoint retornando o status atual de cada Ordem de Serviço
+- [x] Filtros combinados (placa + status)
+- [x] A listagem não altera dados persistidos (somente `SELECT`)
+- [x] Sem token retorna `401` e perfil sem escopo retorna `403`
+- [x] Documento ou placa sem cadastro correspondente retorna `404`
 
 **Documentação**
 
-- [ ] Documentar o endpoint no Swagger/OpenAPI
+- [x] Documentar o endpoint no Swagger/OpenAPI
 
 **Review**
 
-- [ ] Revisar nomes conforme a Linguagem Ubíqua do projeto
-- [ ] Executar testes automatizados
+- [x] Revisar nomes conforme a Linguagem Ubíqua do projeto
+- [x] Executar testes automatizados (unitários e de integração, ambos executados de fato contra Postgres real nesta sessão)
 - [ ] Code Review aprovado
 - [ ] Validar critérios de aceite da task
 

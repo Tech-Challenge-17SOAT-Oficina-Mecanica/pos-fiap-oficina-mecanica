@@ -15,6 +15,7 @@ type atualizacaoRequest struct {
 	Nome          string       `json:"nome"`
 	Descricao     string       `json:"descricao"`
 	CategoriaID   string       `json:"categoriaId"`
+	FornecedorID  *string      `json:"fornecedorId"`
 	Fabricante    *string      `json:"fabricante"`
 	PrecoVenda    *json.Number `json:"precoVenda"`
 	EstoqueMinimo *int64       `json:"estoqueMinimo"`
@@ -51,7 +52,7 @@ func NewAtualizarPecaHandler(useCase peca.AtualizarPeca) http.HandlerFunc {
 
 		atualizacao, err := pecaDomain.NovaAtualizacao(
 			corpo.Nome, corpo.Descricao, corpo.CategoriaID,
-			corpo.Fabricante, precoVenda, corpo.EstoqueMinimo, corpo.Ativo != nil,
+			corpo.Fabricante, precoVenda, corpo.EstoqueMinimo, corpo.FornecedorID, corpo.Ativo != nil,
 		)
 		if err != nil {
 			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
@@ -76,6 +77,8 @@ func responderErroAtualizacao(writer http.ResponseWriter, err error) {
 		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "pecaId")
 	case errors.Is(err, peca.ErrCategoriaInvalida):
 		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "categoriaId")
+	case errors.Is(err, peca.ErrFornecedorInvalido):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedorId")
 	case errors.Is(err, peca.ErrNaoEncontrada):
 		problema(writer, http.StatusNotFound, "Não encontrado", "peca inexistente", "")
 	case errors.Is(err, peca.ErrVersaoDivergente):

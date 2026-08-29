@@ -186,6 +186,7 @@ GET /estoque/pecas/3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4
       "descricao": "Pastilha de freio dianteira",
       "categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
       "categoria": "Freios",
+      "fornecedorId": "60000000-0000-0000-0000-000000000001",
       "fabricante": "Bosch",
       "unidadeMedida": "UN",
       "precoVenda": 189.90,

@@ -2,6 +2,7 @@ package peca
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -16,7 +17,7 @@ import (
 )
 
 const colunas = `i.id, i.codigo, i.nome, i.descricao, i.categoria_id, c.nome,
-	i.fabricante, i.unidade_medida, i.preco_venda::text,
+	COALESCE(i.fornecedor_id::text, ''), i.fabricante, i.unidade_medida, i.preco_venda::text,
 	i.saldo_fisico, i.saldo_reservado, i.estoque_minimo, i.ativo, i.version,
 	EXISTS (
 		SELECT 1 FROM pedido_compra_item pci
@@ -85,12 +86,16 @@ type scanner interface {
 
 func ler(linha scanner) (peca.Peca, error) {
 	var item peca.Peca
+	var fornecedorID string
 	err := linha.Scan(
 		&item.ID, &item.Codigo, &item.Nome, &item.Descricao, &item.CategoriaID, &item.Categoria,
-		&item.Fabricante, &item.UnidadeMedida, &item.PrecoVenda,
+		&fornecedorID, &item.Fabricante, &item.UnidadeMedida, &item.PrecoVenda,
 		&item.SaldoFisico, &item.SaldoReservado, &item.EstoqueMinimo, &item.Ativo, &item.Version,
 		&item.PossuiPedidoEmAberto,
 	)
+	if fornecedorID != "" {
+		item.FornecedorID = &fornecedorID
+	}
 	return item, err
 }
 
@@ -190,20 +195,23 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro pec
 	if !ativa {
 		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
 	}
+	if err := validarFornecedor(ctx, repository.db, cadastro.FornecedorID); err != nil {
+		return peca.Peca{}, err
+	}
 
 	var id string
 	var criadoEm time.Time
 	err = repository.db.QueryRow(ctx, `
 		INSERT INTO item_estoque (
 			categoria_id, tipo, codigo, nome, descricao, descricao_normalizada,
-			fabricante, unidade_medida, preco_venda, estoque_minimo
+			fornecedor_id, fabricante, unidade_medida, preco_venda, estoque_minimo
 		) VALUES (
 			$1, 'PECA', 'PEC-' || LPAD(nextval('seq_peca_codigo')::TEXT, 6, '0'),
-			$2, $3, $4, $5, $6, $7, $8
+			$2, $3, $4, $5, $6, $7, $8, $9
 		)
 		RETURNING id, criado_em`,
 		cadastro.CategoriaID, cadastro.Nome, cadastro.Descricao, cadastro.DescricaoNormalizada,
-		cadastro.Fabricante, cadastro.UnidadeMedida, cadastro.PrecoVenda, cadastro.EstoqueMinimo,
+		valorFornecedor(cadastro.FornecedorID), cadastro.Fabricante, cadastro.UnidadeMedida, cadastro.PrecoVenda, cadastro.EstoqueMinimo,
 	).Scan(&id, &criadoEm)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -219,6 +227,358 @@ func (repository PostgresRepository) Cadastrar(ctx context.Context, cadastro pec
 	}
 	cadastrada.DataCriacao = &criadoEm
 	return cadastrada, nil
+}
+
+type itemProcessamento struct {
+	id             string
+	tipo           string
+	ativo          bool
+	saldoFisico    int64
+	saldoReservado int64
+	precoVenda     *string
+	osItemID       *string
+	vinculado      bool
+	jaProcessado   bool
+	quantidade     int64
+}
+
+func (repository PostgresRepository) SolicitarCompraEReservar(ctx context.Context, solicitacao pecaApplication.SolicitacaoCompraReserva) (pecaApplication.ResultadoCompraReserva, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if resultado, encontrado, err := buscarRespostaIdempotente(ctx, tx, solicitacao); err != nil || encontrado {
+		if err != nil {
+			return pecaApplication.ResultadoCompraReserva{}, err
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return pecaApplication.ResultadoCompraReserva{}, err
+		}
+		return resultado, nil
+	}
+
+	resultado := pecaApplication.ResultadoCompraReserva{OrdemServicoID: solicitacao.OrdemServicoID}
+	if err = carregarFornecedor(ctx, tx, solicitacao.FornecedorID, &resultado); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	if err = validarOrdemComOrcamentoAprovado(ctx, tx, solicitacao.OrdemServicoID); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+
+	itens, err := carregarItensProcessamento(ctx, tx, solicitacao)
+	if err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+
+	var pedidoID string
+	for _, item := range itens {
+		if item.tipo != peca.TipoPeca || !item.ativo || !item.vinculado {
+			return pecaApplication.ResultadoCompraReserva{}, pecaApplication.ErrItemProcessamentoInvalido
+		}
+		if item.jaProcessado {
+			return pecaApplication.ResultadoCompraReserva{}, pecaApplication.ErrProcessamentoDuplicado
+		}
+
+		processamento := peca.NovoProcessamento(item.id, item.quantidade, item.saldoFisico-item.saldoReservado)
+		osItemID, err := garantirItemOrdemServico(ctx, tx, solicitacao.OrdemServicoID, item)
+		if err != nil {
+			return pecaApplication.ResultadoCompraReserva{}, err
+		}
+		if processamento.QuantidadeReservada > 0 {
+			reservaID, err := reservarSaldoDisponivel(ctx, tx, solicitacao.OrdemServicoID, osItemID, processamento)
+			if err != nil {
+				return pecaApplication.ResultadoCompraReserva{}, err
+			}
+			if err = registrarMovimentacaoReserva(ctx, tx, solicitacao.OrdemServicoID, reservaID, processamento); err != nil {
+				return pecaApplication.ResultadoCompraReserva{}, err
+			}
+			resultado.PecasReservadas = append(resultado.PecasReservadas, pecaApplication.ItemReservado{
+				ItemID:              item.id,
+				Quantidade:          processamento.QuantidadeReservada,
+				SaldoDisponivelApos: processamento.SaldoDisponivelApos,
+			})
+		}
+		if processamento.QuantidadeCompra > 0 {
+			if pedidoID == "" {
+				pedidoID, err = criarPedidoCompra(ctx, tx, solicitacao.FornecedorID)
+				if err != nil {
+					return pecaApplication.ResultadoCompraReserva{}, err
+				}
+			}
+			if err = solicitarCompra(ctx, tx, pedidoID, osItemID, processamento); err != nil {
+				return pecaApplication.ResultadoCompraReserva{}, err
+			}
+			valorParcial := valorParcial(item.precoVenda, processamento.QuantidadeCompra)
+			resultado.ValorTotalCompraParcial += valorParcial
+			resultado.PecasCompraSolicitada = append(resultado.PecasCompraSolicitada, pecaApplication.ItemCompraSolicitada{
+				ItemID:       item.id,
+				Quantidade:   processamento.QuantidadeCompra,
+				ValorParcial: valorParcial,
+			})
+		}
+	}
+
+	resultado.StatusOrdemServico = "AGUARDANDO_EXECUCAO"
+	if len(resultado.PecasCompraSolicitada) > 0 {
+		resultado.StatusOrdemServico = "AGUARDANDO_RECURSOS"
+	}
+	if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $2 WHERE id = $1`, solicitacao.OrdemServicoID, resultado.StatusOrdemServico); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	if err = registrarAuditoriaProcessamento(ctx, tx, solicitacao, resultado); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	if err = gravarRespostaIdempotente(ctx, tx, solicitacao, resultado); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, err
+	}
+	return resultado, nil
+}
+
+func buscarRespostaIdempotente(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva) (pecaApplication.ResultadoCompraReserva, bool, error) {
+	var hash string
+	var resposta []byte
+	err := tx.QueryRow(ctx, `
+		SELECT hash_requisicao, resposta
+		FROM chave_idempotencia
+		WHERE operacao = $1 AND chave = $2
+		FOR UPDATE`, pecaApplication.OperacaoSolicitarCompraReservarPecas, solicitacao.IdempotencyKey,
+	).Scan(&hash, &resposta)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pecaApplication.ResultadoCompraReserva{}, false, nil
+	}
+	if err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, false, err
+	}
+	if hash != solicitacao.HashRequisicao {
+		return pecaApplication.ResultadoCompraReserva{}, true, pecaApplication.ErrIdempotencyKeyEmUso
+	}
+	var resultado pecaApplication.ResultadoCompraReserva
+	if err = json.Unmarshal(resposta, &resultado); err != nil {
+		return pecaApplication.ResultadoCompraReserva{}, false, err
+	}
+	resultado.Reprocessado = true
+	return resultado, true, nil
+}
+
+func carregarFornecedor(ctx context.Context, tx pgx.Tx, fornecedorID string, resultado *pecaApplication.ResultadoCompraReserva) error {
+	var ativo bool
+	err := tx.QueryRow(ctx, `
+		SELECT id, COALESCE(nome_fantasia, razao_social), ativo
+		FROM fornecedor WHERE id = $1`, fornecedorID,
+	).Scan(&resultado.Fornecedor.ID, &resultado.Fornecedor.Nome, &ativo)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pecaApplication.ErrFornecedorNaoEncontrado
+	}
+	if err != nil {
+		return err
+	}
+	if !ativo {
+		return pecaApplication.ErrFornecedorInativo
+	}
+	return nil
+}
+
+func validarOrdemComOrcamentoAprovado(ctx context.Context, tx pgx.Tx, ordemServicoID string) error {
+	var possuiOrcamento bool
+	err := tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM orcamento
+			WHERE ordem_servico_id = os.id AND status = 'APROVADO'
+		)
+		FROM ordem_servico os
+		WHERE os.id = $1`, ordemServicoID,
+	).Scan(&possuiOrcamento)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pecaApplication.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return err
+	}
+	if !possuiOrcamento {
+		return pecaApplication.ErrOrdemServicoInvalida
+	}
+	return nil
+}
+
+func carregarItensProcessamento(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva) ([]itemProcessamento, error) {
+	quantidades := make(map[string]int64, len(solicitacao.Itens))
+	ids := make([]string, 0, len(solicitacao.Itens))
+	for _, item := range solicitacao.Itens {
+		quantidades[item.ItemID] = item.Quantidade
+		ids = append(ids, item.ItemID)
+	}
+
+	rows, err := tx.Query(ctx, `
+		SELECT i.id, i.tipo, i.ativo, i.saldo_fisico, i.saldo_reservado, i.preco_venda::text,
+		       osi.id::text,
+		       EXISTS (
+		           SELECT 1 FROM orcamento o
+		           JOIN orcamento_item oi ON oi.orcamento_id = o.id
+		           WHERE o.ordem_servico_id = $1
+		             AND o.status = 'APROVADO'
+		             AND oi.item_estoque_id = i.id
+		       ) OR osi.id IS NOT NULL AS vinculado,
+		       EXISTS (
+		           SELECT 1 FROM reserva_estoque r
+		           JOIN ordem_servico_item osi2 ON osi2.id = r.ordem_servico_item_id
+		           WHERE osi2.ordem_servico_id = $1
+		             AND r.item_estoque_id = i.id
+		             AND r.status = 'ATIVA'
+		       ) OR EXISTS (
+		           SELECT 1 FROM pedido_compra_item_os pcios
+		           JOIN pedido_compra_item pci ON pci.id = pcios.pedido_compra_item_id
+		           JOIN pedido_compra pc ON pc.id = pci.pedido_compra_id
+		           JOIN ordem_servico_item osi3 ON osi3.id = pcios.ordem_servico_item_id
+		           WHERE osi3.ordem_servico_id = $1
+		             AND pci.item_estoque_id = i.id
+		             AND pc.status IN ('ABERTO', 'PARCIAL')
+		       ) AS ja_processado
+		FROM item_estoque i
+		LEFT JOIN ordem_servico_item osi ON osi.ordem_servico_id = $1 AND osi.item_estoque_id = i.id
+		WHERE i.id = ANY($2::uuid[])
+		ORDER BY i.id
+		FOR UPDATE OF i`, solicitacao.OrdemServicoID, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	itens := make([]itemProcessamento, 0, len(ids))
+	for rows.Next() {
+		var item itemProcessamento
+		if err := rows.Scan(&item.id, &item.tipo, &item.ativo, &item.saldoFisico, &item.saldoReservado,
+			&item.precoVenda, &item.osItemID, &item.vinculado, &item.jaProcessado); err != nil {
+			return nil, err
+		}
+		item.quantidade = quantidades[item.id]
+		itens = append(itens, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(itens) != len(ids) {
+		return nil, pecaApplication.ErrItemNaoEncontrado
+	}
+	return itens, nil
+}
+
+func garantirItemOrdemServico(ctx context.Context, tx pgx.Tx, ordemServicoID string, item itemProcessamento) (string, error) {
+	if item.osItemID != nil {
+		if _, err := tx.Exec(ctx, `
+			UPDATE ordem_servico_item
+			SET quantidade_necessaria = GREATEST(quantidade_necessaria, $2)
+			WHERE id = $1`, *item.osItemID, item.quantidade); err != nil {
+			return "", err
+		}
+		return *item.osItemID, nil
+	}
+
+	var osItemID string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO ordem_servico_item (ordem_servico_id, item_estoque_id, quantidade_necessaria, valor_unitario)
+		VALUES ($1, $2, $3, $4::NUMERIC)
+		RETURNING id`, ordemServicoID, item.id, item.quantidade, valorTexto(item.precoVenda),
+	).Scan(&osItemID)
+	return osItemID, err
+}
+
+func reservarSaldoDisponivel(ctx context.Context, tx pgx.Tx, ordemServicoID, osItemID string, processamento peca.Processamento) (string, error) {
+	if _, err := tx.Exec(ctx, `
+		UPDATE item_estoque
+		SET saldo_reservado = saldo_reservado + $2
+		WHERE id = $1`, processamento.ItemID, processamento.QuantidadeReservada); err != nil {
+		return "", err
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE ordem_servico_item
+		SET quantidade_reservada = quantidade_reservada + $2
+		WHERE id = $1`, osItemID, processamento.QuantidadeReservada); err != nil {
+		return "", err
+	}
+
+	var reservaID string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO reserva_estoque (ordem_servico_item_id, item_estoque_id, quantidade, status)
+		VALUES ($1, $2, $3, 'ATIVA')
+		RETURNING id`, osItemID, processamento.ItemID, processamento.QuantidadeReservada,
+	).Scan(&reservaID)
+	return reservaID, err
+}
+
+func registrarMovimentacaoReserva(ctx context.Context, tx pgx.Tx, ordemServicoID, reservaID string, processamento peca.Processamento) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO movimentacao_estoque (item_estoque_id, ordem_servico_id, reserva_estoque_id, tipo, quantidade)
+		VALUES ($1, $2, $3, 'RESERVA', $4)`,
+		processamento.ItemID, ordemServicoID, reservaID, processamento.QuantidadeReservada)
+	return err
+}
+
+func criarPedidoCompra(ctx context.Context, tx pgx.Tx, fornecedorID string) (string, error) {
+	var pedidoID string
+	err := tx.QueryRow(ctx, `
+		INSERT INTO pedido_compra (fornecedor_id, numero, status)
+		VALUES ($1, to_char(CURRENT_DATE, 'YYYY') || '/' || LPAD(nextval('seq_pedido_compra_numero')::TEXT, 4, '0'), 'ABERTO')
+		RETURNING id`, fornecedorID,
+	).Scan(&pedidoID)
+	return pedidoID, err
+}
+
+func solicitarCompra(ctx context.Context, tx pgx.Tx, pedidoID, osItemID string, processamento peca.Processamento) error {
+	var pedidoItemID string
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO pedido_compra_item (
+			pedido_compra_id, item_estoque_id, quantidade_necessaria, quantidade_pedida, quantidade_reservada
+		) VALUES ($1, $2, $3, $3, 0)
+		RETURNING id`, pedidoID, processamento.ItemID, processamento.QuantidadeCompra,
+	).Scan(&pedidoItemID); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `
+		INSERT INTO pedido_compra_item_os (pedido_compra_item_id, ordem_servico_item_id, quantidade_atendida)
+		VALUES ($1, $2, $3)`, pedidoItemID, osItemID, processamento.QuantidadeCompra)
+	return err
+}
+
+func registrarAuditoriaProcessamento(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva, resultado pecaApplication.ResultadoCompraReserva) error {
+	_, err := tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
+		VALUES ($1, NULL, 'ESTOQUE', $1, 'PECAS_RESERVA_COMPRA_PROCESSADA', $2::jsonb, CURRENT_TIMESTAMP)`,
+		solicitacao.OrdemServicoID,
+		fmt.Sprintf(`{"fornecedorId":"%s","statusOrdemServico":"%s","pecasReservadas":%d,"pecasCompraSolicitada":%d}`,
+			solicitacao.FornecedorID, resultado.StatusOrdemServico, len(resultado.PecasReservadas), len(resultado.PecasCompraSolicitada)))
+	return err
+}
+
+func gravarRespostaIdempotente(ctx context.Context, tx pgx.Tx, solicitacao pecaApplication.SolicitacaoCompraReserva, resultado pecaApplication.ResultadoCompraReserva) error {
+	resposta, err := json.Marshal(resultado)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `
+		INSERT INTO chave_idempotencia (chave, operacao, hash_requisicao, status_resposta, resposta)
+		VALUES ($1, $2, $3, 201, $4::jsonb)`,
+		solicitacao.IdempotencyKey, pecaApplication.OperacaoSolicitarCompraReservarPecas, solicitacao.HashRequisicao, string(resposta))
+	return err
+}
+
+func valorTexto(valor *string) string {
+	if valor == nil || strings.TrimSpace(*valor) == "" {
+		return "0"
+	}
+	return strings.TrimSpace(*valor)
+}
+
+func valorParcial(preco *string, quantidade int64) float64 {
+	valor, err := strconv.ParseFloat(valorTexto(preco), 64)
+	if err != nil {
+		return 0
+	}
+	return valor * float64(quantidade)
 }
 
 // Atualizar aplica as alteracoes sob lock otimista, em transacao: le a linha com
@@ -241,6 +601,9 @@ func (repository PostgresRepository) Atualizar(ctx context.Context, id string, v
 	}
 	if !ativa {
 		return peca.Peca{}, pecaApplication.ErrCategoriaInvalida
+	}
+	if err := validarFornecedor(ctx, transacao, atualizacao.FornecedorID); err != nil {
+		return peca.Peca{}, err
 	}
 
 	var precoAnterior *string
@@ -267,16 +630,17 @@ func (repository PostgresRepository) Atualizar(ctx context.Context, id string, v
 			descricao = $3,
 			descricao_normalizada = $4,
 			categoria_id = $5,
-			fabricante = $6,
-			preco_venda = $7::NUMERIC,
-			estoque_minimo = $8,
+			fornecedor_id = $6,
+			fabricante = $7,
+			preco_venda = $8::NUMERIC,
+			estoque_minimo = $9,
 			data_atualizacao = CURRENT_TIMESTAMP,
-			usuario_atualizacao = NULLIF($9, '')::UUID,
+			usuario_atualizacao = NULLIF($10, '')::UUID,
 			version = version + 1
 		WHERE id = $1
 		RETURNING data_atualizacao, usuario_atualizacao::text`,
 		id, atualizacao.Nome, atualizacao.Descricao, atualizacao.DescricaoNormalizada,
-		atualizacao.CategoriaID, atualizacao.Fabricante, atualizacao.PrecoVenda,
+		atualizacao.CategoriaID, valorFornecedor(atualizacao.FornecedorID), atualizacao.Fabricante, atualizacao.PrecoVenda,
 		atualizacao.EstoqueMinimo, usuarioID).Scan(&dataAtualizacao, &usuarioAtualizacao)
 	if err != nil {
 		var postgresError *pgconn.PgError
@@ -317,4 +681,27 @@ func mesmoPreco(anterior, novo string) bool {
 		return anterior == novo
 	}
 	return valorAnterior == valorNovo
+}
+
+type consultor interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+func validarFornecedor(ctx context.Context, consultor consultor, fornecedorID *string) error {
+	if fornecedorID == nil {
+		return nil
+	}
+	var ativo bool
+	err := consultor.QueryRow(ctx, `SELECT ativo FROM fornecedor WHERE id = $1`, *fornecedorID).Scan(&ativo)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !ativo) {
+		return pecaApplication.ErrFornecedorInvalido
+	}
+	return err
+}
+
+func valorFornecedor(fornecedorID *string) any {
+	if fornecedorID == nil {
+		return nil
+	}
+	return *fornecedorID
 }

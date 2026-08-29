@@ -11,6 +11,7 @@ import (
 var (
 	ErrIdentificadorInvalido = errors.New("identificador deve ser um UUID valido")
 	ErrCategoriaInvalida     = errors.New("categoria inexistente ou inativa")
+	ErrFornecedorInvalido    = errors.New("fornecedor inexistente ou inativo")
 	ErrDescricaoDuplicada    = errors.New("ja existe insumo ativo com esta descricao na categoria e unidade")
 )
 
@@ -29,6 +30,9 @@ func NewCadastrarInsumo(repository CadastrarRepository) CadastrarInsumo {
 func (useCase CadastrarInsumo) Execute(ctx context.Context, cadastro insumo.Cadastro) (insumo.Insumo, error) {
 	if !validation.IsUUID(cadastro.CategoriaID) {
 		return insumo.Insumo{}, ErrIdentificadorInvalido
+	}
+	if cadastro.FornecedorID != nil && !validation.IsUUID(*cadastro.FornecedorID) {
+		return insumo.Insumo{}, ErrFornecedorInvalido
 	}
 	return useCase.repository.Cadastrar(ctx, cadastro)
 }

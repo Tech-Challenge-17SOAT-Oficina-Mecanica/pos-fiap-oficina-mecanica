@@ -15,6 +15,7 @@ type cadastroRequest struct {
 	Nome          string       `json:"nome"`
 	Descricao     string       `json:"descricao"`
 	CategoriaID   string       `json:"categoriaId"`
+	FornecedorID  *string      `json:"fornecedorId"`
 	UnidadeMedida string       `json:"unidadeMedida"`
 	CustoUnitario *json.Number `json:"custoUnitario"`
 	EstoqueMinimo *json.Number `json:"estoqueMinimo"`
@@ -28,6 +29,7 @@ type insumoResponse struct {
 	Descricao      string       `json:"descricao"`
 	CategoriaID    string       `json:"categoriaId"`
 	Categoria      string       `json:"categoria"`
+	FornecedorID   *string      `json:"fornecedorId,omitempty"`
 	UnidadeMedida  string       `json:"unidadeMedida"`
 	CustoUnitario  *json.Number `json:"custoUnitario"`
 	SaldoFisico    json.Number  `json:"saldoFisico"`
@@ -48,7 +50,7 @@ func NewCadastrarInsumoHandler(useCase insumo.CadastrarInsumo) http.HandlerFunc 
 
 		cadastro, err := insumoDomain.NovoCadastro(
 			corpo.Nome, corpo.Descricao, corpo.CategoriaID, corpo.UnidadeMedida,
-			texto(corpo.CustoUnitario), texto(corpo.EstoqueMinimo),
+			texto(corpo.CustoUnitario), texto(corpo.EstoqueMinimo), corpo.FornecedorID,
 		)
 		if err != nil {
 			problemaDeErro(writer, http.StatusBadRequest, "Dados inválidos", err)
@@ -76,6 +78,7 @@ func montarResponse(cadastrado insumoDomain.Insumo) insumoResponse {
 		Descricao:      cadastrado.Descricao,
 		CategoriaID:    cadastrado.CategoriaID,
 		Categoria:      cadastrado.Categoria,
+		FornecedorID:   cadastrado.FornecedorID,
 		UnidadeMedida:  cadastrado.UnidadeMedida,
 		SaldoFisico:    json.Number(cadastrado.SaldoFisico),
 		SaldoReservado: json.Number(cadastrado.SaldoReservado),
@@ -104,6 +107,8 @@ func responderErroCadastro(writer http.ResponseWriter, err error) {
 	case errors.Is(err, insumo.ErrCategoriaInvalida),
 		errors.Is(err, insumo.ErrIdentificadorInvalido):
 		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "categoriaId")
+	case errors.Is(err, insumo.ErrFornecedorInvalido):
+		problema(writer, http.StatusBadRequest, "Dados inválidos", err.Error(), "fornecedorId")
 	case errors.Is(err, insumo.ErrDescricaoDuplicada):
 		problema(writer, http.StatusConflict, "Conflito", err.Error(), "descricao")
 	default:
