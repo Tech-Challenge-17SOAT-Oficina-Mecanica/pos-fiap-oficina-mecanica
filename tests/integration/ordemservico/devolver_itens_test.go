@@ -52,7 +52,7 @@ func TestDevolverItensAoEstoque(t *testing.T) {
 		($2,$4,'INSUMO',$6,'Insumo consumido','Insumo consumido','insumo consumido','L',20,2),
 		($3,$4,'PECA',$7,'Peca pendente','Peca pendente','peca pendente','UN',0,0)`,
 		pecaReservadaID, insumoConsumidoID, pecaPendenteID, categoriaID,
-		fmt.Sprintf("PEC-%06x1", codigoBase), fmt.Sprintf("INS-%06x1", codigoBase), fmt.Sprintf("PEC-%06x2", codigoBase)); err != nil {
+		fmt.Sprintf("PEC%06x1", codigoBase), fmt.Sprintf("INS%06x1", codigoBase), fmt.Sprintf("PEC%06x2", codigoBase)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, `INSERT INTO ordem_servico_item (id,ordem_servico_id,item_estoque_id,quantidade_necessaria,quantidade_reservada,quantidade_consumida,valor_unitario) VALUES
