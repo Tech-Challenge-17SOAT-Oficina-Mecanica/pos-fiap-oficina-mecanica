@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	segurancaDominio "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
@@ -61,7 +62,7 @@ func TestSolicitarCompraEReservarInsumos(t *testing.T) {
 		VALUES
 			($8, $5, 'INSUMO', 'Insumo com saldo', 3.5, 12.50, 43.75),
 			($8, $6, 'INSUMO', 'Insumo sem saldo', 2.25, 20.00, 45.00);`,
-		categoriaID, clienteID, veiculoID, fornecedorID, insumoComSaldo, insumoSemSaldo, osID, orcamentoID); err != nil {
+		pgx.QueryExecModeSimpleProtocol, categoriaID, clienteID, veiculoID, fornecedorID, insumoComSaldo, insumoSemSaldo, osID, orcamentoID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -131,25 +132,25 @@ func cleanupProcessamento(ctx context.Context, t *testing.T, db *pgxpool.Pool, o
 	t.Helper()
 	comandos := []string{
 		"DELETE FROM chave_idempotencia WHERE chave IN ($1,$2)",
-		"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $3",
-		"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $3",
-		"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $3)",
-		"DELETE FROM pedido_compra_item_os WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $3)",
-		"DELETE FROM pedido_compra_item WHERE item_estoque_id IN ($8,$9)",
-		"DELETE FROM pedido_compra WHERE fornecedor_id = $6",
-		"DELETE FROM orcamento_item WHERE orcamento_id = $4",
-		"DELETE FROM ordem_servico_item WHERE ordem_servico_id = $3",
-		"DELETE FROM orcamento WHERE id = $4",
-		"DELETE FROM ordem_servico WHERE id = $3",
-		"DELETE FROM item_estoque WHERE id IN ($8,$9)",
-		"DELETE FROM fornecedor WHERE id = $6",
-		"DELETE FROM veiculo WHERE id = $5",
-		"DELETE FROM cliente WHERE id = $10",
-		"DELETE FROM categoria WHERE id = $7",
+		"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $1",
+		"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $1",
+		"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)",
+		"DELETE FROM pedido_compra_item_os WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)",
+		"DELETE FROM pedido_compra_item WHERE item_estoque_id IN ($1,$2)",
+		"DELETE FROM pedido_compra WHERE fornecedor_id = $1",
+		"DELETE FROM orcamento_item WHERE orcamento_id = $1",
+		"DELETE FROM ordem_servico_item WHERE ordem_servico_id = $1",
+		"DELETE FROM orcamento WHERE id = $1",
+		"DELETE FROM ordem_servico WHERE id = $1",
+		"DELETE FROM item_estoque WHERE id IN ($1,$2)",
+		"DELETE FROM fornecedor WHERE id = $1",
+		"DELETE FROM veiculo WHERE id = $1",
+		"DELETE FROM cliente WHERE id = $1",
+		"DELETE FROM categoria WHERE id = $1",
 	}
-	args := []any{chave, outraChave, osID, orcamentoID, veiculoID, fornecedorID, categoriaID, insumoComSaldo, insumoSemSaldo, clienteID}
-	for _, comando := range comandos {
-		if _, err := db.Exec(ctx, comando, args...); err != nil {
+	args := [][]any{{chave, outraChave}, {osID}, {osID}, {osID}, {osID}, {insumoComSaldo, insumoSemSaldo}, {fornecedorID}, {orcamentoID}, {osID}, {orcamentoID}, {osID}, {insumoComSaldo, insumoSemSaldo}, {fornecedorID}, {veiculoID}, {clienteID}, {categoriaID}}
+	for indice, comando := range comandos {
+		if _, err := db.Exec(ctx, comando, args[indice]...); err != nil {
 			t.Fatalf("cleanup %q: %v", comando, err)
 		}
 	}

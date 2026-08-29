@@ -38,7 +38,7 @@ func TestConsultarInsumos(t *testing.T) {
 	detalhar := segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueLer, presentation.NewConsultarInsumoPorIDHandler(useCase))
 
 	t.Run("busca por codigo com disponibilidade", func(t *testing.T) {
-		response := executarGET(listar, "/estoque/insumos?codigo=INS-000001&quantidadeDesejada=18", token, "")
+		response := executarGET(listar, "/estoque/insumos?codigo=INS-000001&quantidadeDesejada=1", token, "")
 		body := response.Body.String()
 		if response.Code != http.StatusOK || !strings.Contains(body, `"codigo":"INS-000001"`) || !strings.Contains(body, `"quantidadeDisponivel":true`) {
 			t.Fatalf("status %d: %s", response.Code, body)

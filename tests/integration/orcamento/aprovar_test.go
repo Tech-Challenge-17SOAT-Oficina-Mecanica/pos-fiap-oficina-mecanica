@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	segurancaDominio "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
@@ -29,7 +30,7 @@ func TestAprovarOrcamento(t *testing.T) {
 	}
 	if _, err := db.Exec(ctx, `
 		CREATE SEQUENCE IF NOT EXISTS seq_pedido_compra_numero START WITH 1;
-		ALTER TABLE orcamento ADD COLUMN IF NOT EXISTS cliente_aprovador_id UUID REFERENCES cliente (id);`); err != nil {
+		ALTER TABLE orcamento ADD COLUMN IF NOT EXISTS cliente_aprovador_id UUID REFERENCES cliente (id);`, pgx.QueryExecModeSimpleProtocol); err != nil {
 		t.Fatal(err)
 	}
 
@@ -57,7 +58,7 @@ func TestAprovarOrcamento(t *testing.T) {
 		INSERT INTO orcamento (id, ordem_servico_id, tipo_orcamento, status) VALUES ($7, $6, 'PRINCIPAL', 'CRIADO');
 		INSERT INTO orcamento_item (orcamento_id, item_estoque_id, tipo_item, descricao, quantidade, valor_unitario, valor_total)
 		VALUES ($7, $5, 'PECA', 'Peca aprovacao', 2, 50, 100);`,
-		categoriaID, clienteID, veiculoID, fornecedorID, pecaID, osID, orcamentoID); err != nil {
+		pgx.QueryExecModeSimpleProtocol, categoriaID, clienteID, veiculoID, fornecedorID, pecaID, osID, orcamentoID); err != nil {
 		t.Fatal(err)
 	}
 
@@ -117,6 +118,7 @@ func TestAprovarOrcamento(t *testing.T) {
 
 func postAprovacao(handler http.Handler, orcamentoID, token string) *httptest.ResponseRecorder {
 	request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+orcamentoID+"/aprovar", nil)
+	request.SetPathValue("orcamentoId", orcamentoID)
 	if token != "" {
 		request.Header.Set("Authorization", "Bearer "+token)
 	}
@@ -132,21 +134,21 @@ func cleanupAprovacao(ctx context.Context, t *testing.T, db *pgxpool.Pool, osID,
 		"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $1",
 		"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)",
 		"DELETE FROM pedido_compra_item_os WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)",
-		"DELETE FROM pedido_compra_item WHERE item_estoque_id = $8",
-		"DELETE FROM pedido_compra WHERE fornecedor_id = $6",
-		"DELETE FROM orcamento_item WHERE orcamento_id = $3",
+		"DELETE FROM pedido_compra_item WHERE item_estoque_id = $1",
+		"DELETE FROM pedido_compra WHERE fornecedor_id = $1",
+		"DELETE FROM orcamento_item WHERE orcamento_id = $1",
 		"DELETE FROM ordem_servico_item WHERE ordem_servico_id = $1",
-		"DELETE FROM orcamento WHERE id = $3",
+		"DELETE FROM orcamento WHERE id = $1",
 		"DELETE FROM ordem_servico WHERE id IN ($1,$2)",
-		"DELETE FROM item_estoque WHERE id = $8",
-		"DELETE FROM fornecedor WHERE id = $6",
-		"DELETE FROM veiculo WHERE id = $5",
-		"DELETE FROM cliente WHERE id = $4",
-		"DELETE FROM categoria WHERE id = $7",
+		"DELETE FROM item_estoque WHERE id = $1",
+		"DELETE FROM fornecedor WHERE id = $1",
+		"DELETE FROM veiculo WHERE id = $1",
+		"DELETE FROM cliente WHERE id = $1",
+		"DELETE FROM categoria WHERE id = $1",
 	}
-	args := []any{osID, outroOSID, orcamentoID, clienteID, veiculoID, fornecedorID, categoriaID, pecaID}
-	for _, comando := range comandos {
-		if _, err := db.Exec(ctx, comando, args...); err != nil {
+	args := [][]any{{osID, outroOSID}, {osID}, {osID}, {osID}, {pecaID}, {fornecedorID}, {orcamentoID}, {osID}, {orcamentoID}, {osID, outroOSID}, {pecaID}, {fornecedorID}, {veiculoID}, {clienteID}, {categoriaID}}
+	for indice, comando := range comandos {
+		if _, err := db.Exec(ctx, comando, args[indice]...); err != nil {
 			t.Fatalf("cleanup %q: %v", comando, err)
 		}
 	}
