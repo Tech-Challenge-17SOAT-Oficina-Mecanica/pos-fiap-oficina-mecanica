@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"os"
 	"testing"
@@ -30,10 +31,16 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 	insumoID, pecaInativaID, pecaPedidoID := id("b2000000-0000-0000-0000-"), id("b3000000-0000-0000-0000-"), id("b4000000-0000-0000-0000-")
 	fornecedorID, pedidoID, pedidoItemID := id("b5000000-0000-0000-0000-"), id("b6000000-0000-0000-0000-"), id("b7000000-0000-0000-0000-")
 	clienteID, veiculoID, osID, osItemID := id("b8000000-0000-0000-0000-"), id("b9000000-0000-0000-0000-"), id("ba000000-0000-0000-0000-"), id("bb000000-0000-0000-0000-")
-	codigoBase := suffix & 0xffffff
+	codigo := func(prefix string) string {
+		var bytes [3]byte
+		if _, err := rand.Read(bytes[:]); err != nil {
+			t.Fatal(err)
+		}
+		return fmt.Sprintf("%s-%x", prefix, bytes)
+	}
 	placa := fmt.Sprintf("ENT1A%02d", suffix%100)
 
-	if _, err = db.Exec(ctx, "INSERT INTO categoria (id,nome,ativa) VALUES ($1,$2,true)", categoriaID, fmt.Sprintf("Categoria %x", codigoBase)); err != nil {
+	if _, err = db.Exec(ctx, "INSERT INTO categoria (id,nome,ativa) VALUES ($1,$2,true)", categoriaID, fmt.Sprintf("Categoria %x", suffix)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, `INSERT INTO item_estoque (id,categoria_id,tipo,codigo,nome,descricao,descricao_normalizada,unidade_medida,saldo_fisico,saldo_reservado,ativo,custo_unitario) VALUES
@@ -41,7 +48,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		($2,$4,'PECA','x',$6,'Peca inativa','peca inativa','UN',5,0,false,10.00),
 		($3,$4,'PECA',$7,'Peca pedido','Peca pedido','peca pedido','UN',0,0,true,10.00)`,
 		insumoID, pecaInativaID, pecaPedidoID, categoriaID,
-		fmt.Sprintf("INS-%06x1", codigoBase), fmt.Sprintf("PEC-%06x1", codigoBase), fmt.Sprintf("PEC-%06x2", codigoBase)); err != nil {
+		codigo("INS"), codigo("PEC"), codigo("PEC")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO fornecedor (id,razao_social,documento,tipo_documento) VALUES ($1,'Fornecedor Teste',$2,'CNPJ')",
