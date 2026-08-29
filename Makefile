@@ -59,7 +59,7 @@ test: ## Executa testes com cobertura no container Go
 	$(DOCKER) compose run --rm --build test
 
 coverage: ## Gera coverage.out para o SonarQube
-	$(DOCKER) compose run --rm --build test sh -c "go test -covermode=atomic -coverprofile=coverage.out ./cmd/... ./internal/..."
+	$(DOCKER) compose run --rm --build test sh -c "go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/..."
 
 sonar-up: ## Sobe o SonarQube local
 	$(DOCKER) compose up -d sonarqube
