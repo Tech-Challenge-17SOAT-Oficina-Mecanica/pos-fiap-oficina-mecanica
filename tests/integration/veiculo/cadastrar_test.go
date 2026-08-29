@@ -54,7 +54,8 @@ func TestCadastrarVeiculo(t *testing.T) {
 	mux := http.NewServeMux()
 	handler := presentation.NewHandler(application.NewCadastrar(infrastructure.NewPostgresRepository(db)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", securityPresentation.RequireScope(jwt, "veiculos:escrever", handler))
-	placa := fmt.Sprintf("XYZ1A%02d", time.Now().UnixNano()%100)
+	now := time.Now().UnixNano()
+	placa := fmt.Sprintf("X%c%c%d%c%02d", 'A'+now%26, 'A'+now/26%26, now/676%10, 'A'+now/6760%26, now/175760%100)
 	request := func(placa, token string) *httptest.ResponseRecorder {
 		r := httptest.NewRequest(http.MethodPost, "/clientes/"+id+"/veiculos", bytes.NewBufferString(`{"placa":"`+placa+`","marca":"Toyota","modelo":"Corolla","ano":2024}`))
 		if token != "" {
