@@ -98,7 +98,9 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 	if err != nil {
 		return domain.Aprovacao{}, err
 	}
-	if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $2 WHERE id = $1`, resultado.OrdemServicoID, resultado.StatusOrdemServico); err != nil {
+	if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $2,
+		data_entrada_fila = CASE WHEN $2 = 'AGUARDANDO_EXECUCAO' THEN CURRENT_TIMESTAMP ELSE data_entrada_fila END
+		WHERE id = $1`, resultado.OrdemServicoID, resultado.StatusOrdemServico); err != nil {
 		return domain.Aprovacao{}, err
 	}
 	if _, err = tx.Exec(ctx, `
@@ -489,7 +491,9 @@ func (repository PostgresRepository) Recusar(ctx context.Context, input applicat
 	}
 
 	if novoStatusOS != statusOS {
-		if _, err = tx.Exec(ctx, "UPDATE ordem_servico SET status = $1 WHERE id = $2", novoStatusOS, ordemServicoID); err != nil {
+		if _, err = tx.Exec(ctx, `UPDATE ordem_servico SET status = $1,
+			data_entrada_fila = CASE WHEN $1 = 'AGUARDANDO_EXECUCAO' THEN CURRENT_TIMESTAMP ELSE data_entrada_fila END
+			WHERE id = $2`, novoStatusOS, ordemServicoID); err != nil {
 			return domain.Decisao{}, err
 		}
 	}
