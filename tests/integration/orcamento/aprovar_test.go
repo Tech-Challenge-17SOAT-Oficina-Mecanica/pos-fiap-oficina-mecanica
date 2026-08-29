@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -92,8 +93,10 @@ func TestAprovarOrcamento(t *testing.T) {
 	if statusOrcamento != "APROVADO" || aprovador != clienteID {
 		t.Fatalf("orcamento=%s aprovador=%s", statusOrcamento, aprovador)
 	}
-	if err := db.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1", osID).Scan(&statusOS); err != nil || statusOS != "AGUARDANDO_RECURSOS" {
-		t.Fatalf("os=%s err=%v", statusOS, err)
+	var dataFilaPendente *time.Time
+	var versaoPendente int
+	if err := db.QueryRow(ctx, "SELECT status, data_entrada_fila, version FROM ordem_servico WHERE id = $1", osID).Scan(&statusOS, &dataFilaPendente, &versaoPendente); err != nil || statusOS != "AGUARDANDO_RECURSOS" || dataFilaPendente != nil || versaoPendente != 2 {
+		t.Fatalf("os=%s dataFila=%v version=%d err=%v", statusOS, dataFilaPendente, versaoPendente, err)
 	}
 	var saldoReservado string
 	if err := db.QueryRow(ctx, "SELECT saldo_reservado::text FROM item_estoque WHERE id = $1", pecaID).Scan(&saldoReservado); err != nil || saldoReservado != "1.000" {
@@ -113,6 +116,110 @@ func TestAprovarOrcamento(t *testing.T) {
 	}
 	if err := db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque r JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id WHERE osi.ordem_servico_id = $1 AND r.status = 'ATIVA'", osID).Scan(&reservas); err != nil || reservas != 1 {
 		t.Fatalf("reservas=%d err=%v", reservas, err)
+	}
+
+	const (
+		osProntaID        = "95000000-0000-0000-0000-000000000009"
+		orcamentoProntoID = "95000000-0000-0000-0000-000000000010"
+		pecaProntaID      = "95000000-0000-0000-0000-000000000011"
+	)
+	defer func() {
+		for _, comando := range []string{
+			"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $1",
+			"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $1",
+			"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)",
+			"DELETE FROM orcamento_item WHERE orcamento_id = $1",
+			"DELETE FROM ordem_servico_item WHERE ordem_servico_id = $1",
+			"DELETE FROM orcamento WHERE id = $1",
+			"DELETE FROM ordem_servico WHERE id = $1",
+			"DELETE FROM item_estoque WHERE id = $1",
+		} {
+			id := osProntaID
+			if strings.Contains(comando, "orcamento_item") || strings.Contains(comando, "orcamento WHERE") {
+				id = orcamentoProntoID
+			}
+			if strings.Contains(comando, "item_estoque") {
+				id = pecaProntaID
+			}
+			if _, err := db.Exec(ctx, comando, id); err != nil {
+				t.Errorf("cleanup pronto: %v", err)
+			}
+		}
+	}()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO item_estoque (id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, fornecedor_id, unidade_medida, saldo_fisico, saldo_reservado, preco_venda, ativo)
+		VALUES ($1, $2, 'PECA', 'PEC-950002', 'Peca pronta', 'Peca pronta', 'peca pronta', $3, 'UN', 1, 0, 50, TRUE);
+		INSERT INTO ordem_servico (id, cliente_id, veiculo_id, placa_veiculo, status) VALUES ($4, $5, $6, 'APR1A23', 'AGUARDANDO_APROVACAO');
+		INSERT INTO orcamento (id, ordem_servico_id, tipo_orcamento, status) VALUES ($7, $4, 'PRINCIPAL', 'CRIADO');
+		INSERT INTO orcamento_item (orcamento_id, item_estoque_id, tipo_item, descricao, quantidade, valor_unitario, valor_total)
+		VALUES ($7, $1, 'PECA', 'Peca pronta', 1, 50, 50);`,
+		pgx.QueryExecModeSimpleProtocol, pecaProntaID, categoriaID, fornecedorID, osProntaID, clienteID, veiculoID, orcamentoProntoID); err != nil {
+		t.Fatal(err)
+	}
+	tokenPronta, _ := jwt.GerarCliente(clienteID, osProntaID)
+	respostaPronta := postAprovacao(handler, orcamentoProntoID, tokenPronta)
+	if respostaPronta.Code != http.StatusOK || !strings.Contains(respostaPronta.Body.String(), `"statusOrdemServico":"AGUARDANDO_EXECUCAO"`) || !strings.Contains(respostaPronta.Body.String(), `"dataEntradaFila"`) {
+		t.Fatalf("aprovacao pronta: status=%d body=%s", respostaPronta.Code, respostaPronta.Body.String())
+	}
+	var dataEntradaFila time.Time
+	var versao int
+	if err := db.QueryRow(ctx, "SELECT data_entrada_fila, version FROM ordem_servico WHERE id = $1", osProntaID).Scan(&dataEntradaFila, &versao); err != nil || dataEntradaFila.IsZero() || versao != 2 {
+		t.Fatalf("fila=%v version=%d err=%v", dataEntradaFila, versao, err)
+	}
+
+	const (
+		usuarioMecanicoID       = "95000000-0000-0000-0000-000000000012"
+		mecanicoResponsavelID   = "95000000-0000-0000-0000-000000000013"
+		osComplementarID        = "95000000-0000-0000-0000-000000000014"
+		orcamentoPrincipalID    = "95000000-0000-0000-0000-000000000015"
+		orcamentoComplementarID = "95000000-0000-0000-0000-000000000016"
+		pecaComplementarID      = "95000000-0000-0000-0000-000000000017"
+	)
+	defer func() {
+		comandos := []struct {
+			query string
+			args  []any
+		}{
+			{"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $1", []any{osComplementarID}},
+			{"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $1", []any{osComplementarID}},
+			{"DELETE FROM reserva_estoque WHERE ordem_servico_item_id IN (SELECT id FROM ordem_servico_item WHERE ordem_servico_id = $1)", []any{osComplementarID}},
+			{"DELETE FROM orcamento_item WHERE orcamento_id IN ($1, $2)", []any{orcamentoPrincipalID, orcamentoComplementarID}},
+			{"DELETE FROM ordem_servico_item WHERE ordem_servico_id = $1", []any{osComplementarID}},
+			{"DELETE FROM orcamento WHERE id IN ($1, $2)", []any{orcamentoPrincipalID, orcamentoComplementarID}},
+			{"DELETE FROM ordem_servico WHERE id = $1", []any{osComplementarID}},
+			{"DELETE FROM item_estoque WHERE id = $1", []any{pecaComplementarID}},
+			{"DELETE FROM mecanico WHERE id = $1", []any{mecanicoResponsavelID}},
+			{"DELETE FROM usuario WHERE id = $1", []any{usuarioMecanicoID}},
+		}
+		for _, comando := range comandos {
+			if _, err := db.Exec(ctx, comando.query, comando.args...); err != nil {
+				t.Errorf("cleanup complementar: %v", err)
+			}
+		}
+	}()
+	if _, err := db.Exec(ctx, `
+		INSERT INTO usuario (id, email, senha_hash, ativo) VALUES ($1, 'mecanico-aprovacao@example.com', 'hash', TRUE);
+		INSERT INTO mecanico (id, usuario_id, nome, version) VALUES ($2, $1, 'Mecanico aprovacao', 1);
+		INSERT INTO item_estoque (id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, fornecedor_id, unidade_medida, saldo_fisico, saldo_reservado, preco_venda, ativo)
+		VALUES ($3, $4, 'PECA', 'PEC-950003', 'Peca complementar', 'Peca complementar', 'peca complementar', $5, 'UN', 1, 0, 50, TRUE);
+		INSERT INTO ordem_servico (id, cliente_id, veiculo_id, mecanico_responsavel_id, placa_veiculo, status)
+		VALUES ($6, $7, $8, $2, 'APR1A23', 'AGUARDANDO_APROVACAO');
+		INSERT INTO orcamento (id, ordem_servico_id, tipo_orcamento, status) VALUES ($9, $6, 'PRINCIPAL', 'APROVADO');
+		INSERT INTO orcamento (id, ordem_servico_id, orcamento_original_id, tipo_orcamento, status) VALUES ($10, $6, $9, 'COMPLEMENTAR', 'CRIADO');
+		INSERT INTO orcamento_item (orcamento_id, item_estoque_id, tipo_item, descricao, quantidade, valor_unitario, valor_total)
+		VALUES ($10, $3, 'PECA', 'Peca complementar', 1, 50, 50);`,
+		pgx.QueryExecModeSimpleProtocol, usuarioMecanicoID, mecanicoResponsavelID, pecaComplementarID, categoriaID, fornecedorID,
+		osComplementarID, clienteID, veiculoID, orcamentoPrincipalID, orcamentoComplementarID); err != nil {
+		t.Fatal(err)
+	}
+	tokenComplementar, _ := jwt.GerarCliente(clienteID, osComplementarID)
+	respostaComplementar := postAprovacao(handler, orcamentoComplementarID, tokenComplementar)
+	if respostaComplementar.Code != http.StatusOK || !strings.Contains(respostaComplementar.Body.String(), `"statusOrdemServico":"AGUARDANDO_EXECUCAO"`) || !strings.Contains(respostaComplementar.Body.String(), `"dataEntradaFila"`) {
+		t.Fatalf("aprovacao complementar: status=%d body=%s", respostaComplementar.Code, respostaComplementar.Body.String())
+	}
+	var mecanicoApos string
+	if err := db.QueryRow(ctx, "SELECT data_entrada_fila, version, mecanico_responsavel_id::text FROM ordem_servico WHERE id = $1", osComplementarID).Scan(&dataEntradaFila, &versao, &mecanicoApos); err != nil || dataEntradaFila.IsZero() || versao != 2 || mecanicoApos != mecanicoResponsavelID {
+		t.Fatalf("fila=%v version=%d mecanico=%q err=%v", dataEntradaFila, versao, mecanicoApos, err)
 	}
 }
 

@@ -68,6 +68,8 @@ type Aprovacao struct {
 	StatusOrdemServico  string
 	ClienteID           string
 	DataAprovacao       time.Time
+	DataEntradaFila     *time.Time
+	Version             int
 }
 
 type Problema struct {
