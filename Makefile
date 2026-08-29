@@ -7,14 +7,22 @@ POSTGRES_DB := oficina
 MIGRATIONS := $(sort $(wildcard db/migrations/*.sql))
 SEED := db/seeds/V900__dados_iniciais.sql
 SONAR_SCANNER_IMAGE ?= sonarsource/sonar-scanner-cli:latest
+SONAR_PROJECT_KEY ?= oficina-mecanica
+
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
 
 ifeq ($(OS),Windows_NT)
 DOCKER ?= docker.exe
+POWERSHELL ?= powershell.exe
 else
 DOCKER ?= docker
+POWERSHELL ?= pwsh
 endif
 
-.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test coverage sonar-up sonar
+.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test coverage sonar-up sonar sonar-report
 
 help: ## Lista os comandos disponiveis
 	@echo "Uso: make <alvo>"
@@ -32,6 +40,7 @@ help: ## Lista os comandos disponiveis
 	@echo "  coverage       Gera coverage.out para o SonarQube"
 	@echo "  sonar-up       Sobe o SonarQube local"
 	@echo "  sonar          Executa a analise SonarQube via Docker"
+	@echo "  sonar-report   Gera reports/sonar-report.md e reports/sonar-report.html"
 
 setup: db-init ## Prepara e sobe todo o projeto apos o primeiro clone
 	$(DOCKER) compose up -d --build
@@ -66,6 +75,9 @@ sonar-up: ## Sobe o SonarQube local
 
 sonar: coverage ## Executa a analise SonarQube via Docker
 	$(DOCKER) compose run --rm sonar-scanner
+
+sonar-report: ## Gera relatorio local do SonarQube
+	$(POWERSHELL) -NoProfile -ExecutionPolicy Bypass -File scripts/sonar-report.ps1
 
 db-seed: db-up ## Carrega os dados iniciais apos aplicar a migration
 	$(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $(SEED)

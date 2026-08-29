@@ -10,6 +10,23 @@ Este guia explica como iniciar e testar a API Go e o PostgreSQL localmente.
 ## Pre-requisito
 
 - Docker Desktop instalado e em execucao.
+- Arquivo `.env` local criado a partir do `.env.example`.
+
+## Configuracao local
+
+Copie o exemplo de variaveis e ajuste os valores locais quando necessario:
+
+```bash
+cp .env.example .env
+```
+
+No Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+O `.env` nao deve ser versionado. Ele alimenta o `docker compose`, os comandos do `Makefile` e o script de relatorio do Sonar.
 
 ## Como iniciar
 
@@ -48,6 +65,28 @@ make db-down
 ```
 
 No Windows, instale GNU Make ou execute os comandos por Git Bash/WSL antes de usar o `Makefile`.
+
+## SonarQube local
+
+Suba o SonarQube:
+
+```bash
+make sonar-up
+```
+
+Execute coverage e analise:
+
+```bash
+make sonar
+```
+
+Gere o relatorio local em `reports/sonar-report.md` e `reports/sonar-report.html`:
+
+```bash
+make sonar-report
+```
+
+Para o relatorio funcionar, preencha `SONAR_TOKEN` no `.env` com um token gerado no SonarQube local.
 
 ## Como testar a API
 
@@ -103,7 +142,10 @@ Para sair, use:
 | `DB_PORT` | `5432` |
 | `DB_NAME` | `oficina` |
 | `DB_USER` | `oficina` |
-| `DB_PASSWORD` | `oficina` |
+| `DB_PASSWORD` | definido no `.env` |
+| `JWT_SECRET` | definido no `.env` |
+| `SONAR_PROJECT_KEY` | `oficina-mecanica` |
+| `SONAR_TOKEN` | token local do SonarQube |
 
 As variaveis sao entregues ao container da API pelo `docker-compose.yml`.
 
