@@ -40,6 +40,30 @@ services:
       postgres:
         condition: service_healthy
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: oficina-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+  sonar-scanner:
+    image: ${SONAR_SCANNER_IMAGE:-sonarsource/sonar-scanner-cli:latest}
+    profiles:
+      - tools
+    environment:
+      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://sonarqube:9000}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - .:/usr/src
+    depends_on:
+      - sonarqube
+
   test:
     build:
       context: .
@@ -73,3 +97,6 @@ services:
 
 volumes:
   postgres_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

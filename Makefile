@@ -14,7 +14,7 @@ else
 DOCKER ?= docker
 endif
 
-.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test coverage sonar
+.PHONY: help setup up recreate db-up db-down db-reset db-migrate db-seed db-init db-verify test coverage sonar-up sonar
 
 help: ## Lista os comandos disponiveis
 	@echo "Uso: make <alvo>"
@@ -30,6 +30,7 @@ help: ## Lista os comandos disponiveis
 	@echo "  db-verify      Exibe contagens essenciais para verificar a carga"
 	@echo "  test           Executa todos os testes no container Go"
 	@echo "  coverage       Gera coverage.out para o SonarQube"
+	@echo "  sonar-up       Sobe o SonarQube local"
 	@echo "  sonar          Executa a analise SonarQube via Docker"
 
 setup: db-init ## Prepara e sobe todo o projeto apos o primeiro clone
@@ -60,8 +61,11 @@ test: ## Executa testes com cobertura no container Go
 coverage: ## Gera coverage.out para o SonarQube
 	$(DOCKER) compose run --rm --build test sh -c "go test -covermode=atomic -coverprofile=coverage.out ./cmd/... ./internal/..."
 
+sonar-up: ## Sobe o SonarQube local
+	$(DOCKER) compose up -d sonarqube
+
 sonar: coverage ## Executa a analise SonarQube via Docker
-	$(DOCKER) run --rm -e SONAR_HOST_URL -e SONAR_TOKEN -v "$(CURDIR):/usr/src" $(SONAR_SCANNER_IMAGE)
+	$(DOCKER) compose run --rm sonar-scanner
 
 db-seed: db-up ## Carrega os dados iniciais apos aplicar a migration
 	$(DOCKER) compose exec -T $(POSTGRES_SERVICE) psql -v ON_ERROR_STOP=1 -U $(POSTGRES_USER) -d $(POSTGRES_DB) < $(SEED)
