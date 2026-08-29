@@ -1359,6 +1359,35 @@ paths:
         '403': { description: Usuário sem o escopo os:escrever }
         '404': { description: OS ou item não encontrado }
         '409': { description: OS ou item em estado incompatível }
+  /ordens-servico/{osId}/execucao/iniciar:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Inicia a execução da OS
+      description: >-
+        Exige o escopo `os:escrever` e um usuário cadastrado como mecânico. A OS deve estar na
+        fila (`AGUARDANDO_EXECUCAO`), possuir orçamento aprovado com serviço autorizado e ter
+        todas as peças e insumos necessários reservados. Sem itens de estoque, a execução é
+        permitida. O mecânico responsável existente é preservado; sem vínculo, o mecânico
+        autenticado é associado.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Execução iniciada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InicioExecucao' }
+        '400': { description: osId inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem escopo os:escrever ou sem cadastro de mecânico }
+        '404': { description: OS não encontrada }
+        '409': { description: OS fora da fila, orçamento ou serviço não aprovado, ou recurso sem reserva }
+
   /ordens-servico/{osId}/finalizar:
     post:
       tags: [Ordem de Serviço]
@@ -1576,6 +1605,15 @@ components:
             properties:
               itemId: { type: string, format: uuid }
               quantidade: { type: number, exclusiveMinimum: 0 }
+    InicioExecucao:
+      type: object
+      required: [ordemServicoId, status, mecanicoId, dataInicioExecucao]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        status: { type: string, enum: [EM_EXECUCAO] }
+        mecanicoId: { type: string, format: uuid }
+        dataInicioExecucao: { type: string, format: date-time }
+
     Finalizacao:
       type: object
       required: [ordemServicoId, status, dataFinalizacao]

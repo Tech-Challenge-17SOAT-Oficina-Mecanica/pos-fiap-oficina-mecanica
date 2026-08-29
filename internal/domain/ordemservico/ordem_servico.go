@@ -13,4 +13,5 @@ type OrdemDeServico struct {
 	CriadaEm              time.Time
 	ProblemaRelatado      ProblemaRelatado
 	DataInicioDiagnostico *time.Time
+	DataInicioExecucao    *time.Time
 }
