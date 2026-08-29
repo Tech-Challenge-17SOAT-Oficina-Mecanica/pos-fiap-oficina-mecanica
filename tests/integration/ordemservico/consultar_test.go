@@ -32,7 +32,7 @@ func TestConsultarOrdemDeServico(t *testing.T) {
 	id := func(prefix string) string { return fmt.Sprintf(prefix+"%012x", suffix) }
 	clienteID, veiculoID, osID, orcamentoID, servicoID := id("e1000000-0000-0000-0000-"), id("e2000000-0000-0000-0000-"), id("e3000000-0000-0000-0000-"), id("e4000000-0000-0000-0000-"), id("e5000000-0000-0000-0000-")
 	problemaID, orcamentoItemID, eventoID := id("e6000000-0000-0000-0000-"), id("e7000000-0000-0000-0000-"), id("e8000000-0000-0000-0000-")
-	placa := fmt.Sprintf("CON1A%02d", suffix%100)
+	placa := placaMercosul("CON", suffix)
 	codigoBase := suffix & 0xffffff
 
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Ana Consulta',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", suffix%100000000000)); err != nil {

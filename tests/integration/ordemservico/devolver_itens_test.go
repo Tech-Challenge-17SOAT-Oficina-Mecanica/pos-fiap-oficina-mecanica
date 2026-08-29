@@ -32,7 +32,7 @@ func TestDevolverItensAoEstoque(t *testing.T) {
 	osItemReservadoID, osItemConsumidoID, osItemPendenteID := id("a8000000-0000-0000-0000-"), id("a9000000-0000-0000-0000-"), id("aa000000-0000-0000-0000-")
 	reservaAtivaID := id("ab000000-0000-0000-0000-")
 	fornecedorID, pedidoCompraID, pedidoCompraItemID := id("ac000000-0000-0000-0000-"), id("ad000000-0000-0000-0000-"), id("ae000000-0000-0000-0000-")
-	placa := fmt.Sprintf("DEV1A%02d", suffix%100)
+	placa := placaMercosul("DEV", suffix)
 	codigoBase := suffix & 0xffffff
 
 	if _, err = db.Exec(ctx, "INSERT INTO categoria (id,nome,ativa) VALUES ($1,$2,true)", categoriaID, fmt.Sprintf("Categoria %x", codigoBase)); err != nil {
