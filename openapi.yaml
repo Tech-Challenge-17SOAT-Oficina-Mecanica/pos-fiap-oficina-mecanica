@@ -9,6 +9,7 @@ tags:
   - name: Fornecedores
   - name: Estoque
   - name: Mecânico
+  - name: Orçamento
   - name: Serviço
 paths:
   /ordens-servico:
@@ -87,6 +88,40 @@ paths:
       summary: Verifica a disponibilidade da API
       responses:
         '200': { description: API disponível }
+  /orcamentos/{orcamentoId}/aprovar:
+    post:
+      tags: [Orçamento]
+      summary: Aprova um orçamento
+      description: >-
+        Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
+        e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Exige token de cliente com escopo `orcamentos:decidir`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orcamentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento aprovado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrcamentoAprovado' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Cliente sem acesso ao orçamento desta OS }
+        '404': { description: Orçamento não encontrado }
+        '409':
+          description: Orçamento já decidido, OS fora de aprovação ou complementar sem vínculo válido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /servicos:
     post:
       tags: [Serviço]
@@ -1460,6 +1495,17 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
+    OrcamentoAprovado:
+      type: object
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        orcamentoOriginalId: { type: string, format: uuid }
+        statusOrcamento: { type: string, enum: [APROVADO] }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        clienteId: { type: string, format: uuid }
+        dataAprovacao: { type: string, format: date-time }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]

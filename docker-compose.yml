@@ -29,6 +29,17 @@ services:
       app:
         condition: service_started
 
+  adminer:
+    image: adminer:latest
+    container_name: oficina-adminer
+    ports:
+      - "8082:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   test:
     build:
       context: .
