@@ -10,6 +10,7 @@ import (
 
 var (
 	ErrCategoriaInvalida  = errors.New("categoria inexistente ou inativa")
+	ErrFornecedorInvalido = errors.New("fornecedor inexistente ou inativo")
 	ErrDescricaoDuplicada = errors.New("ja existe peca ativa com esta descricao na categoria")
 )
 
@@ -28,6 +29,9 @@ func NewCadastrarPeca(repository CadastrarRepository) CadastrarPeca {
 func (useCase CadastrarPeca) Execute(ctx context.Context, cadastro peca.Cadastro) (peca.Peca, error) {
 	if !validation.IsUUID(cadastro.CategoriaID) {
 		return peca.Peca{}, ErrIdentificadorInvalido
+	}
+	if cadastro.FornecedorID != nil && !validation.IsUUID(*cadastro.FornecedorID) {
+		return peca.Peca{}, ErrFornecedorInvalido
 	}
 	return useCase.repository.Cadastrar(ctx, cadastro)
 }

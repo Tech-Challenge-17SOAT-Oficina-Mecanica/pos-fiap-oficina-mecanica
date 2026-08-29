@@ -29,7 +29,7 @@ func TestJWT(t *testing.T) {
 		t.Fatal(err)
 	}
 	clienteClaims, err := service.Validar(clienteRaw)
-	if err != nil || clienteClaims.ClienteID != "cliente" || clienteClaims.OrdemServicoID != "ordem-servico" || len(clienteClaims.Escopos) != 1 || clienteClaims.Escopos[0] != "orcamentos:ler" {
+	if err != nil || clienteClaims.ClienteID != "cliente" || clienteClaims.OrdemServicoID != "ordem-servico" || len(clienteClaims.Escopos) != 2 || clienteClaims.Escopos[0] != "os:ler" || clienteClaims.Escopos[1] != "orcamentos:decidir" {
 		t.Fatalf("claims cliente: %#v, %v", clienteClaims, err)
 	}
 	if _, err := service.Validar("invalido"); err == nil {

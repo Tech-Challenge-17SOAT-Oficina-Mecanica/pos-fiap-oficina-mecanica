@@ -6,6 +6,11 @@ const (
 	TipoPrincipal    = "PRINCIPAL"
 	TipoComplementar = "COMPLEMENTAR"
 	StatusCriado     = "CRIADO"
+	StatusAprovado   = "APROVADO"
+	StatusRecusado   = "RECUSADO"
+
+	// OSStatusAguardandoAprovacao e o unico status de OS em que um orcamento PRINCIPAL pode ser recusado.
+	OSStatusAguardandoAprovacao = "AGUARDANDO_APROVACAO"
 )
 
 // ItemRegistrado é o item devolvido pelo registro de peças/insumos na OS.
@@ -34,6 +39,7 @@ type Resultado struct {
 
 // Item, Orcamento, Problema, Cliente e Consulta sustentam GET /ordens-servico/{osId}/orcamento.
 type Item struct {
+	ID            string
 	Tipo          string
 	Descricao     string
 	Quantidade    float64
@@ -51,6 +57,17 @@ type Orcamento struct {
 	Itens          []Item
 	Problemas      []Problema
 	ValorTotal     float64
+}
+
+type Aprovacao struct {
+	OrcamentoID         string
+	OrdemServicoID      string
+	TipoOrcamento       string
+	OrcamentoOriginalID string
+	StatusOrcamento     string
+	StatusOrdemServico  string
+	ClienteID           string
+	DataAprovacao       time.Time
 }
 
 type Problema struct {
@@ -74,4 +91,17 @@ type Consulta struct {
 	Orcamentos            []Orcamento
 	ValorTotalGeral       float64
 	EstimativaEntregaDias *int
+}
+
+// Decisao é o resultado de aprovar ou recusar um orçamento.
+type Decisao struct {
+	OrcamentoID         string
+	OrdemServicoID      string
+	TipoOrcamento       string
+	OrcamentoOriginalID string
+	StatusOrcamento     string
+	StatusOrdemServico  string
+	ClienteID           string
+	DecididoEm          time.Time
+	Motivo              string
 }
