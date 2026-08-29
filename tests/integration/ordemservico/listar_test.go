@@ -32,7 +32,7 @@ func TestListarOrdensDeServico(t *testing.T) {
 	id := func(prefix string) string { return fmt.Sprintf(prefix+"%012x", suffix) }
 	clienteID, veiculoID, osRecebidaID, osCanceladaID := id("f1000000-0000-0000-0000-"), id("f2000000-0000-0000-0000-"), id("f3000000-0000-0000-0000-"), id("f4000000-0000-0000-0000-")
 	documento := cpfValido(suffix % 1000000000)
-	placa := fmt.Sprintf("LST%04d", suffix%10000)
+	placa := placaMercosul("LST", suffix)
 
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Cliente Listagem',$2,'CPF','11999999999')", clienteID, documento); err != nil {
 		t.Fatal(err)
@@ -46,7 +46,7 @@ func TestListarOrdensDeServico(t *testing.T) {
 	}
 	clientePaginacaoID, veiculoPaginacaoID := id("f5000000-0000-0000-0000-"), id("f6000000-0000-0000-0000-")
 	documentoPaginacao := cpfValido((suffix + 1) % 1000000000)
-	placaPaginacao := fmt.Sprintf("PGN%04d", (suffix+1)%10000)
+	placaPaginacao := placaMercosul("PGN", suffix+1)
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Cliente Paginacao',$2,'CPF','11999999998')", clientePaginacaoID, documentoPaginacao); err != nil {
 		t.Fatal(err)
 	}

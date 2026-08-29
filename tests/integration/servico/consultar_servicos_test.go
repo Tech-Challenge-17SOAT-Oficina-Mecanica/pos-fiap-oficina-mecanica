@@ -1,6 +1,7 @@
 package servico_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,11 +17,15 @@ import (
 )
 
 func TestConsultarServicos(t *testing.T) {
+	ctx := context.Background()
 	db, err := database.OpenPool()
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
 	defer db.Close()
+	if err := db.Ping(ctx); err != nil {
+		t.Skip("banco indisponível")
+	}
 
 	jwt, err := seguranca.NewJWT("segredo-de-teste")
 	if err != nil {
