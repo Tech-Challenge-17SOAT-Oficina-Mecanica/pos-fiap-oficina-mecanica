@@ -13,6 +13,8 @@ import (
 	pecaDomain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/peca"
 )
 
+func textoPeca(valor string) *string { return &valor }
+
 type cadastrarRepositorioFake struct {
 	cadastrada pecaDomain.Peca
 	erro       error
@@ -36,6 +38,7 @@ const corpoValido = `{
 	"nome": "Pastilha de freio",
 	"descricao": "Pastilha de freio dianteira",
 	"categoriaId": "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+	"fornecedorId": "60000000-0000-0000-0000-000000000001",
 	"fabricante": "Fabricante X",
 	"precoVenda": 180.0,
 	"estoqueMinimo": 4
@@ -50,6 +53,7 @@ func TestCadastrarPecaRetorna201(t *testing.T) {
 		Nome:          "Pastilha de freio",
 		Descricao:     "Pastilha de freio dianteira",
 		CategoriaID:   "7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94",
+		FornecedorID:  textoPeca("60000000-0000-0000-0000-000000000001"),
 		Categoria:     "Freios",
 		UnidadeMedida: "UN",
 		PrecoVenda:    &preco,
@@ -78,6 +82,9 @@ func TestCadastrarPecaRetorna201(t *testing.T) {
 	if corpo["ativo"] != true {
 		t.Fatalf("ativo = %v", corpo["ativo"])
 	}
+	if corpo["fornecedorId"] != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorId = %v", corpo["fornecedorId"])
+	}
 	if _, presente := corpo["dataCriacao"]; !presente {
 		t.Fatal("dataCriacao deveria estar presente no cadastro")
 	}
@@ -88,6 +95,9 @@ func TestCadastrarPecaRetorna201(t *testing.T) {
 	}
 	if fake.recebido.UnidadeMedida != "UN" {
 		t.Fatalf("unidadeMedida = %q, esperado UN", fake.recebido.UnidadeMedida)
+	}
+	if fake.recebido.FornecedorID == nil || *fake.recebido.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorID repassado = %v", fake.recebido.FornecedorID)
 	}
 }
 
@@ -102,6 +112,7 @@ func TestCadastrarPecaErros(t *testing.T) {
 		{"nome vazio", `{"nome":"","descricao":"Valida","categoriaId":"7c1b4d09-2f83-4a51-9e6c-3d0a75b21e94"}`, nil, http.StatusBadRequest},
 		{"categoria nao uuid", `{"nome":"Peca","descricao":"Valida","categoriaId":"abc"}`, nil, http.StatusBadRequest},
 		{"categoria inativa", corpoValido, peca.ErrCategoriaInvalida, http.StatusBadRequest},
+		{"fornecedor invalido", corpoValido, peca.ErrFornecedorInvalido, http.StatusBadRequest},
 		{"descricao duplicada", corpoValido, peca.ErrDescricaoDuplicada, http.StatusConflict},
 		{"falha inesperada", corpoValido, context.DeadlineExceeded, http.StatusInternalServerError},
 	}

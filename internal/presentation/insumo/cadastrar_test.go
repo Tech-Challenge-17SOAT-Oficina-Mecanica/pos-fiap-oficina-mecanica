@@ -13,6 +13,8 @@ import (
 	insumoDomain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/insumo"
 )
 
+func textoInsumo(valor string) *string { return &valor }
+
 type cadastrarRepositorioFake struct {
 	cadastrado insumoDomain.Insumo
 	erro       error
@@ -36,6 +38,7 @@ const corpoValido = `{
 	"nome": "Óleo 5W30",
 	"descricao": "Óleo sintético 5W30 API SN",
 	"categoriaId": "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
+	"fornecedorId": "60000000-0000-0000-0000-000000000001",
 	"unidadeMedida": "L",
 	"custoUnitario": 45.0,
 	"estoqueMinimo": 20.5
@@ -50,6 +53,7 @@ func TestCadastrarInsumoRetorna201(t *testing.T) {
 		Nome:           "Óleo 5W30",
 		Descricao:      "Óleo sintético 5W30 API SN",
 		CategoriaID:    "e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724",
+		FornecedorID:   textoInsumo("60000000-0000-0000-0000-000000000001"),
 		Categoria:      "Lubrificantes",
 		UnidadeMedida:  "L",
 		CustoUnitario:  &custo,
@@ -80,6 +84,9 @@ func TestCadastrarInsumoRetorna201(t *testing.T) {
 	if corpo["unidadeMedida"] != "L" {
 		t.Fatalf("unidadeMedida = %v", corpo["unidadeMedida"])
 	}
+	if corpo["fornecedorId"] != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorId = %v", corpo["fornecedorId"])
+	}
 
 	// O decimal precisa sair como número, sem virar string nem perder a fração.
 	if !strings.Contains(response.Body.String(), `"estoqueMinimo":20.500`) {
@@ -91,6 +98,9 @@ func TestCadastrarInsumoRetorna201(t *testing.T) {
 	}
 	if fake.recebido.EstoqueMinimo != "20.5" {
 		t.Fatalf("estoqueMinimo repassado = %q; a fração deveria chegar intacta", fake.recebido.EstoqueMinimo)
+	}
+	if fake.recebido.FornecedorID == nil || *fake.recebido.FornecedorID != "60000000-0000-0000-0000-000000000001" {
+		t.Fatalf("fornecedorID repassado = %v", fake.recebido.FornecedorID)
 	}
 }
 
@@ -106,6 +116,7 @@ func TestCadastrarInsumoErros(t *testing.T) {
 		{"custo ausente", `{"nome":"Item","descricao":"Valida","categoriaId":"e4b7a1c6-90d5-4f2b-8a37-1c5e6d09b724","unidadeMedida":"L"}`, nil, http.StatusBadRequest},
 		{"categoria nao uuid", `{"nome":"Item","descricao":"Valida","categoriaId":"abc","unidadeMedida":"L","custoUnitario":1}`, nil, http.StatusBadRequest},
 		{"categoria inativa", corpoValido, insumo.ErrCategoriaInvalida, http.StatusBadRequest},
+		{"fornecedor invalido", corpoValido, insumo.ErrFornecedorInvalido, http.StatusBadRequest},
 		{"descricao duplicada", corpoValido, insumo.ErrDescricaoDuplicada, http.StatusConflict},
 		{"falha inesperada", corpoValido, context.DeadlineExceeded, http.StatusInternalServerError},
 	}

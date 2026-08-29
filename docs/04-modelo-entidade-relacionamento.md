@@ -97,6 +97,7 @@ erDiagram
     ITEM_ESTOQUE {
         uuid id PK
         uuid categoria_id FK
+        uuid fornecedor_id FK
         string tipo
         string codigo UK
         string nome
@@ -480,6 +481,7 @@ Relacionamento: N:1 com orcamento; referencia exatamente um de `SERVICO` ou `ITE
 |---|---|---|
 | `id` | `uuid` | PK |
 | `categoria_id` | `uuid` | FK para `CATEGORIA` |
+| `fornecedor_id` | `uuid` | FK opcional para `FORNECEDOR`; fornecedor padrão |
 | `tipo` | `string` | `PECA` ou `INSUMO`, validado no dominio |
 | `codigo` | `string` | UK; `PEC-000001` ou `INS-000001` |
 | `nome` | `string` | Obrigatorio |
@@ -497,7 +499,7 @@ Relacionamento: N:1 com orcamento; referencia exatamente um de `SERVICO` ou `ITE
 | `usuario_desativacao` | `uuid` | Usuario responsavel |
 | `version` | `integer` | Controle otimista |
 
-Relacionamentos: N:1 com categoria; 1:N com itens da OS, itens de orcamento, reservas,
+Relacionamentos: N:1 com categoria; N:1 opcional com fornecedor; 1:N com itens da OS, itens de orcamento, reservas,
 movimentacoes e itens de pedido. `saldo_disponivel` e derivado de `saldo_fisico - saldo_reservado`.
 
 #### `RESERVA_ESTOQUE`

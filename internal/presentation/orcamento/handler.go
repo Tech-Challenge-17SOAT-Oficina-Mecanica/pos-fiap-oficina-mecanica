@@ -13,6 +13,65 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
+type aprovacaoResponse struct {
+	OrcamentoID         string `json:"orcamentoId"`
+	OrdemServicoID      string `json:"ordemServicoId"`
+	TipoOrcamento       string `json:"tipoOrcamento"`
+	OrcamentoOriginalID string `json:"orcamentoOriginalId,omitempty"`
+	StatusOrcamento     string `json:"statusOrcamento"`
+	StatusOrdemServico  string `json:"statusOrdemServico"`
+	ClienteID           string `json:"clienteId"`
+	DataAprovacao       string `json:"dataAprovacao"`
+}
+
+func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		claims := seguranca.Claims(request.Context())
+		usuarioID := ""
+		if claims.ClienteID == "" {
+			usuarioID = claims.UsuarioID
+		}
+		resultado, err := useCase.Execute(request.Context(), application.AprovarInput{
+			OrcamentoID:    request.PathValue("orcamentoId"),
+			ClienteID:      claims.ClienteID,
+			UsuarioID:      usuarioID,
+			OrdemServicoID: claims.OrdemServicoID,
+		})
+		if err != nil {
+			responderErroAprovacao(writer, err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(writer).Encode(aprovacaoResponse{
+			OrcamentoID:         resultado.OrcamentoID,
+			OrdemServicoID:      resultado.OrdemServicoID,
+			TipoOrcamento:       resultado.TipoOrcamento,
+			OrcamentoOriginalID: resultado.OrcamentoOriginalID,
+			StatusOrcamento:     resultado.StatusOrcamento,
+			StatusOrdemServico:  resultado.StatusOrdemServico,
+			ClienteID:           resultado.ClienteID,
+			DataAprovacao:       resultado.DataAprovacao.Format(timeFormat),
+		})
+	}
+}
+
+func responderErroAprovacao(writer http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, application.ErrIdentificadorInvalido):
+		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "orcamentoId")
+	case errors.Is(err, application.ErrOrcamentoNaoEncontrado):
+		writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "orcamentoId")
+	case errors.Is(err, application.ErrAcessoNegado):
+		writeProblem(writer, http.StatusForbidden, "Acesso negado", err.Error(), "")
+	case errors.Is(err, application.ErrOrcamentoJaDecidido),
+		errors.Is(err, application.ErrOrdemServicoStatusInvalido),
+		errors.Is(err, application.ErrOrcamentoComplementarSemPai):
+		writeProblem(writer, http.StatusConflict, "Conflito", err.Error(), "")
+	default:
+		writeProblem(writer, http.StatusInternalServerError, "Erro interno", "erro ao aprovar orcamento", "")
+	}
+}
+
 func NewConsultarHandler(useCase application.Consultar) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")

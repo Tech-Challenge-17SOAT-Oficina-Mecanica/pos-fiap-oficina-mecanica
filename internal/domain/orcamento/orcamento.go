@@ -59,6 +59,17 @@ type Orcamento struct {
 	ValorTotal     float64
 }
 
+type Aprovacao struct {
+	OrcamentoID         string
+	OrdemServicoID      string
+	TipoOrcamento       string
+	OrcamentoOriginalID string
+	StatusOrcamento     string
+	StatusOrdemServico  string
+	ClienteID           string
+	DataAprovacao       time.Time
+}
+
 type Problema struct {
 	ID           string
 	Descricao    string
