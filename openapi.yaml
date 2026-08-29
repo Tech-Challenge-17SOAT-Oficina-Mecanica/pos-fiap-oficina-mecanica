@@ -1404,13 +1404,49 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /ordens-servico/{osId}/entrega:
+    post:
+      tags: [Ordem de Serviço]
+      summary: Registra a entrega do veículo
+      description: >-
+        Exige o escopo `os:escrever`. A OS precisa estar `FINALIZADA`. O valor final é calculado
+        a partir dos orçamentos aprovados e registrado junto da entrega; pagamento permanece fora
+        do MVP.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                clienteId: { type: string, format: uuid, description: Cliente ou responsável que retirou o veículo }
+                observacoes: { type: string, example: Veículo entregue sem ressalvas. }
+      responses:
+        '200':
+          description: Veículo entregue e OS encerrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntregaVeiculo' }
+        '400': { description: osId, clienteId ou corpo inválidos }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:escrever }
+        '404': { description: OS ou cliente da retirada não encontrado }
+        '409': { description: OS não está FINALIZADA, veículo já entregue ou valor final indisponível }
   /ordens-servico/{osId}:
     get:
       tags: [Ordem de Serviço]
       summary: Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos
       description: >-
-        Exige o escopo `os:ler` ou `orcamentos:ler`. O cliente autenticado com token de escopo
-        reduzido só acessa a própria OS.
+        Exige o escopo `os:ler`. O cliente autenticado com token de escopo reduzido só acessa
+        a própria OS.
       security:
         - bearerAuth: []
       parameters:
@@ -1548,6 +1584,17 @@ components:
         status: { type: string, enum: [FINALIZADA] }
         dataFinalizacao: { type: string, format: date-time }
         observacoes: { type: string }
+    EntregaVeiculo:
+      type: object
+      required: [ordemServicoId, status, valorFinal, responsavelEntregaId, dataEntrega]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        status: { type: string, enum: [ENTREGUE] }
+        valorFinal: { type: number, format: double }
+        responsavelEntregaId: { type: string, format: uuid }
+        clienteId: { type: string, format: uuid }
+        dataEntrega: { type: string, format: date-time }
+        observacoes: { type: string }
     ListaOrdensServico:
       type: object
       description: Envelope paginado padrão da API.
@@ -1636,8 +1683,8 @@ components:
               agregadoId: { type: string, format: uuid }
               ordemServicoId: { type: string, format: uuid }
               tipoEvento: { type: string }
-              dados: { type: object }
-              metadados: { type: object }
+              statusAnterior: { type: string, nullable: true }
+              statusNovo: { type: string, nullable: true }
               ocorridoEm: { type: string, format: date-time }
               registradoEm: { type: string, format: date-time }
     OrcamentoOS:

@@ -99,6 +99,7 @@ func main() {
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
 	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
+	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository)
 	consultarOS := ordemServicoApplication.NewConsultar(ordemServicoRepository)
 	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
@@ -140,6 +141,7 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/problema-relatado", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarProblemaRelatadoHandler(registrarProblemaRelatado)))
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("POST /ordens-servico/{osId}/finalizar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewFinalizarHandler(finalizarServico)))
+	mux.Handle("POST /ordens-servico/{osId}/entrega", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewEntregarHandler(registrarEntrega)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/calcular", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
 		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
 	mux.Handle("GET /ordens-servico/{osId}", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, ordemServicoPresentation.NewConsultarHandler(consultarOS)))
