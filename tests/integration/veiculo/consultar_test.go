@@ -28,10 +28,10 @@ func TestConsultarVeiculo(t *testing.T) {
 	}
 	defer db.Close()
 	ctx := context.Background()
-	sufixo := time.Now().UnixNano() % 100
-	clienteID := fmt.Sprintf("60000000-0000-0000-0000-%012x", time.Now().UnixNano()&0xffffffffffff)
-	placaAtiva := fmt.Sprintf("XAA1A%02d", sufixo)
-	placaInativa := fmt.Sprintf("XBB1B%02d", sufixo)
+	agora := time.Now().UnixNano()
+	clienteID := fmt.Sprintf("60000000-0000-0000-0000-%012x", agora&0xffffffffffff)
+	placaAtiva := fmt.Sprintf("X%c%c1A%02d", 'A'+agora%26, 'A'+agora/26%26, agora%100)
+	placaInativa := fmt.Sprintf("Y%c%c1B%02d", 'A'+agora%26, 'A'+agora/26%26, agora%100)
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Teste',$2,'CPF','11999999999')", clienteID, fmt.Sprintf("%011d", time.Now().UnixNano()%100000000000)); err != nil {
 		t.Fatal(err)
 	}

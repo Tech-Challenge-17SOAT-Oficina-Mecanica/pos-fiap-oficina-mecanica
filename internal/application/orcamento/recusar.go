@@ -9,7 +9,6 @@ import (
 )
 
 var (
-	ErrOrcamentoJaDecidido                = errors.New("orcamento ja foi aprovado ou recusado")
 	ErrOrcamentoComplementarSemPrincipal  = errors.New("orcamento complementar sem orcamento principal vinculado")
 	ErrMotivoInvalido                     = errors.New("motivo deve ter no maximo 500 caracteres")
 	ErrOrdemServicoNaoAguardandoAprovacao = errors.New("ordem de servico nao esta aguardando aprovacao")

@@ -9,6 +9,7 @@ tags:
   - name: Fornecedores
   - name: Estoque
   - name: Mecânico
+  - name: Orçamento
   - name: Serviço
 paths:
   /ordens-servico:
@@ -87,6 +88,40 @@ paths:
       summary: Verifica a disponibilidade da API
       responses:
         '200': { description: API disponível }
+  /orcamentos/{orcamentoId}/aprovar:
+    post:
+      tags: [Orçamento]
+      summary: Aprova um orçamento
+      description: >-
+        Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
+        e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Exige token de cliente com escopo `orcamentos:decidir`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orcamentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento aprovado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrcamentoAprovado' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Cliente sem acesso ao orçamento desta OS }
+        '404': { description: Orçamento não encontrado }
+        '409':
+          description: Orçamento já decidido, OS fora de aprovação ou complementar sem vínculo válido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /servicos:
     post:
       tags: [Serviço]
@@ -952,6 +987,51 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/solicitacoes-compra-reserva-insumos:
+    post:
+      tags: [Estoque]
+      summary: Processa insumos para reserva e compra
+      description: >-
+        Reserva o saldo disponível dos insumos de uma OS com orçamento aprovado e cria pedido
+        de compra apenas para a quantidade faltante. Exige `Idempotency-Key` e o escopo
+        `estoque:movimentar`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: Chave UUID que impede reprocessamento da mesma solicitação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProcessarInsumosCompraReserva' }
+      responses:
+        '201':
+          description: Reservas e/ou solicitação de compra criadas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoProcessarInsumosCompraReserva' }
+        '200':
+          description: Resposta original de uma solicitação idempotente já processada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ResultadoProcessarInsumosCompraReserva' }
+        '400':
+          description: Header ou corpo inválido, lista vazia, item repetido ou quantidade inválida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404': { description: OS, fornecedor ou insumo não encontrado }
+        '409':
+          description: OS sem orçamento aprovado, fornecedor/insumo inativo, item fora da OS/orçamento ou processamento duplicado
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /estoque/insumos:
     get:
       tags: [Estoque]
@@ -1415,6 +1495,17 @@ components:
             properties:
               campo: { type: string }
               mensagem: { type: string }
+    OrcamentoAprovado:
+      type: object
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        tipoOrcamento: { type: string, enum: [PRINCIPAL, COMPLEMENTAR] }
+        orcamentoOriginalId: { type: string, format: uuid }
+        statusOrcamento: { type: string, enum: [APROVADO] }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        clienteId: { type: string, format: uuid }
+        dataAprovacao: { type: string, format: date-time }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]
@@ -1631,6 +1722,55 @@ components:
         tamanho: { type: integer }
         totalElementos: { type: integer }
         totalPaginas: { type: integer }
+    ProcessarInsumosCompraReserva:
+      type: object
+      required: [ordemServicoId, fornecedorId, itens]
+      additionalProperties: false
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        fornecedorId: { type: string, format: uuid }
+        itens:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade:
+                type: number
+                format: double
+                minimum: 0
+                exclusiveMinimum: true
+                example: 2.5
+    ResultadoProcessarInsumosCompraReserva:
+      type: object
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
+        insumosReservados:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double }
+              saldoDisponivelApos: { type: number, format: double }
+        insumosCompraSolicitada:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double }
+              valorParcial: { type: number, format: double }
+        fornecedor:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            nome: { type: string }
+        valorTotalCompraParcial: { type: number, format: double }
     RegistrarEntrada:
       type: object
       required: [documentoOrigem, itens]
