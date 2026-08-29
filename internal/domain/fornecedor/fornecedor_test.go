@@ -1,6 +1,9 @@
 package fornecedor
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestNovoCadastroNormalizaDocumentoEAplicaPrazoPadrao(t *testing.T) {
 	cadastro, err := NovoCadastro(
@@ -56,7 +59,7 @@ func TestNovoCadastroRejeitaDemaisLimites(t *testing.T) {
 		prazo                 *int
 	}{
 		{"ab", "", "CNPJ", nil},
-		{"Fornecedor válido", string(make([]byte, 121)), "CNPJ", nil},
+		{"Fornecedor válido", strings.Repeat("a", 121), "CNPJ", nil},
 		{"Fornecedor válido", "", "RG", nil},
 		{"Fornecedor válido", "", "CNPJ", &prazoInvalido},
 		{"Fornecedor válido", "", "CPF", nil},
@@ -64,5 +67,49 @@ func TestNovoCadastroRejeitaDemaisLimites(t *testing.T) {
 		if _, err := NovoCadastro(test.razao, test.fantasia, "04.252.011/0001-10", test.tipo, "11999990000", "", test.prazo); err == nil {
 			t.Fatal("cadastro inválido aceito")
 		}
+	}
+}
+
+func TestNovaAtualizacaoNormalizaCampos(t *testing.T) {
+	prazo := 15
+	atualizacao, err := NovaAtualizacao(" Fornecedor Atualizado ", " Fantasia ", "(11) 98888-7777", "contato@example.com", &prazo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if atualizacao.RazaoSocial != "Fornecedor Atualizado" {
+		t.Fatalf("razaoSocial=%q", atualizacao.RazaoSocial)
+	}
+	if atualizacao.NomeFantasia != "Fantasia" || atualizacao.Telefone != "11988887777" || atualizacao.Email != "contato@example.com" {
+		t.Fatalf("atualizacao invalida: %+v", atualizacao)
+	}
+	if atualizacao.PrazoEntregaDias == nil || *atualizacao.PrazoEntregaDias != prazo {
+		t.Fatalf("prazo=%v", atualizacao.PrazoEntregaDias)
+	}
+}
+
+func TestNovaAtualizacaoRejeitaDadosInvalidos(t *testing.T) {
+	prazoZero := 0
+	prazoAlto := 366
+	for _, test := range []struct {
+		nome     string
+		razao    string
+		fantasia string
+		telefone string
+		email    string
+		prazo    *int
+	}{
+		{"razao curta", "ab", "", "11999990000", "", nil},
+		{"fantasia longa", "Fornecedor valido", strings.Repeat("a", 121), "11999990000", "", nil},
+		{"telefone invalido", "Fornecedor valido", "", "123", "", nil},
+		{"email invalido", "Fornecedor valido", "", "", "invalido", nil},
+		{"sem contato", "Fornecedor valido", "", "", "", nil},
+		{"prazo menor que minimo", "Fornecedor valido", "", "11999990000", "", &prazoZero},
+		{"prazo maior que maximo", "Fornecedor valido", "", "11999990000", "", &prazoAlto},
+	} {
+		t.Run(test.nome, func(t *testing.T) {
+			if _, err := NovaAtualizacao(test.razao, test.fantasia, test.telefone, test.email, test.prazo); err == nil {
+				t.Fatal("atualizacao invalida aceita")
+			}
+		})
 	}
 }

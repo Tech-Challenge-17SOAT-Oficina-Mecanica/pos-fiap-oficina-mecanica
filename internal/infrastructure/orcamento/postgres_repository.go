@@ -305,6 +305,9 @@ func decimal(valor string) *big.Rat {
 }
 
 func normalizarDecimal(valor string) string {
+	if strings.TrimSpace(valor) == "-0" {
+		return "0"
+	}
 	valor = strings.TrimRight(valor, "0")
 	valor = strings.TrimRight(valor, ".")
 	if valor == "" || valor == "-0" {
