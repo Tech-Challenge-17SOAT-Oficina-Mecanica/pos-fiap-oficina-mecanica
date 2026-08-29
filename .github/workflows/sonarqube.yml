@@ -41,6 +41,15 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Init database
+        run: |
+          docker run --rm \
+            --network "${{ job.services.postgres.network }}" \
+            -v "${{ github.workspace }}:/workspace" \
+            -e PGPASSWORD=oficina \
+            postgres:16-alpine \
+            sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
+
       - name: Test coverage
         run: go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
 
