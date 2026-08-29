@@ -1407,8 +1407,8 @@ paths:
       tags: [Ordem de Serviço]
       summary: Detalha a OS com cliente, veículo, problemas, orçamentos e histórico de eventos
       description: >-
-        Exige o escopo `os:ler` ou `orcamentos:ler`. O cliente autenticado com token de escopo
-        reduzido só acessa a própria OS.
+        Exige o escopo `os:ler`. O cliente autenticado com token de escopo reduzido só acessa
+        a própria OS.
       security:
         - bearerAuth: []
       parameters:
@@ -1645,8 +1645,8 @@ components:
               agregadoId: { type: string, format: uuid }
               ordemServicoId: { type: string, format: uuid }
               tipoEvento: { type: string }
-              dados: { type: object }
-              metadados: { type: object }
+              statusAnterior: { type: string, nullable: true }
+              statusNovo: { type: string, nullable: true }
               ocorridoEm: { type: string, format: date-time }
               registradoEm: { type: string, format: date-time }
     OrcamentoOS:

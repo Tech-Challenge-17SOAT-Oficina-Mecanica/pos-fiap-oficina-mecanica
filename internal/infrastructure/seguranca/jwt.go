@@ -37,7 +37,7 @@ func (service JWT) Gerar(usuarioID string, escopos []string) (string, error) {
 
 func (service JWT) GerarCliente(clienteID, ordemServicoID string) (string, error) {
 	now := service.now()
-	claims := jwtClaims{ClienteID: clienteID, OrdemServicoID: ordemServicoID, Escopos: []string{"orcamentos:ler", "orcamentos:decidir"}, RegisteredClaims: jwt.RegisteredClaims{Subject: clienteID, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour))}}
+	claims := jwtClaims{ClienteID: clienteID, OrdemServicoID: ordemServicoID, Escopos: []string{"os:ler", "orcamentos:decidir"}, RegisteredClaims: jwt.RegisteredClaims{Subject: clienteID, IssuedAt: jwt.NewNumericDate(now), ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour))}}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(service.secret)
 }
 
