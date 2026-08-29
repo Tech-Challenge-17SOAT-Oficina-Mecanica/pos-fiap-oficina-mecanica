@@ -41,7 +41,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		($2,$4,'PECA','x',$6,'Peca inativa','peca inativa','UN',5,0,false,10.00),
 		($3,$4,'PECA',$7,'Peca pedido','Peca pedido','peca pedido','UN',0,0,true,10.00)`,
 		insumoID, pecaInativaID, pecaPedidoID, categoriaID,
-		fmt.Sprintf("INS-%06x1", codigoBase), fmt.Sprintf("PEC-%06x1", codigoBase), fmt.Sprintf("PEC-%06x2", codigoBase)); err != nil {
+		fmt.Sprintf("INS%06x1", codigoBase), fmt.Sprintf("PEC%06x1", codigoBase), fmt.Sprintf("PEC%06x2", codigoBase)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = db.Exec(ctx, "INSERT INTO fornecedor (id,razao_social,documento,tipo_documento) VALUES ($1,'Fornecedor Teste',$2,'CNPJ')",
