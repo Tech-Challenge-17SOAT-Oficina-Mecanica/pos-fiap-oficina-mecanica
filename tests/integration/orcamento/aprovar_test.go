@@ -123,7 +123,7 @@ func TestAprovarOrcamento(t *testing.T) {
 		orcamentoProntoID = "95000000-0000-0000-0000-000000000010"
 		pecaProntaID      = "95000000-0000-0000-0000-000000000011"
 	)
-	t.Cleanup(func() {
+	defer func() {
 		for _, comando := range []string{
 			"DELETE FROM auditoria_ordem_servico WHERE ordem_servico_id = $1",
 			"DELETE FROM movimentacao_estoque WHERE ordem_servico_id = $1",
@@ -145,7 +145,7 @@ func TestAprovarOrcamento(t *testing.T) {
 				t.Errorf("cleanup pronto: %v", err)
 			}
 		}
-	})
+	}()
 	if _, err := db.Exec(ctx, `
 		INSERT INTO item_estoque (id, categoria_id, tipo, codigo, nome, descricao, descricao_normalizada, fornecedor_id, unidade_medida, saldo_fisico, saldo_reservado, preco_venda, ativo)
 		VALUES ($1, $2, 'PECA', 'PEC-950002', 'Peca pronta', 'Peca pronta', 'peca pronta', $3, 'UN', 1, 0, 50, TRUE);
@@ -175,7 +175,7 @@ func TestAprovarOrcamento(t *testing.T) {
 		orcamentoComplementarID = "95000000-0000-0000-0000-000000000016"
 		pecaComplementarID      = "95000000-0000-0000-0000-000000000017"
 	)
-	t.Cleanup(func() {
+	defer func() {
 		comandos := []struct {
 			query string
 			args  []any
@@ -196,7 +196,7 @@ func TestAprovarOrcamento(t *testing.T) {
 				t.Errorf("cleanup complementar: %v", err)
 			}
 		}
-	})
+	}()
 	if _, err := db.Exec(ctx, `
 		INSERT INTO usuario (id, email, senha_hash, ativo) VALUES ($1, 'mecanico-aprovacao@example.com', 'hash', TRUE);
 		INSERT INTO mecanico (id, usuario_id, nome, version) VALUES ($2, $1, 'Mecanico aprovacao', 1);

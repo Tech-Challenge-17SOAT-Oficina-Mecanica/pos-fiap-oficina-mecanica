@@ -98,16 +98,20 @@ func (repository PostgresRepository) Aprovar(ctx context.Context, input applicat
 	if err != nil {
 		return domain.Aprovacao{}, err
 	}
+	var dataEntradaFila pgtype.Timestamptz
 	err = tx.QueryRow(ctx, `
 		UPDATE ordem_servico
-		SET status = $2,
-		    data_entrada_fila = CASE WHEN $2 = 'AGUARDANDO_EXECUCAO' THEN CURRENT_TIMESTAMP ELSE data_entrada_fila END,
+		SET status = $2::varchar,
+		    data_entrada_fila = CASE WHEN $2::varchar = 'AGUARDANDO_EXECUCAO' THEN CURRENT_TIMESTAMP ELSE data_entrada_fila END,
 		    version = version + 1
 		WHERE id = $1
 		RETURNING data_entrada_fila, version`, resultado.OrdemServicoID, resultado.StatusOrdemServico,
-	).Scan(&resultado.DataEntradaFila, &resultado.Version)
+	).Scan(&dataEntradaFila, &resultado.Version)
 	if err != nil {
 		return domain.Aprovacao{}, err
+	}
+	if dataEntradaFila.Valid {
+		resultado.DataEntradaFila = &dataEntradaFila.Time
 	}
 	if _, err = tx.Exec(ctx, `
 		INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
