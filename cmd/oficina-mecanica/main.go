@@ -97,6 +97,8 @@ func main() {
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
 	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
+	consultarOS := ordemServicoApplication.NewConsultar(ordemServicoRepository)
+	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
 	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository)
@@ -137,6 +139,8 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/finalizar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewFinalizarHandler(finalizarServico)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/calcular", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
 		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
+	mux.Handle("GET /ordens-servico/{osId}", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, ordemServicoPresentation.NewConsultarHandler(consultarOS)))
+	mux.Handle("GET /ordens-servico", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewListarHandler(listarOS)))
 	mux.Handle("GET /ordens-servico/{osId}/orcamento", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, orcamentoPresentation.NewConsultarHandler(consultarOrcamento)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir, orcamentoPresentation.NewRecusarHandler(recusarOrcamento)))
 	mux.Handle("GET /veiculos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoVeiculosLer, veiculoPresentation.NewConsultaHandler(consultar)))
