@@ -137,6 +137,7 @@ paths:
       description: >-
         Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
         e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Quando todos os recursos estão reservados, também registra a data de entrada na fila.
         Exige token de cliente com escopo `orcamentos:decidir`.
       security:
         - bearerAuth: []
@@ -1749,6 +1750,8 @@ components:
         statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
         clienteId: { type: string, format: uuid }
         dataAprovacao: { type: string, format: date-time }
+        dataEntradaFila: { type: string, format: date-time, nullable: true }
+        version: { type: integer }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]
