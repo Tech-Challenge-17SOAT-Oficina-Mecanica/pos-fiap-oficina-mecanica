@@ -205,6 +205,9 @@ func (repository PostgresRepository) BuscarParaEnvio(ctx context.Context, orcame
 		dados.Orcamento.OriginalID = *originalID
 	}
 	dados.Calculado = estimativa != nil
+	if estimativa != nil {
+		dados.EstimativaDias = *estimativa
+	}
 
 	if dados.Orcamento.Itens, err = repository.itensDe(ctx, orcamentoID); err != nil {
 		return orcamentoApplication.OrcamentoParaEnvio{}, err

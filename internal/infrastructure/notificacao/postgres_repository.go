@@ -11,7 +11,7 @@ import (
 )
 
 const colunas = `id, cliente_id, canal, tipo_evento, agregado, agregado_id,
-	destinatario, assunto, conteudo, status, tentativas, ultimo_erro, criada_em, enviada_em`
+	destinatario, assunto, conteudo, COALESCE(conteudo_html, ''), status, tentativas, ultimo_erro, criada_em, enviada_em`
 
 type PostgresRepository struct{ db *pgxpool.Pool }
 
@@ -42,11 +42,11 @@ func (repository PostgresRepository) Enfileirar(ctx context.Context, nova notifi
 	err := repository.db.QueryRow(ctx, `
 		INSERT INTO notificacao (
 			cliente_id, canal, tipo_evento, agregado, agregado_id,
-			destinatario, assunto, conteudo, status
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			destinatario, assunto, conteudo, conteudo_html, status
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10)
 		RETURNING id, criada_em`,
 		nova.ClienteID, nova.Canal, nova.TipoEvento, nova.Origem.Agregado, nova.Origem.ID,
-		nova.Destinatario, nova.Assunto, nova.Conteudo, nova.Status,
+		nova.Destinatario, nova.Assunto, nova.Conteudo, nova.ConteudoHTML, nova.Status,
 	).Scan(&nova.ID, &nova.CriadaEm)
 	return nova, err
 }
@@ -95,7 +95,7 @@ func ler(linha scanner) (notificacao.Notificacao, error) {
 	err := linha.Scan(
 		&aviso.ID, &aviso.ClienteID, &aviso.Canal, &aviso.TipoEvento,
 		&aviso.Origem.Agregado, &aviso.Origem.ID,
-		&aviso.Destinatario, &aviso.Assunto, &aviso.Conteudo,
+		&aviso.Destinatario, &aviso.Assunto, &aviso.Conteudo, &aviso.ConteudoHTML,
 		&aviso.Status, &aviso.Tentativas, &aviso.UltimoErro,
 		&aviso.CriadaEm, &aviso.EnviadaEm,
 	)

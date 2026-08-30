@@ -52,18 +52,40 @@ func (enviador SMTPEnviador) Enviar(_ context.Context, aviso notificacao.Notific
 		[]string{aviso.Destinatario}, mensagemRFC822(enviador.remetente, aviso))
 }
 
-// mensagemRFC822 monta o e-mail em texto puro. O assunto vai codificado em UTF-8 porque
-// os avisos tem acento, e cabecalho SMTP e ASCII por padrao.
+// mensagemRFC822 monta o e-mail. O assunto vai codificado em UTF-8 porque os avisos tem
+// acento, e cabecalho SMTP e ASCII por padrao.
+//
+// Com HTML presente o corpo vai em multipart/alternative: o cliente de e-mail escolhe a
+// melhor versao que consegue exibir, e quem le em texto puro ainda recebe algo legivel.
 func mensagemRFC822(remetente string, aviso notificacao.Notificacao) []byte {
 	var mensagem strings.Builder
 	fmt.Fprintf(&mensagem, "From: %s\r\n", remetente)
 	fmt.Fprintf(&mensagem, "To: %s\r\n", aviso.Destinatario)
 	fmt.Fprintf(&mensagem, "Subject: =?UTF-8?B?%s?=\r\n", base64UTF8(aviso.Assunto))
 	mensagem.WriteString("MIME-Version: 1.0\r\n")
-	mensagem.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n")
-	mensagem.WriteString("\r\n")
+
+	if aviso.ConteudoHTML == "" {
+		mensagem.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n\r\n")
+		mensagem.WriteString(aviso.Conteudo)
+		mensagem.WriteString("\r\n")
+		return []byte(mensagem.String())
+	}
+
+	const fronteira = "oficina-mecanica-alternative"
+	fmt.Fprintf(&mensagem, "Content-Type: multipart/alternative; boundary=\"%s\"\r\n\r\n", fronteira)
+
+	// A versao em texto vem primeiro: o RFC 2046 manda listar da menos para a mais rica.
+	fmt.Fprintf(&mensagem, "--%s\r\n", fronteira)
+	mensagem.WriteString("Content-Type: text/plain; charset=\"UTF-8\"\r\n\r\n")
 	mensagem.WriteString(aviso.Conteudo)
 	mensagem.WriteString("\r\n")
+
+	fmt.Fprintf(&mensagem, "--%s\r\n", fronteira)
+	mensagem.WriteString("Content-Type: text/html; charset=\"UTF-8\"\r\n\r\n")
+	mensagem.WriteString(aviso.ConteudoHTML)
+	mensagem.WriteString("\r\n")
+
+	fmt.Fprintf(&mensagem, "--%s--\r\n", fronteira)
 	return []byte(mensagem.String())
 }
 

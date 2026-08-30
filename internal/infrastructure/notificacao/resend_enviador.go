@@ -23,11 +23,14 @@ func NewResendEnviador(apiKey, remetente string) ResendEnviador {
 }
 
 func (enviador ResendEnviador) Enviar(ctx context.Context, aviso notificacao.Notificacao) error {
+	// Os dois corpos vao juntos quando ha HTML: o Resend entrega multipart e o cliente
+	// escolhe. Sem HTML, segue so o texto.
 	enviado, err := enviador.cliente.Emails.SendWithContext(ctx, &resend.SendEmailRequest{
 		From:    enviador.remetente,
 		To:      []string{aviso.Destinatario},
 		Subject: aviso.Assunto,
 		Text:    aviso.Conteudo,
+		Html:    aviso.ConteudoHTML,
 	})
 	if err != nil {
 		return fmt.Errorf("resend: %w", err)

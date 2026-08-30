@@ -21,6 +21,7 @@ type OrcamentoParaEnvio struct {
 	ClienteID      string
 	StatusOS       string
 	Calculado      bool
+	EstimativaDias int
 }
 
 // Notificador e a porta de aviso ao cliente, declarada aqui para o contexto nao depender
@@ -102,5 +103,28 @@ func (useCase Enviar) notificar(ctx context.Context, dados OrcamentoParaEnvio) (
 		ClienteID:  dados.ClienteID,
 		TipoEvento: notificacaoDominio.EventoOrcamentoPronto,
 		Origem:     notificacaoDominio.Origem{Agregado: "orcamento", ID: dados.Orcamento.ID},
+		Orcamento:  resumoParaNotificacao(dados),
 	})
+}
+
+// resumoParaNotificacao traduz o orcamento para o recorte que o e-mail mostra. Os valores
+// vem recalculados do proprio item, e nao do que estava gravado, para o cliente nunca ver
+// um total diferente do que a soma das linhas indica.
+func resumoParaNotificacao(dados OrcamentoParaEnvio) *notificacaoApplication.ResumoOrcamento {
+	resumo := &notificacaoApplication.ResumoOrcamento{
+		Numero:         dados.Orcamento.Tipo,
+		EstimativaDias: dados.EstimativaDias,
+	}
+	for _, item := range dados.Orcamento.Itens {
+		total := orcamento.TotalItem(item)
+		resumo.Itens = append(resumo.Itens, notificacaoApplication.ItemOrcamento{
+			Tipo:          item.Tipo,
+			Descricao:     item.Descricao,
+			Quantidade:    item.Quantidade,
+			ValorUnitario: item.ValorUnitario,
+			ValorTotal:    total,
+		})
+		resumo.ValorTotal += total
+	}
+	return resumo
 }

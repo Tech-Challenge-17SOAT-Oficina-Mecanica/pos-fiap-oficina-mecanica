@@ -51,6 +51,9 @@ type Notificacao struct {
 	Destinatario string
 	Assunto      string
 	Conteudo     string
+	// ConteudoHTML e opcional: quando presente, o e-mail vai em multipart e o cliente
+	// escolhe a melhor versao. Vazio significa apenas texto.
+	ConteudoHTML string
 	Status       string
 	Tentativas   int
 	UltimoErro   *string
@@ -61,6 +64,11 @@ type Notificacao struct {
 // Nova monta uma notificacao pronta para a fila, ja validada. Nasce PENDENTE: quem
 // dispara so registra a intencao, o envio acontece depois.
 func Nova(clienteID, destinatario, tipoEvento, assunto, conteudo string, origem Origem) (Notificacao, error) {
+	return NovaComHTML(clienteID, destinatario, tipoEvento, assunto, conteudo, "", origem)
+}
+
+// NovaComHTML monta a notificacao com corpo alternativo em HTML.
+func NovaComHTML(clienteID, destinatario, tipoEvento, assunto, conteudo, conteudoHTML string, origem Origem) (Notificacao, error) {
 	nova := Notificacao{
 		ClienteID:    strings.TrimSpace(clienteID),
 		Canal:        CanalEmail,
@@ -69,6 +77,7 @@ func Nova(clienteID, destinatario, tipoEvento, assunto, conteudo string, origem 
 		Destinatario: strings.TrimSpace(destinatario),
 		Assunto:      strings.TrimSpace(assunto),
 		Conteudo:     strings.TrimSpace(conteudo),
+		ConteudoHTML: strings.TrimSpace(conteudoHTML),
 		Status:       StatusPendente,
 	}
 
