@@ -3,6 +3,10 @@
 # Gera cliente e veiculo novos a cada execucao, entao pode rodar quantas vezes quiser.
 set -euo pipefail
 BASE=${BASE:-http://localhost:8080}
+# O e-mail do cliente criado. Nao precisa ser unico: so o documento e.
+# Deixe vazio para o Mailpit; para o Resend, exporte o e-mail da sua conta:
+#   EMAIL_CLIENTE=voce@dominio.com ./scripts/fluxo-completo.sh
+EMAIL_CLIENTE=${EMAIL_CLIENTE:-}
 
 api() { # metodo caminho [corpo]
   local m=$1 p=$2 b=${3:-}
@@ -30,10 +34,11 @@ import random,string
 L=lambda: random.choice(string.ascii_uppercase); N=lambda: str(random.randint(0,9))
 print(L()+L()+L()+N()+L()+N()+N())")
 
-CLI=$(api POST /clientes "{\"nome\":\"Cliente $CPF\",\"documento\":\"$CPF\",\"tipoDocumento\":\"CPF\",\"telefone\":\"11988887777\",\"email\":\"c$CPF@example.com\"}" | campo id)
+EMAIL=${EMAIL_CLIENTE:-c$CPF@example.com}
+CLI=$(api POST /clientes "{\"nome\":\"Cliente $CPF\",\"documento\":\"$CPF\",\"tipoDocumento\":\"CPF\",\"telefone\":\"11988887777\",\"email\":\"$EMAIL\"}" | campo id)
 VEI=$(api POST "/clientes/$CLI/veiculos" "{\"placa\":\"$PLACA\",\"marca\":\"VW\",\"modelo\":\"Gol\",\"ano\":2020}" | campo id)
 OS=$(api POST /ordens-servico "{\"clienteId\":\"$CLI\",\"veiculoId\":\"$VEI\"}" | campo ordemServicoId)
-echo "  cliente=$CLI"
+echo "  cliente=$CLI ($EMAIL)"
 echo "  veiculo=$VEI"
 echo "  os=$OS"
 
@@ -47,7 +52,6 @@ api POST "/orcamentos/$ORC/calcular" >/dev/null
 api POST "/orcamentos/$ORC/enviar" >/dev/null
 api POST "/orcamentos/$ORC/aprovar" "{\"clienteId\":\"$CLI\"}" >/dev/null
 api POST "/ordens-servico/$OS/execucao/iniciar" >/dev/null
-./scripts/avancar-os.sh baixa "$OS" >/dev/null
 api POST "/ordens-servico/$OS/finalizar" '{"observacoes":"Concluido"}' >/dev/null
 api POST "/ordens-servico/$OS/entrega" '{"observacoes":"Retirado"}' >/dev/null
 
