@@ -16,7 +16,7 @@ services:
       # Definir RESEND_API_KEY troca para envio real, que tem prioridade.
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
-      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-Oficina Mecanica <oficina@example.com>}
+      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-Oficina Mecanica <onboarding@resend.dev>}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       NOTIFICACAO_INTERVALO_SEGUNDOS: ${NOTIFICACAO_INTERVALO_SEGUNDOS:-30}
       NOTIFICACAO_LOTE: ${NOTIFICACAO_LOTE:-20}
