@@ -142,16 +142,27 @@ func baixarReservasNoInicioDaExecucao(ctx context.Context, tx pgx.Tx, ordemServi
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	// O cursor precisa ser consumido e fechado ANTES de qualquer outra query: o pgx
+	// mantem a conexao ocupada enquanto ha Rows aberto, e escrever dentro do loop
+	// devolve "conn busy".
+	var reservas []reservaInicioExecucaoRow
+	for rows.Next() {
+		var reserva reservaInicioExecucaoRow
+		if err = rows.Scan(&reserva.reservaID, &reserva.osItemID, &reserva.itemID, &reserva.codigo, &reserva.tipo, &reserva.unidadeMedida, &reserva.quantidade, &reserva.custoUnitario); err != nil {
+			rows.Close()
+			return nil, 0, err
+		}
+		reservas = append(reservas, reserva)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
 
 	porItem := map[string]int{}
 	var itens []domain.ItemBaixadoInicioExecucao
 	var custoTotal float64
-	for rows.Next() {
-		var reserva reservaInicioExecucaoRow
-		if err = rows.Scan(&reserva.reservaID, &reserva.osItemID, &reserva.itemID, &reserva.codigo, &reserva.tipo, &reserva.unidadeMedida, &reserva.quantidade, &reserva.custoUnitario); err != nil {
-			return nil, 0, err
-		}
+	for _, reserva := range reservas {
 		custo := reserva.quantidade * reserva.custoUnitario
 		var saldoFisicoAtual, saldoReservadoAtual float64
 		if err = tx.QueryRow(ctx, `
@@ -209,9 +220,6 @@ func baixarReservasNoInicioDaExecucao(ctx context.Context, tx pgx.Tx, ordemServi
 			})
 		}
 		custoTotal += custo
-	}
-	if err = rows.Err(); err != nil {
-		return nil, 0, err
 	}
 	return itens, custoTotal, nil
 }
