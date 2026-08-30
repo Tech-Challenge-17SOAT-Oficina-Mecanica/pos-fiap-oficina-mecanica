@@ -22,6 +22,8 @@ type aprovacaoResponse struct {
 	StatusOrdemServico  string `json:"statusOrdemServico"`
 	ClienteID           string `json:"clienteId"`
 	DataAprovacao       string `json:"dataAprovacao"`
+	DataEntradaFila     string `json:"dataEntradaFila,omitempty"`
+	Version             int    `json:"version"`
 }
 
 func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
@@ -42,7 +44,7 @@ func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
 			return
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(writer).Encode(aprovacaoResponse{
+		response := aprovacaoResponse{
 			OrcamentoID:         resultado.OrcamentoID,
 			OrdemServicoID:      resultado.OrdemServicoID,
 			TipoOrcamento:       resultado.TipoOrcamento,
@@ -51,7 +53,12 @@ func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
 			StatusOrdemServico:  resultado.StatusOrdemServico,
 			ClienteID:           resultado.ClienteID,
 			DataAprovacao:       resultado.DataAprovacao.Format(timeFormat),
-		})
+			Version:             resultado.Version,
+		}
+		if resultado.DataEntradaFila != nil {
+			response.DataEntradaFila = resultado.DataEntradaFila.Format(timeFormat)
+		}
+		_ = json.NewEncoder(writer).Encode(response)
 	}
 }
 

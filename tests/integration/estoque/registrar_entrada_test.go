@@ -163,8 +163,13 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		t.Fatalf("ordensServico=%+v", comPedido.Entrada.OrdensServico)
 	}
 	var statusOS string
-	if err = db.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id=$1", osID).Scan(&statusOS); err != nil || statusOS != "AGUARDANDO_EXECUCAO" {
-		t.Fatalf("statusOS=%q erro=%v", statusOS, err)
+	var dataEntradaFila time.Time
+	var versaoOS int
+	if err = db.QueryRow(ctx, "SELECT status, data_entrada_fila, version FROM ordem_servico WHERE id=$1", osID).Scan(&statusOS, &dataEntradaFila, &versaoOS); err != nil || statusOS != "AGUARDANDO_EXECUCAO" || dataEntradaFila.IsZero() || versaoOS != 2 {
+		t.Fatalf("statusOS=%q dataEntradaFila=%v version=%d erro=%v", statusOS, dataEntradaFila, versaoOS, err)
+	}
+	if comPedido.Entrada.OrdensServico[0].DataEntradaFila == nil || comPedido.Entrada.OrdensServico[0].Version != versaoOS {
+		t.Fatalf("ordemServico liberada=%+v", comPedido.Entrada.OrdensServico[0])
 	}
 	var saldoReservado int
 	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM reserva_estoque WHERE ordem_servico_item_id=$1 AND status='ATIVA'", osItemID).Scan(&saldoReservado); err != nil || saldoReservado != 1 {

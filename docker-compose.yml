@@ -8,17 +8,19 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: oficina
-      DB_USER: oficina
-      DB_PASSWORD: oficina
-      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
+      DB_NAME: ${DB_NAME:-oficina}
+      DB_USER: ${DB_USER:-oficina}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatoria}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatorio}
       # Notificacoes: por padrao vao para o Mailpit, que captura tudo localmente.
-      # Definir RESEND_API_KEY no seu shell troca para envio real, que tem prioridade.
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
+      # Definir RESEND_API_KEY troca para envio real, que tem prioridade.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
       EMAIL_REMETENTE: ${EMAIL_REMETENTE:-Oficina Mecanica <oficina@example.com>}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       NOTIFICACAO_INTERVALO_SEGUNDOS: ${NOTIFICACAO_INTERVALO_SEGUNDOS:-30}
+      NOTIFICACAO_LOTE: ${NOTIFICACAO_LOTE:-20}
+      CAPACIDADE_DIARIA_OS: ${CAPACIDADE_DIARIA_OS:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,13 +62,37 @@ services:
       postgres:
         condition: service_healthy
 
+  sonarqube:
+    image: sonarqube:community
+    container_name: oficina-sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+
+  sonar-scanner:
+    image: ${SONAR_SCANNER_IMAGE:-sonarsource/sonar-scanner-cli:latest}
+    profiles:
+      - tools
+    environment:
+      SONAR_HOST_URL: ${SONAR_HOST_URL:-http://sonarqube:9000}
+      SONAR_TOKEN: ${SONAR_TOKEN:-}
+    volumes:
+      - .:/usr/src
+    depends_on:
+      - sonarqube
+
   test:
     build:
       context: .
       target: build
     environment:
-      DATABASE_URL: postgres://oficina:oficina@postgres:5432/oficina?sslmode=disable
-      JWT_SECRET: desenvolvimento-apenas-troque-em-producao
+      DATABASE_URL: postgres://${DB_USER:-oficina}:${DB_PASSWORD:?DB_PASSWORD obrigatoria}@postgres:5432/${DB_NAME:-oficina}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatorio}
     volumes:
       - .:/app
     depends_on:
@@ -78,9 +104,9 @@ services:
     image: postgres:16-alpine
     container_name: oficina-postgres
     environment:
-      POSTGRES_DB: oficina
-      POSTGRES_USER: oficina
-      POSTGRES_PASSWORD: oficina
+      POSTGRES_DB: ${DB_NAME:-oficina}
+      POSTGRES_USER: ${DB_USER:-oficina}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD obrigatoria}
     ports:
       - "5432:5432"
     volumes:
@@ -93,3 +119,6 @@ services:
 
 volumes:
   postgres_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:

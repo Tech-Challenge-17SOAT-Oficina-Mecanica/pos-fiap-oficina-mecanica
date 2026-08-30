@@ -19,6 +19,45 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+func (repository PostgresRepository) ConsultarFila(ctx context.Context, limite, deslocamento int) ([]domain.ItemFila, int, error) {
+	const filtro = `
+		FROM ordem_servico os
+		JOIN veiculo v ON v.id = os.veiculo_id
+		WHERE os.status = 'AGUARDANDO_EXECUCAO'
+		  AND os.data_entrada_fila IS NOT NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM ordem_servico_item osi
+			JOIN item_estoque ie ON ie.id = osi.item_estoque_id
+			WHERE osi.ordem_servico_id = os.id
+			  AND osi.quantidade_reservada
+			      + GREATEST(ie.saldo_fisico - ie.saldo_reservado, 0) < osi.quantidade_necessaria
+		  )`
+	var total int
+	if err := repository.db.QueryRow(ctx, "SELECT COUNT(*) "+filtro).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	rows, err := repository.db.Query(ctx, `
+		SELECT os.id, v.placa, v.marca, v.modelo, os.status,
+		       os.mecanico_responsavel_id, os.data_entrada_fila`+filtro+`
+		ORDER BY (os.mecanico_responsavel_id IS NULL), os.data_entrada_fila, os.id
+		LIMIT $1 OFFSET $2`, limite, deslocamento)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+	itens := []domain.ItemFila{}
+	for rows.Next() {
+		var item domain.ItemFila
+		if err = rows.Scan(&item.OrdemServicoID, &item.Placa, &item.Marca, &item.Modelo,
+			&item.Status, &item.MecanicoResponsavelID, &item.DataEntradaFila); err != nil {
+			return nil, 0, err
+		}
+		itens = append(itens, item)
+	}
+	return itens, total, rows.Err()
+}
+
 func (repository PostgresRepository) Entregar(ctx context.Context, input application.EntregarInput) (domain.ResultadoEntrega, error) {
 	tx, err := repository.db.Begin(ctx)
 	if err != nil {
