@@ -3,6 +3,7 @@ package orcamento
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
@@ -177,4 +178,72 @@ func (repository PostgresRepository) EstimativaDoPrincipal(ctx context.Context, 
 		return 0, nil
 	}
 	return estimativa, err
+}
+
+// BuscarParaEnvio traz o orcamento, seus itens e o estado da OS dona. Considera o
+// orcamento calculado quando a estimativa ja foi gravada: e o que o calcular persiste.
+func (repository PostgresRepository) BuscarParaEnvio(ctx context.Context, orcamentoID string) (orcamentoApplication.OrcamentoParaEnvio, error) {
+	var dados orcamentoApplication.OrcamentoParaEnvio
+	var originalID *string
+	var estimativa *int
+
+	err := repository.db.QueryRow(ctx, `
+		SELECT o.id, o.orcamento_original_id::text, o.tipo_orcamento, o.status,
+		       o.estimativa_entrega_dias, os.id, os.cliente_id, os.status
+		FROM orcamento o
+		JOIN ordem_servico os ON os.id = o.ordem_servico_id
+		WHERE o.id = $1`, orcamentoID).
+		Scan(&dados.Orcamento.ID, &originalID, &dados.Orcamento.Tipo, &dados.Orcamento.Status,
+			&estimativa, &dados.OrdemServicoID, &dados.ClienteID, &dados.StatusOS)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return orcamentoApplication.OrcamentoParaEnvio{}, orcamentoApplication.ErrOrcamentoNaoEncontrado
+	}
+	if err != nil {
+		return orcamentoApplication.OrcamentoParaEnvio{}, err
+	}
+	if originalID != nil {
+		dados.Orcamento.OriginalID = *originalID
+	}
+	dados.Calculado = estimativa != nil
+
+	if dados.Orcamento.Itens, err = repository.itensDe(ctx, orcamentoID); err != nil {
+		return orcamentoApplication.OrcamentoParaEnvio{}, err
+	}
+	return dados, nil
+}
+
+// MarcarEnviado poe a OS em AGUARDANDO_APROVACAO e deixa a trilha do envio na auditoria.
+// Tudo numa transacao: a OS nao pode ficar aguardando decisao sem registro de que o
+// orcamento foi enviado.
+func (repository PostgresRepository) MarcarEnviado(ctx context.Context, orcamentoID, ordemServicoID, usuarioID string) (time.Time, error) {
+	transacao, err := repository.db.Begin(ctx)
+	if err != nil {
+		return time.Time{}, err
+	}
+	defer func() { _ = transacao.Rollback(ctx) }()
+
+	var enviadoEm time.Time
+	if err = transacao.QueryRow(ctx, `
+		UPDATE ordem_servico SET status = $2
+		WHERE id = $1
+		RETURNING CURRENT_TIMESTAMP`,
+		ordemServicoID, orcamento.OSStatusAguardandoAprovacao).Scan(&enviadoEm); err != nil {
+		return time.Time{}, err
+	}
+
+	if _, err = transacao.Exec(ctx, `
+		UPDATE orcamento SET data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1`, orcamentoID); err != nil {
+		return time.Time{}, err
+	}
+
+	if _, err = transacao.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico
+			(ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'orcamento', $3, 'ORCAMENTO_ENVIADO',
+		        jsonb_build_object('statusOrdemServico', $4::text), CURRENT_TIMESTAMP)`,
+		ordemServicoID, usuarioID, orcamentoID, orcamento.OSStatusAguardandoAprovacao); err != nil {
+		return time.Time{}, err
+	}
+
+	return enviadoEm, transacao.Commit(ctx)
 }
