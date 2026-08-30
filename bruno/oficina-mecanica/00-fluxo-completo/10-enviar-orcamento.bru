@@ -1,0 +1,36 @@
+meta {
+  name: 10 - Enviar orcamento ao cliente (dispara e-mail)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/enviar
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  DISPARA E-MAIL: "Seu orcamento esta pronto".
+
+  Move a OS de EM_DIAGNOSTICO para AGUARDANDO_APROVACAO. E o passo que faltava
+  entre calcular e aprovar — antes desta rota era preciso rodar um script.
+
+  Nao recebe corpo.
+
+  Regras:
+    - o orcamento precisa estar CRIADO, com itens e JA CALCULADO (rode a 09 antes)
+    - o principal parte de uma OS em EM_DIAGNOSTICO
+    - o complementar parte de EM_EXECUCAO
+    - enviar duas vezes devolve 409: o cliente ja tem o orcamento para decidir
+}
+
+tests {
+  test("enviado e OS aguardando aprovacao", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.statusOrdemServico).to.equal("AGUARDANDO_APROVACAO");
+  });
+}

@@ -1,0 +1,34 @@
+meta {
+  name: POST /estoque/solicitacoes-compra-reserva-insumos
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/estoque/solicitacoes-compra-reserva-insumos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "ordemServicoId": "{{osId}}",
+    "fornecedorId": "{{fornecedorId}}",
+    "itens": [
+      {
+        "itemId": "{{clienteId}}",
+        "quantidade": 2.5
+      }
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: estoque:movimentar
+
+  Rode 00-auth/Login antes para preencher o token.
+}

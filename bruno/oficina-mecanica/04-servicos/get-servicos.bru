@@ -1,0 +1,28 @@
+meta {
+  name: GET /servicos
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/servicos
+  auth: bearer
+}
+params:query {
+  ~nome: oleo
+  ~incluirInativos: false
+  ~pagina: 0
+  ~tamanho: 20
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Filtros opcionais. tamanho vai de 1 a 50.
+
+  Escopo exigido: servicos:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

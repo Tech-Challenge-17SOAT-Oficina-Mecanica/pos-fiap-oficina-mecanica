@@ -1,0 +1,21 @@
+meta {
+  name: 12 - Iniciar execucao
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/execucao/iniciar
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+tests {
+  test("em execucao", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.status).to.equal("EM_EXECUCAO");
+  });
+}

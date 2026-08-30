@@ -1,0 +1,25 @@
+meta {
+  name: GET /clientes
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/clientes?documento={{clienteDocumento}}
+  auth: bearer
+}
+params:query {
+  documento: {{clienteDocumento}}
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  documento e OBRIGATORIO: sem ele a API responde 400. Aceita CPF ou CNPJ, com ou sem mascara.
+
+  Escopo exigido: clientes:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

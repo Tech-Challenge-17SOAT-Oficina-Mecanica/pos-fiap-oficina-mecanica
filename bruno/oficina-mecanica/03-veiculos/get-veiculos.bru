@@ -1,0 +1,26 @@
+meta {
+  name: GET /veiculos
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/veiculos?placa={{placa}}&incluirInativos=false
+  auth: bearer
+}
+params:query {
+  placa: {{placa}}
+  incluirInativos: false
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  placa e incluirInativos sao OBRIGATORIOS. incluirInativos aceita apenas true ou false.
+
+  Escopo exigido: veiculos:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

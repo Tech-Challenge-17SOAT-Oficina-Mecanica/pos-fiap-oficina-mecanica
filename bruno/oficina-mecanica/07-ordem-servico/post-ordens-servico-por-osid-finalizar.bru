@@ -1,0 +1,40 @@
+meta {
+  name: POST /ordens-servico/{osId}/finalizar
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/finalizar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "observacoes": "Todos os serviços autorizados foram concluídos."
+  }
+}
+
+docs {
+  DISPARA E-MAIL: "Seu veiculo esta pronto para retirada".
+
+  Pre-condicao: a OS precisa estar EM_EXECUCAO, com servicos CONCLUIDO, sem
+  complementar em CRIADO e sem reserva ATIVA. Se der 409, rode no terminal:
+
+    ./scripts/preparar-finalizacao.sh
+
+  O e-mail nao sai na hora: entra na fila como PENDENTE e o processador envia em
+  ate NOTIFICACAO_INTERVALO_SEGUNDOS. Confira em 10-notificacoes ou em
+  http://localhost:8025
+
+  So aparece no Mailpit se RESEND_API_KEY estiver VAZIA no .env.
+
+  Escopo exigido: os:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

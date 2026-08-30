@@ -1,0 +1,20 @@
+meta {
+  name: DELETE /fornecedores/{fornecedorId}
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/fornecedores/{{fornecedorId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Escopo exigido: compras:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

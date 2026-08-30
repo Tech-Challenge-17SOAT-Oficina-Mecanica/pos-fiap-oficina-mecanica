@@ -1,0 +1,44 @@
+meta {
+  name: POST /fornecedores
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/fornecedores
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Documento novo a cada execucao: e unico entre registros ativos.
+  function gerarCPF() {
+    const n = Array.from({length: 9}, () => Math.floor(Math.random() * 10));
+    const dv = (b) => { let s=0; for (let i=0;i<b.length;i++) s+=b[i]*(b.length+1-i); const r=(s*10)%11; return r===10?0:r; };
+    const d1 = dv(n); const d2 = dv([...n, d1]);
+    return [...n, d1, d2].join('');
+  }
+  bru.setVar("novoDocumento", gerarCPF());
+}
+
+body:json {
+  {
+    "razaoSocial": "Fornecedor Exemplo LTDA",
+    "nomeFantasia": "Fornecedor Exemplo",
+    "documento": "{{novoDocumento}}",
+    "tipoDocumento": "CPF",
+    "telefone": "11988887777",
+    "email": "contato@example.com",
+    "prazoEntregaDias": 7
+  }
+}
+
+docs {
+  Escopo exigido: compras:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

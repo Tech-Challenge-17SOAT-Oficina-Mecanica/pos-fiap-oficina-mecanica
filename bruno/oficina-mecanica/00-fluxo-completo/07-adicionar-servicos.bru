@@ -1,0 +1,36 @@
+meta {
+  name: 07 - Adicionar servicos
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/servicos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "servicos": [
+      { "servicoId": "{{servicoId}}" }
+    ]
+  }
+}
+
+script:post-response {
+  // O orcamento PRINCIPAL e criado aqui, na primeira vez que a OS ganha um item.
+  if (res.body.orcamento && res.body.orcamento.id) {
+    bru.setVar("orcamentoId", res.body.orcamento.id);
+  }
+}
+
+tests {
+  test("servico adicionado e orcamento criado", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

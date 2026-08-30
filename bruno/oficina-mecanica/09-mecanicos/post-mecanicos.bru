@@ -1,0 +1,38 @@
+meta {
+  name: POST /mecanicos
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/mecanicos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // E-mail novo a cada execucao: usuario.email tem indice unico.
+  bru.setVar("emailMecanico", `mecanico${Date.now().toString().slice(-6)}@oficina.local`);
+}
+
+body:json {
+  {
+    "nome": "Mecanico Novo",
+    "email": "{{emailMecanico}}",
+    "senha": "senha-com-15-chars",
+    "escopos": [
+      "os:ler",
+      "os:escrever"
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: mecanicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

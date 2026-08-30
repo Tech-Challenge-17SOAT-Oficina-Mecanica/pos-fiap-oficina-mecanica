@@ -1,0 +1,20 @@
+meta {
+  name: GET /ordens-servico/{osId}
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/ordens-servico/{{osId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Escopo exigido: os:ler, orcamentos:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

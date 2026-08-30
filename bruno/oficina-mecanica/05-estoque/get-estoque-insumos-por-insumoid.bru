@@ -1,0 +1,25 @@
+meta {
+  name: GET /estoque/insumos/{insumoId}
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/estoque/insumos/{{insumoId}}
+  auth: bearer
+}
+params:query {
+  ~quantidadeDesejada: 1.5
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  quantidadeDesejada e opcional e aceita fracao, diferente da peca.
+
+  Escopo exigido: estoque:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

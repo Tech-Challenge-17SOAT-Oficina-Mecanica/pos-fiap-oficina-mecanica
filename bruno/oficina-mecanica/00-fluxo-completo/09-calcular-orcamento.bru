@@ -1,0 +1,25 @@
+meta {
+  name: 09 - Calcular orcamento
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/calcular
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Nao recebe corpo. Recalcula os itens e devolve valorTotalGeral e estimativaEntregaDias.
+}
+
+tests {
+  test("calculado", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.valorTotalGeral).to.be.a("number");
+  });
+}

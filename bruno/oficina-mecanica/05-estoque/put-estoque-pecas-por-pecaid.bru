@@ -1,0 +1,33 @@
+meta {
+  name: PUT /estoque/pecas/{pecaId}
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/estoque/pecas/{{pecaId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Nome de exemplo",
+    "descricao": "Descricao de exemplo",
+    "categoriaId": "{{categoriaId}}",
+    "fornecedorId": "{{fornecedorId}}",
+    "fabricante": "Fabricante Exemplo",
+    "precoVenda": 10.0,
+    "estoqueMinimo": 0
+  }
+}
+
+docs {
+  Escopo exigido: estoque:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

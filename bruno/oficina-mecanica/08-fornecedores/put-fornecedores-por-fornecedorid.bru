@@ -1,0 +1,31 @@
+meta {
+  name: PUT /fornecedores/{fornecedorId}
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/fornecedores/{{fornecedorId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "razaoSocial": "Fornecedor Exemplo LTDA",
+    "nomeFantasia": "Fornecedor Exemplo",
+    "telefone": "11988887777",
+    "email": "contato@example.com",
+    "prazoEntregaDias": 1
+  }
+}
+
+docs {
+  Escopo exigido: compras:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

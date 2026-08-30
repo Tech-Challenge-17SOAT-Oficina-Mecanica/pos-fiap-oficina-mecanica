@@ -1,0 +1,33 @@
+meta {
+  name: Conferir estado da OS antes de finalizar
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/ordens-servico/{{osId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Rode esta antes de finalizar. O status precisa ser EM_EXECUCAO.
+
+  Se estiver ENTREGUE, FINALIZADA ou qualquer outro, o finalizar devolve 409 e
+  nenhum e-mail e gerado. Nesse caso rode no terminal:
+
+    ./scripts/preparar-finalizacao.sh
+
+  Ele repoe a OS em EM_EXECUCAO, conclui os servicos, aprova complementar pendente
+  e baixa as reservas — os quatro bloqueios da regra de negocio.
+}
+
+tests {
+  test("OS esta pronta para finalizar", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.status).to.equal("EM_EXECUCAO");
+  });
+}

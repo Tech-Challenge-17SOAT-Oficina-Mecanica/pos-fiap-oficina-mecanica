@@ -1,0 +1,34 @@
+meta {
+  name: 11 - Aprovar orcamento
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/aprovar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "clienteId": "{{clienteId}}"
+  }
+}
+
+docs {
+  Requer a OS em AGUARDANDO_APROVACAO, o que a requisicao 10 (Enviar) faz.
+
+  Ao aprovar, a OS transita sozinha para AGUARDANDO_EXECUCAO ou
+  AGUARDANDO_RECURSOS, conforme os itens tenham sido reservados ou comprados.
+}
+
+tests {
+  test("aprovado", function() {
+    expect(res.getStatus()).to.equal(200);
+  });
+}

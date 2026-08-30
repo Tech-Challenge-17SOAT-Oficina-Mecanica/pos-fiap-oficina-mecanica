@@ -1,0 +1,35 @@
+meta {
+  name: POST /ordens-servico/{osId}/entrega
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/entrega
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "clienteId": "{{clienteId}}",
+    "observacoes": "Veículo entregue sem ressalvas."
+  }
+}
+
+docs {
+  DISPARA E-MAIL: "Confirmacao da entrega do seu veiculo".
+
+  Pre-condicao: a OS precisa estar FINALIZADA. Rode o finalizar antes.
+
+  Mesmo caminho do outro: fila PENDENTE, envio em segundo plano, visivel no
+  Mailpit em http://localhost:8025
+
+  Escopo exigido: os:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

@@ -1,0 +1,29 @@
+meta {
+  name: GET /fornecedores
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/fornecedores
+  auth: bearer
+}
+params:query {
+  ~nome: 
+  ~documento: 55666777000190
+  ~incluirInativos: false
+  ~pagina: 0
+  ~tamanho: 20
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Todos os filtros sao opcionais. tamanho vai de 1 a 50.
+
+  Escopo exigido: compras:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

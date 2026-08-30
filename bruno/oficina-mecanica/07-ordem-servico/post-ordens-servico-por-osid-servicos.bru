@@ -1,0 +1,32 @@
+meta {
+  name: POST /ordens-servico/{osId}/servicos
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/servicos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "servicos": [
+      {
+        "servicoId": "{{servicoId}}",
+        "observacao": "Autorizado pelo cliente"
+      }
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: os:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

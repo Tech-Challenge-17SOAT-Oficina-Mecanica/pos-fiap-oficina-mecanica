@@ -1,0 +1,27 @@
+meta {
+  name: 05 - Problema relatado pelo cliente
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/problema-relatado
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "descricao": "Barulho na suspensao ao passar em lombada"
+  }
+}
+
+tests {
+  test("registrado", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

@@ -1,0 +1,35 @@
+meta {
+  name: 08 - Adicionar pecas
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/pecas
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "itens": [
+      { "itemId": "{{pecaId}}", "quantidade": 2 }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.body.orcamentoId) {
+    bru.setVar("orcamentoId", res.body.orcamentoId);
+  }
+}
+
+tests {
+  test("peca adicionada", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

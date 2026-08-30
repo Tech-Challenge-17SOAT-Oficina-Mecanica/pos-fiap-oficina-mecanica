@@ -1,0 +1,32 @@
+meta {
+  name: 06 - Problema encontrado no diagnostico
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/problemas
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "descricao": "Amortecedor dianteiro gasto",
+    "observacoes": "Troca recomendada"
+  }
+}
+
+docs {
+  Leva a OS para EM_DIAGNOSTICO.
+}
+
+tests {
+  test("registrado", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}
