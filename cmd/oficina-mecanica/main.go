@@ -227,7 +227,12 @@ func inteiroDoAmbiente(nome string, padrao int) int {
 // para o mais generico. Sem nada configurado cai no log, que permite exercitar a fila
 // inteira sem servidor de e-mail nenhum.
 func enviadorDeNotificacao() notificacaoApplication.Enviador {
-	remetente := textoDoAmbiente("EMAIL_REMETENTE", "Oficina Mecanica <oficina@example.com>")
+	remetente := textoDoAmbiente("EMAIL_REMETENTE", "Oficina Mecanica <onboarding@resend.dev>")
+
+	if chave := textoDoAmbiente("RESEND_API_KEY", ""); chave != "" {
+		log.Printf("notificacoes por Resend, remetente %s", remetente)
+		return notificacaoInfrastructure.NewResendEnviador(chave, remetente)
+	}
 
 	if host := textoDoAmbiente("SMTP_HOST", ""); host != "" {
 		porta := inteiroDoAmbiente("SMTP_PORT", 1025)
@@ -236,7 +241,7 @@ func enviadorDeNotificacao() notificacaoApplication.Enviador {
 			textoDoAmbiente("SMTP_USUARIO", ""), textoDoAmbiente("SMTP_SENHA", ""))
 	}
 
-	log.Print("notificacoes apenas em log: configure SMTP_HOST para enviar")
+	log.Print("notificacoes apenas em log: configure SMTP_HOST ou RESEND_API_KEY para enviar")
 	return notificacaoInfrastructure.NewLogEnviador(log.Default())
 }
 
