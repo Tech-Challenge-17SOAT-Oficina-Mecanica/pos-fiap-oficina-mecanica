@@ -1317,6 +1317,42 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /orcamentos/{orcamentoId}/enviar:
+    post:
+      tags: [Orçamento]
+      summary: Envia o orçamento ao cliente para aprovação
+      description: >-
+        Exige o escopo `orcamentos:escrever`. Move a Ordem de Serviço para
+        `AGUARDANDO_APROVACAO` e avisa o cliente por e-mail — é a transição entre calcular
+        e aprovar. O orçamento precisa estar `CRIADO`, ter itens e já ter sido calculado.
+        O principal parte de uma OS em `EM_DIAGNOSTICO`; o complementar, de `EM_EXECUCAO`.
+        Falha no envio do e-mail não desfaz a transição.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orcamentoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Orçamento enviado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnvioOrcamento' }
+        '400':
+          description: Identificador inválido
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo orcamentos:escrever }
+        '404': { description: Orçamento não encontrado }
+        '409':
+          description: Orçamento não calculado, sem itens, já enviado, ou OS em estado que não permite o envio
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /orcamentos/{orcamentoId}/calcular:
     post:
       tags: [Orçamento]
@@ -1857,6 +1893,16 @@ components:
           description: Obrigatório na atualização, maior que zero e com no máximo 2 casas decimais.
         estoqueMinimo: { type: integer, minimum: 0, default: 0 }
       additionalProperties: false
+    EnvioOrcamento:
+      type: object
+      properties:
+        orcamentoId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        statusOrdemServico: { type: string, enum: [AGUARDANDO_APROVACAO] }
+        enviadoEm: { type: string, format: date-time }
+        notificacaoEnviada:
+          type: boolean
+          description: Se o aviso ao cliente foi enfileirado. False não impede o envio.
     CalculoOrcamento:
       type: object
       properties:
