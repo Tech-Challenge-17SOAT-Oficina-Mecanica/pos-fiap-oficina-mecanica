@@ -3,6 +3,7 @@ package notificacao
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/notificacao"
 	"github.com/resend/resend-go/v4"
@@ -16,10 +17,14 @@ import (
 type ResendEnviador struct {
 	cliente   *resend.Client
 	remetente string
+	logger    *log.Logger
 }
 
-func NewResendEnviador(apiKey, remetente string) ResendEnviador {
-	return ResendEnviador{cliente: resend.NewClient(apiKey), remetente: remetente}
+func NewResendEnviador(apiKey, remetente string, logger *log.Logger) ResendEnviador {
+	if logger == nil {
+		logger = log.Default()
+	}
+	return ResendEnviador{cliente: resend.NewClient(apiKey), remetente: remetente, logger: logger}
 }
 
 func (enviador ResendEnviador) Enviar(ctx context.Context, aviso notificacao.Notificacao) error {
@@ -38,5 +43,11 @@ func (enviador ResendEnviador) Enviar(ctx context.Context, aviso notificacao.Not
 	if enviado == nil || enviado.Id == "" {
 		return fmt.Errorf("resend: envio aceito sem identificador de retorno")
 	}
+
+	// O identificador do provedor e o unico jeito de rastrear a entrega depois: o
+	// "aceito" do Resend nao garante que a caixa do destinatario recebeu. Com ele da
+	// para procurar o e-mail no painel e ver se caiu em spam, bounce ou foi entregue.
+	enviador.logger.Printf("resend aceitou a notificacao %s: id=%s destinatario=%s",
+		aviso.ID, enviado.Id, aviso.Destinatario)
 	return nil
 }

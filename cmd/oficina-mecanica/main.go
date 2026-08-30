@@ -237,7 +237,7 @@ func enviadorDeNotificacao() notificacaoApplication.Enviador {
 
 	if chave := textoDoAmbiente("RESEND_API_KEY", ""); chave != "" {
 		log.Printf("notificacoes por Resend, remetente %s", remetente)
-		return notificacaoInfrastructure.NewResendEnviador(chave, remetente)
+		return notificacaoInfrastructure.NewResendEnviador(chave, remetente, log.Default())
 	}
 
 	if host := textoDoAmbiente("SMTP_HOST", ""); host != "" {
