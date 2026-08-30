@@ -19,6 +19,104 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input application.IniciarExecucaoInput) (domain.ResultadoInicioExecucao, error) {
+	tx, err := repository.db.Begin(ctx)
+	if err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	defer tx.Rollback(ctx)
+
+	var status, mecanicoResponsavelID string
+	err = tx.QueryRow(ctx, `
+		SELECT status, COALESCE(mecanico_responsavel_id::text, '')
+		FROM ordem_servico WHERE id = $1 FOR UPDATE`, input.OSID,
+	).Scan(&status, &mecanicoResponsavelID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ResultadoInicioExecucao{}, application.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+
+	ordem := domain.OrdemDeServico{ID: input.OSID, Status: status}
+	if err = ordem.IniciarExecucao(time.Now()); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+
+	var possuiOrcamentoAprovado, possuiServicosAutorizados bool
+	if err = tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM orcamento WHERE ordem_servico_id = $1 AND status = 'APROVADO'),
+		       EXISTS (
+			   SELECT 1 FROM orcamento o
+			   JOIN orcamento_item oi ON oi.orcamento_id = o.id
+			   WHERE o.ordem_servico_id = $1 AND o.status = 'APROVADO' AND oi.tipo_item = 'SERVICO'
+		       )`, input.OSID,
+	).Scan(&possuiOrcamentoAprovado, &possuiServicosAutorizados); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	if !possuiOrcamentoAprovado {
+		return domain.ResultadoInicioExecucao{}, domain.ErrOrcamentoNaoAprovado
+	}
+	if !possuiServicosAutorizados {
+		return domain.ResultadoInicioExecucao{}, domain.ErrServicosNaoAutorizados
+	}
+
+	var possuiRecursoSemReserva bool
+	if err = tx.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM ordem_servico_item osi
+			WHERE osi.ordem_servico_id = $1
+			  AND osi.quantidade_necessaria > COALESCE((
+				SELECT SUM(r.quantidade) FROM reserva_estoque r
+				WHERE r.ordem_servico_item_id = osi.id AND r.status = 'ATIVA'
+			), 0)
+		)`, input.OSID,
+	).Scan(&possuiRecursoSemReserva); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	if possuiRecursoSemReserva {
+		return domain.ResultadoInicioExecucao{}, domain.ErrRecursosIndisponiveis
+	}
+
+	var mecanicoAutenticadoID string
+	if err = tx.QueryRow(ctx, "SELECT id FROM mecanico WHERE usuario_id = $1", input.UsuarioID).Scan(&mecanicoAutenticadoID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ResultadoInicioExecucao{}, domain.ErrMecanicoAutenticadoNaoEncontrado
+		}
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	if mecanicoResponsavelID == "" {
+		mecanicoResponsavelID = mecanicoAutenticadoID
+	}
+
+	var dataInicio time.Time
+	if err = tx.QueryRow(ctx, `
+		UPDATE ordem_servico
+		SET status = $2, iniciada_em = CURRENT_TIMESTAMP,
+		    mecanico_responsavel_id = NULLIF($3, '')::uuid
+		WHERE id = $1
+		RETURNING iniciada_em`, input.OSID, ordem.Status, mecanicoResponsavelID,
+	).Scan(&dataInicio); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	if _, err = tx.Exec(ctx, `
+		INSERT INTO auditoria_ordem_servico
+		(ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em)
+		VALUES ($1, NULLIF($2, '')::uuid, 'ORDEM_SERVICO', $1, 'EXECUCAO_INICIADA',
+		        jsonb_build_object('status', $3::text, 'mecanicoId', $4::text), '{}'::jsonb, $5)`,
+		input.OSID, input.UsuarioID, ordem.Status, mecanicoResponsavelID, dataInicio,
+	); err != nil {
+		return domain.ResultadoInicioExecucao{}, fmt.Errorf("registrar auditoria do inicio da execucao: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+	return domain.ResultadoInicioExecucao{
+		OrdemServicoID: input.OSID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
+	}, nil
+}
+
 func (repository PostgresRepository) ConsultarFila(ctx context.Context, limite, deslocamento int) ([]domain.ItemFila, int, error) {
 	const filtro = `
 		FROM ordem_servico os
