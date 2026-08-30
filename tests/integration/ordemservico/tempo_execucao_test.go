@@ -31,7 +31,7 @@ func TestTempoExecucao(t *testing.T) {
 	suffix := time.Now().UnixNano() & 0xffffffffffff
 	id := func(prefix string) string { return fmt.Sprintf(prefix+"%012x", suffix) }
 	clienteID, veiculoID := id("a1000000-0000-0000-0000-"), id("a2000000-0000-0000-0000-")
-	os120, os240, osEmExecucao, osSemInicio, osSemFim := id("a3000000-0000-0000-0000-"), id("a4000000-0000-0000-0000-"), id("a5000000-0000-0000-0000-"), id("a6000000-0000-0000-0000-"), id("a7000000-0000-0000-0000-")
+	os120, os240, osEmExecucao, osSemInicio, osSemFim, osInconsistente := id("a3000000-0000-0000-0000-"), id("a4000000-0000-0000-0000-"), id("a5000000-0000-0000-0000-"), id("a6000000-0000-0000-0000-"), id("a7000000-0000-0000-0000-"), id("a8000000-0000-0000-0000-")
 	if _, err = db.Exec(ctx, "INSERT INTO cliente (id,nome,documento,tipo_documento,telefone) VALUES ($1,'Cliente Tempo',$2,'CPF','11999999999')", clienteID, cpfValido(suffix%1000000000)); err != nil {
 		t.Fatal(err)
 	}
@@ -45,11 +45,12 @@ func TestTempoExecucao(t *testing.T) {
 		($2,$6,$7,'TMP1A23','FINALIZADA',$9,$9 + INTERVAL '240 minutes'),
 		($3,$6,$7,'TMP1A23','EM_EXECUCAO',$8,NULL),
 		($4,$6,$7,'TMP1A23','FINALIZADA',NULL,$8 + INTERVAL '30 minutes'),
-		($5,$6,$7,'TMP1A23','FINALIZADA',$8,NULL)`, os120, os240, osEmExecucao, osSemInicio, osSemFim, clienteID, veiculoID, inicio120, inicio240); err != nil {
+		($5,$6,$7,'TMP1A23','FINALIZADA',$8,NULL),
+		($10,$6,$7,'TMP1A23','FINALIZADA',$8,$8 - INTERVAL '30 minutes')`, os120, os240, osEmExecucao, osSemInicio, osSemFim, clienteID, veiculoID, inicio120, inicio240, osInconsistente); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE id IN ($1,$2,$3,$4,$5)", os120, os240, osEmExecucao, osSemInicio, osSemFim)
+		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE id IN ($1,$2,$3,$4,$5,$6)", os120, os240, osEmExecucao, osSemInicio, osSemFim, osInconsistente)
 		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", veiculoID)
 		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clienteID)
 	})
@@ -94,6 +95,9 @@ func TestTempoExecucao(t *testing.T) {
 	}
 	if resposta := requisitar("/ordens-servico/"+osEmExecucao+"/tempo-execucao", token); resposta.Code != http.StatusBadRequest {
 		t.Fatalf("os incompleta=%d", resposta.Code)
+	}
+	if resposta := requisitar("/ordens-servico/"+osInconsistente+"/tempo-execucao", token); resposta.Code != http.StatusBadRequest {
+		t.Fatalf("os inconsistente=%d", resposta.Code)
 	}
 
 	resposta := requisitar("/ordens-servico/"+os120+"/tempo-execucao", token)

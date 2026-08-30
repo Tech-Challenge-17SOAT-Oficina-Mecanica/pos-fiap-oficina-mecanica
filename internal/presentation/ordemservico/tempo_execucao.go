@@ -84,7 +84,7 @@ func writeTempoExecucaoError(writer http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, application.ErrOrdemServicoNaoEncontrada):
 		writeProblem(writer, http.StatusNotFound, "Recurso nao encontrado", err.Error(), "osId")
-	case errors.Is(err, domain.ErrTempoExecucaoIndisponivel):
+	case errors.Is(err, domain.ErrTempoExecucaoIndisponivel), errors.Is(err, domain.ErrTempoExecucaoInvalido):
 		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "osId")
 	case errors.Is(err, application.ErrDataInicioInvalida), errors.Is(err, application.ErrPeriodoInvalido):
 		writeProblem(writer, http.StatusBadRequest, "Dados invalidos", err.Error(), "dataInicio")

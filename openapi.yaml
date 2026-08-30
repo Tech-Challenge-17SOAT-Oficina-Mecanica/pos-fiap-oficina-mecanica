@@ -187,6 +187,7 @@ paths:
       description: >-
         Registra a aprovação do cliente, reserva o saldo disponível de peças e insumos do orçamento
         e atualiza a OS para AGUARDANDO_EXECUCAO ou AGUARDANDO_RECURSOS quando houver pendência de compra.
+        Quando todos os recursos estão reservados, também registra a data de entrada na fila.
         Exige token de cliente com escopo `orcamentos:decidir`.
       security:
         - bearerAuth: []
@@ -1272,8 +1273,9 @@ paths:
       summary: Registra a entrada de peças e insumos, compartilhada entre os dois contextos
       description: >-
         Exige o escopo `estoque:movimentar`. Aumenta o saldo físico dos itens recebidos,
-        efetiva as reservas vinculadas a pedido de compra e libera para `AGUARDANDO_EXECUCAO`
-        as ordens de serviço sem itens pendentes de compra. O header `Idempotency-Key` é
+        efetiva as reservas vinculadas a pedido de compra e inclui na fila as ordens de serviço
+        sem itens pendentes de compra, alterando-as para `AGUARDANDO_EXECUCAO` e gravando a data
+        de entrada na fila. O header `Idempotency-Key` é
         obrigatório: a repetição da mesma chave devolve `200` com a resposta original.
       security:
         - bearerAuth: []
@@ -1418,7 +1420,9 @@ paths:
         fila (`AGUARDANDO_EXECUCAO`), possuir orçamento aprovado com serviço autorizado e ter
         todas as peças e insumos necessários reservados. Sem itens de estoque, a execução é
         permitida. O mecânico responsável existente é preservado; sem vínculo, o mecânico
-        autenticado é associado.
+        autenticado é associado. Ao iniciar, as reservas ativas de peças e insumos da OS são
+        baixadas do estoque na mesma transação, reduzindo saldo físico e saldo reservado,
+        registrando movimentação de saída e acumulando o custo dos materiais na OS.
       security:
         - bearerAuth: []
       parameters:
@@ -1719,6 +1723,21 @@ components:
         status: { type: string, enum: [EM_EXECUCAO] }
         mecanicoId: { type: string, format: uuid }
         dataInicioExecucao: { type: string, format: date-time }
+        itensBaixados:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              codigo: { type: string }
+              tipo: { type: string, enum: [PECA, INSUMO] }
+              unidadeMedida: { type: string }
+              quantidadeBaixada: { type: number, format: double }
+              saldoFisicoAtual: { type: number, format: double }
+              saldoReservadoAtual: { type: number, format: double }
+              custoUnitario: { type: number, format: double }
+              custoTotal: { type: number, format: double }
+        custoTotalMateriaisBaixados: { type: number, format: double }
 
     TempoExecucao:
       type: object
@@ -1914,6 +1933,8 @@ components:
         statusOrdemServico: { type: string, enum: [AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS] }
         clienteId: { type: string, format: uuid }
         dataAprovacao: { type: string, format: date-time }
+        dataEntradaFila: { type: string, format: date-time, nullable: true }
+        version: { type: integer }
     AtualizarPeca:
       type: object
       required: [nome, descricao, categoriaId, precoVenda]
@@ -2256,6 +2277,8 @@ components:
               statusAnterior: { type: string }
               status: { type: string }
               itensPendentes: { type: integer }
+              dataEntradaFila: { type: string, format: date-time, nullable: true }
+              version: { type: integer }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]

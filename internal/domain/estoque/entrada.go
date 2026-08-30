@@ -8,7 +8,10 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
-const MovimentacaoEntrada = "ENTRADA"
+const (
+	MovimentacaoEntrada = "ENTRADA"
+	MovimentacaoSaida   = "SAIDA"
+)
 
 var ErrDocumentoOrigemObrigatorio = errors.New("documentoOrigem e obrigatorio")
 var ErrItensObrigatorios = errors.New("itens e obrigatorio")
@@ -93,10 +96,12 @@ type PedidoCompraResultado struct {
 
 // OrdemServicoLiberada informa se uma OS vinculada ao pedido mudou de status.
 type OrdemServicoLiberada struct {
-	OrdemServicoID string `json:"ordemServicoId"`
-	StatusAnterior string `json:"statusAnterior"`
-	Status         string `json:"status"`
-	ItensPendentes int    `json:"itensPendentes"`
+	OrdemServicoID  string     `json:"ordemServicoId"`
+	StatusAnterior  string     `json:"statusAnterior"`
+	Status          string     `json:"status"`
+	ItensPendentes  int        `json:"itensPendentes"`
+	DataEntradaFila *time.Time `json:"dataEntradaFila,omitempty"`
+	Version         int        `json:"version,omitempty"`
 }
 
 // ResultadoEntrada e o retorno de RegistrarEntrada.

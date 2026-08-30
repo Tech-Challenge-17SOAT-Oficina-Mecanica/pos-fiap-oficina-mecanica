@@ -14,10 +14,24 @@ import (
 )
 
 type iniciarExecucaoResponse struct {
-	OrdemServicoID     string `json:"ordemServicoId"`
-	Status             string `json:"status"`
-	MecanicoID         string `json:"mecanicoId"`
-	DataInicioExecucao string `json:"dataInicioExecucao"`
+	OrdemServicoID              string                         `json:"ordemServicoId"`
+	Status                      string                         `json:"status"`
+	MecanicoID                  string                         `json:"mecanicoId"`
+	DataInicioExecucao          string                         `json:"dataInicioExecucao"`
+	ItensBaixados               []itemBaixadoInicioExecucaoDTO `json:"itensBaixados,omitempty"`
+	CustoTotalMateriaisBaixados float64                        `json:"custoTotalMateriaisBaixados,omitempty"`
+}
+
+type itemBaixadoInicioExecucaoDTO struct {
+	ItemID              string  `json:"itemId"`
+	Codigo              string  `json:"codigo"`
+	Tipo                string  `json:"tipo"`
+	UnidadeMedida       string  `json:"unidadeMedida,omitempty"`
+	QuantidadeBaixada   float64 `json:"quantidadeBaixada"`
+	SaldoFisicoAtual    float64 `json:"saldoFisicoAtual"`
+	SaldoReservadoAtual float64 `json:"saldoReservadoAtual"`
+	CustoUnitario       float64 `json:"custoUnitario"`
+	CustoTotal          float64 `json:"custoTotal"`
 }
 
 func NewIniciarExecucaoHandler(useCase application.IniciarExecucao) http.HandlerFunc {
@@ -42,9 +56,18 @@ func NewIniciarExecucaoHandler(useCase application.IniciarExecucao) http.Handler
 			return
 		}
 		writer.Header().Set("Content-Type", "application/json")
+		itensBaixados := make([]itemBaixadoInicioExecucaoDTO, 0, len(resultado.ItensBaixados))
+		for _, item := range resultado.ItensBaixados {
+			itensBaixados = append(itensBaixados, itemBaixadoInicioExecucaoDTO{
+				ItemID: item.ItemID, Codigo: item.Codigo, Tipo: item.Tipo, UnidadeMedida: item.UnidadeMedida,
+				QuantidadeBaixada: item.QuantidadeBaixada, SaldoFisicoAtual: item.SaldoFisicoAtual,
+				SaldoReservadoAtual: item.SaldoReservadoAtual, CustoUnitario: item.CustoUnitario, CustoTotal: item.CustoTotal,
+			})
+		}
 		_ = json.NewEncoder(writer).Encode(iniciarExecucaoResponse{
 			OrdemServicoID: resultado.OrdemServicoID, Status: resultado.Status, MecanicoID: resultado.MecanicoID,
-			DataInicioExecucao: resultado.DataInicioExecucao.Format(time.RFC3339),
+			DataInicioExecucao: resultado.DataInicioExecucao.Format(time.RFC3339), ItensBaixados: itensBaixados,
+			CustoTotalMateriaisBaixados: resultado.CustoTotalMateriaisBaixados,
 		})
 	}
 }
