@@ -1456,7 +1456,9 @@ paths:
         fila (`AGUARDANDO_EXECUCAO`), possuir orçamento aprovado com serviço autorizado e ter
         todas as peças e insumos necessários reservados. Sem itens de estoque, a execução é
         permitida. O mecânico responsável existente é preservado; sem vínculo, o mecânico
-        autenticado é associado.
+        autenticado é associado. Ao iniciar, as reservas ativas de peças e insumos da OS são
+        baixadas do estoque na mesma transação, reduzindo saldo físico e saldo reservado,
+        registrando movimentação de saída e acumulando o custo dos materiais na OS.
       security:
         - bearerAuth: []
       parameters:
@@ -1701,6 +1703,21 @@ components:
         status: { type: string, enum: [EM_EXECUCAO] }
         mecanicoId: { type: string, format: uuid }
         dataInicioExecucao: { type: string, format: date-time }
+        itensBaixados:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              codigo: { type: string }
+              tipo: { type: string, enum: [PECA, INSUMO] }
+              unidadeMedida: { type: string }
+              quantidadeBaixada: { type: number, format: double }
+              saldoFisicoAtual: { type: number, format: double }
+              saldoReservadoAtual: { type: number, format: double }
+              custoUnitario: { type: number, format: double }
+              custoTotal: { type: number, format: double }
+        custoTotalMateriaisBaixados: { type: number, format: double }
 
     Finalizacao:
       type: object

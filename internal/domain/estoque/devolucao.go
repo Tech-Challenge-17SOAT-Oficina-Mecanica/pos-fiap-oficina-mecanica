@@ -3,8 +3,9 @@ package estoque
 import "errors"
 
 const (
-	ReservaAtiva    = "ATIVA"
-	ReservaLiberada = "LIBERADA"
+	ReservaAtiva     = "ATIVA"
+	ReservaLiberada  = "LIBERADA"
+	ReservaConsumida = "CONSUMIDA"
 
 	MovimentacaoLiberacaoReserva = "LIBERACAO_RESERVA"
 	MovimentacaoEntradaRetorno   = "ENTRADA_RETORNO"
