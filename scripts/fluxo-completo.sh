@@ -44,7 +44,7 @@ ORC=$(api POST "/ordens-servico/$OS/pecas" '{"itens":[{"itemId":"50000000-0000-0
 echo "  orcamento=$ORC"
 
 api POST "/orcamentos/$ORC/calcular" >/dev/null
-./scripts/avancar-os.sh aprovacao "$OS" >/dev/null
+api POST "/orcamentos/$ORC/enviar" >/dev/null
 api POST "/orcamentos/$ORC/aprovar" "{\"clienteId\":\"$CLI\"}" >/dev/null
 api POST "/ordens-servico/$OS/execucao/iniciar" >/dev/null
 ./scripts/avancar-os.sh baixa "$OS" >/dev/null
