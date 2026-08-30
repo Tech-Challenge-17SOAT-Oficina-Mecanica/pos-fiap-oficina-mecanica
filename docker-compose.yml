@@ -12,9 +12,29 @@ services:
       DB_USER: oficina
       DB_PASSWORD: oficina
       JWT_SECRET: desenvolvimento-apenas-troque-em-producao
+      # Notificacoes: por padrao vao para o Mailpit, que captura tudo localmente.
+      # Definir RESEND_API_KEY no seu shell troca para envio real, que tem prioridade.
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-Oficina Mecanica <oficina@example.com>}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      NOTIFICACAO_INTERVALO_SEGUNDOS: ${NOTIFICACAO_INTERVALO_SEGUNDOS:-30}
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  # Captura os e-mails em desenvolvimento: nada sai para a internet.
+  # Interface web em http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: oficina-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_MAX_MESSAGES: 500
 
   swagger:
     image: swaggerapi/swagger-ui:latest
