@@ -14,10 +14,24 @@ var ErrRecursosIndisponiveis = errors.New("existem pecas ou insumos necessarios 
 var ErrMecanicoAutenticadoNaoEncontrado = errors.New("usuario autenticado nao possui mecanico cadastrado")
 
 type ResultadoInicioExecucao struct {
-	OrdemServicoID     string
-	Status             string
-	MecanicoID         string
-	DataInicioExecucao time.Time
+	OrdemServicoID              string
+	Status                      string
+	MecanicoID                  string
+	DataInicioExecucao          time.Time
+	ItensBaixados               []ItemBaixadoInicioExecucao
+	CustoTotalMateriaisBaixados float64
+}
+
+type ItemBaixadoInicioExecucao struct {
+	ItemID              string
+	Codigo              string
+	Tipo                string
+	UnidadeMedida       string
+	QuantidadeBaixada   float64
+	SaldoFisicoAtual    float64
+	SaldoReservadoAtual float64
+	CustoUnitario       float64
+	CustoTotal          float64
 }
 
 func (ordem *OrdemDeServico) IniciarExecucao(dataInicio time.Time) error {

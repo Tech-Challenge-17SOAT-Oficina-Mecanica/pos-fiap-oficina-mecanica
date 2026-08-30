@@ -91,13 +91,19 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 		mecanicoResponsavelID = mecanicoAutenticadoID
 	}
 
+	itensBaixados, custoTotalMateriais, err := baixarReservasNoInicioDaExecucao(ctx, tx, input.OSID, input.UsuarioID)
+	if err != nil {
+		return domain.ResultadoInicioExecucao{}, err
+	}
+
 	var dataInicio time.Time
 	if err = tx.QueryRow(ctx, `
 		UPDATE ordem_servico
 		SET status = $2, iniciada_em = CURRENT_TIMESTAMP,
+		    custo_total_materiais = custo_total_materiais + $4::numeric,
 		    mecanico_responsavel_id = NULLIF($3, '')::uuid
 		WHERE id = $1
-		RETURNING iniciada_em`, input.OSID, ordem.Status, mecanicoResponsavelID,
+		RETURNING iniciada_em`, input.OSID, ordem.Status, mecanicoResponsavelID, custoTotalMateriais,
 	).Scan(&dataInicio); err != nil {
 		return domain.ResultadoInicioExecucao{}, err
 	}
@@ -115,7 +121,100 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 	}
 	return domain.ResultadoInicioExecucao{
 		OrdemServicoID: input.OSID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
+		ItensBaixados: itensBaixados, CustoTotalMateriaisBaixados: custoTotalMateriais,
 	}, nil
+}
+
+type reservaInicioExecucaoRow struct {
+	reservaID, osItemID, itemID string
+	codigo, tipo, unidadeMedida string
+	quantidade, custoUnitario   float64
+}
+
+func baixarReservasNoInicioDaExecucao(ctx context.Context, tx pgx.Tx, ordemServicoID, usuarioID string) ([]domain.ItemBaixadoInicioExecucao, float64, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT r.id, osi.id, ie.id, ie.codigo, ie.tipo, ie.unidade_medida, r.quantidade, COALESCE(ie.custo_unitario, 0)
+		FROM reserva_estoque r
+		JOIN ordem_servico_item osi ON osi.id = r.ordem_servico_item_id
+		JOIN item_estoque ie ON ie.id = r.item_estoque_id
+		WHERE osi.ordem_servico_id = $1 AND r.status = $2
+		ORDER BY ie.id, r.id
+		FOR UPDATE OF r, osi, ie`, ordemServicoID, domainEstoque.ReservaAtiva)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	porItem := map[string]int{}
+	var itens []domain.ItemBaixadoInicioExecucao
+	var custoTotal float64
+	for rows.Next() {
+		var reserva reservaInicioExecucaoRow
+		if err = rows.Scan(&reserva.reservaID, &reserva.osItemID, &reserva.itemID, &reserva.codigo, &reserva.tipo, &reserva.unidadeMedida, &reserva.quantidade, &reserva.custoUnitario); err != nil {
+			return nil, 0, err
+		}
+		custo := reserva.quantidade * reserva.custoUnitario
+		var saldoFisicoAtual, saldoReservadoAtual float64
+		if err = tx.QueryRow(ctx, `
+			UPDATE item_estoque
+			SET saldo_fisico = saldo_fisico - $2::numeric,
+			    saldo_reservado = saldo_reservado - $2::numeric
+			WHERE id = $1
+			  AND saldo_fisico >= $2::numeric
+			  AND saldo_reservado >= $2::numeric
+			RETURNING saldo_fisico, saldo_reservado`, reserva.itemID, reserva.quantidade,
+		).Scan(&saldoFisicoAtual, &saldoReservadoAtual); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, 0, domain.ErrRecursosIndisponiveis
+			}
+			return nil, 0, err
+		}
+		if _, err = tx.Exec(ctx, `
+			UPDATE ordem_servico_item
+			SET quantidade_reservada = quantidade_reservada - $2::numeric,
+			    quantidade_consumida = quantidade_consumida + $2::numeric
+			WHERE id = $1`, reserva.osItemID, reserva.quantidade); err != nil {
+			return nil, 0, err
+		}
+		if _, err = tx.Exec(ctx, "UPDATE reserva_estoque SET status = $2, liberada_em = CURRENT_TIMESTAMP WHERE id = $1", reserva.reservaID, domainEstoque.ReservaConsumida); err != nil {
+			return nil, 0, err
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO movimentacao_estoque (item_estoque_id, ordem_servico_id, reserva_estoque_id, tipo, quantidade, custo_unitario)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			reserva.itemID, ordemServicoID, reserva.reservaID, domainEstoque.MovimentacaoSaida, reserva.quantidade, reserva.custoUnitario,
+		); err != nil {
+			return nil, 0, err
+		}
+		if _, err = tx.Exec(ctx, `
+			INSERT INTO auditoria_estoque (item_estoque_id, usuario_id, tipo_evento, documento_origem, dados, ocorrido_em)
+			VALUES ($1, NULLIF($2, '')::uuid, 'SAIDA_ESTOQUE', $3,
+			        jsonb_build_object('ordemServicoId', $4::text, 'reservaId', $5::text, 'quantidadeBaixada', $6::numeric),
+			        CURRENT_TIMESTAMP)`,
+			reserva.itemID, usuarioID, "INICIO-"+ordemServicoID, ordemServicoID, reserva.reservaID, reserva.quantidade,
+		); err != nil {
+			return nil, 0, err
+		}
+
+		if index, existe := porItem[reserva.itemID]; existe {
+			itens[index].QuantidadeBaixada += reserva.quantidade
+			itens[index].SaldoFisicoAtual = saldoFisicoAtual
+			itens[index].SaldoReservadoAtual = saldoReservadoAtual
+			itens[index].CustoTotal += custo
+		} else {
+			porItem[reserva.itemID] = len(itens)
+			itens = append(itens, domain.ItemBaixadoInicioExecucao{
+				ItemID: reserva.itemID, Codigo: reserva.codigo, Tipo: reserva.tipo, UnidadeMedida: reserva.unidadeMedida,
+				QuantidadeBaixada: reserva.quantidade, SaldoFisicoAtual: saldoFisicoAtual, SaldoReservadoAtual: saldoReservadoAtual,
+				CustoUnitario: reserva.custoUnitario, CustoTotal: custo,
+			})
+		}
+		custoTotal += custo
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return itens, custoTotal, nil
 }
 
 func (repository PostgresRepository) ConsultarFila(ctx context.Context, limite, deslocamento int) ([]domain.ItemFila, int, error) {
