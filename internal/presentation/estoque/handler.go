@@ -26,6 +26,17 @@ type registrarEntradaRequest struct {
 	Itens                []itemEntradaRequest `json:"itens"`
 }
 
+type itemSaidaRequest struct {
+	ItemID     string  `json:"itemId"`
+	Quantidade float64 `json:"quantidade"`
+}
+
+type registrarSaidaRequest struct {
+	OrdemServicoID       string             `json:"ordemServicoId"`
+	Itens                []itemSaidaRequest `json:"itens"`
+	LiberarSaldoNaoUsado *bool              `json:"liberarSaldoNaoUsado"`
+}
+
 func NewRegistrarEntradaHandler(useCase application.RegistrarEntrada) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		idempotencyKey := request.Header.Get("Idempotency-Key")
@@ -62,6 +73,45 @@ func NewRegistrarEntradaHandler(useCase application.RegistrarEntrada) http.Handl
 	}
 }
 
+func NewRegistrarSaidaHandler(useCase application.RegistrarSaida) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		idempotencyKey := request.Header.Get("Idempotency-Key")
+
+		var body registrarSaidaRequest
+		decoder := json.NewDecoder(request.Body)
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&body); err != nil || decoder.Decode(&struct{}{}) != io.EOF {
+			writeProblem(writer, http.StatusBadRequest, "Dados invalidos", "corpo da requisicao invalido", "")
+			return
+		}
+
+		itens := make([]application.ItemSaidaInput, 0, len(body.Itens))
+		for _, item := range body.Itens {
+			itens = append(itens, application.ItemSaidaInput{ItemID: item.ItemID, Quantidade: item.Quantidade})
+		}
+		liberarSaldoNaoUsado := true
+		if body.LiberarSaldoNaoUsado != nil {
+			liberarSaldoNaoUsado = *body.LiberarSaldoNaoUsado
+		}
+
+		resultado, err := useCase.Execute(request.Context(), application.RegistrarSaidaInput{
+			IdempotencyKey: idempotencyKey, OrdemServicoID: body.OrdemServicoID, Itens: itens,
+			LiberarSaldoNaoUsado: liberarSaldoNaoUsado, UsuarioID: seguranca.UsuarioID(request.Context()),
+		})
+		if err != nil {
+			writeSaidaError(writer, err)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if resultado.JaProcessada {
+			writer.WriteHeader(http.StatusOK)
+		} else {
+			writer.WriteHeader(http.StatusCreated)
+		}
+		_ = json.NewEncoder(writer).Encode(resultado.Saida)
+	}
+}
+
 func writeEntradaError(writer http.ResponseWriter, err error) {
 	status, title, campo := http.StatusInternalServerError, "Erro interno", ""
 	switch {
@@ -80,6 +130,28 @@ func writeEntradaError(writer http.ResponseWriter, err error) {
 	case errors.Is(err, application.ErrItemInativo), errors.Is(err, application.ErrFornecedorInativo),
 		errors.Is(err, application.ErrDocumentoOrigemDuplicado), errors.Is(err, application.ErrFornecedorDivergente),
 		errors.Is(err, application.ErrItemForaDoPedido), errors.Is(err, application.ErrDivergenciaQuantidade):
+		status, title = http.StatusConflict, "Conflito de estado"
+	default:
+		if err.Error() == "quantidade deve ser maior que zero" || err.Error() == "a quantidade de peca deve ser inteira" {
+			status, title = http.StatusBadRequest, "Dados invalidos"
+		}
+	}
+	writeProblem(writer, status, title, err.Error(), campo)
+}
+
+func writeSaidaError(writer http.ResponseWriter, err error) {
+	status, title, campo := http.StatusInternalServerError, "Erro interno", ""
+	switch {
+	case errors.Is(err, domain.ErrIdempotencyKeyObrigatoria):
+		status, title, campo = http.StatusBadRequest, "Dados invalidos", "Idempotency-Key"
+	case errors.Is(err, domain.ErrItensObrigatorios), errors.Is(err, domain.ErrItensExcedemLimite),
+		errors.Is(err, domain.ErrItemIDInvalido), errors.Is(err, domain.ErrItemRepetido),
+		errors.Is(err, domain.ErrQuantidadeIncompativelComUnidade):
+		status, title = http.StatusBadRequest, "Dados invalidos"
+	case errors.Is(err, application.ErrOrdemServicoNaoEncontrada), errors.Is(err, application.ErrItemNaoEncontrado):
+		status, title = http.StatusNotFound, "Recurso nao encontrado"
+	case errors.Is(err, application.ErrOSForaDeExecucao), errors.Is(err, application.ErrReservaAtivaNaoEncontrada),
+		errors.Is(err, application.ErrSaldoInsuficiente), errors.Is(err, domain.ErrQuantidadeMaiorQueReserva):
 		status, title = http.StatusConflict, "Conflito de estado"
 	default:
 		if err.Error() == "quantidade deve ser maior que zero" || err.Error() == "a quantidade de peca deve ser inteira" {

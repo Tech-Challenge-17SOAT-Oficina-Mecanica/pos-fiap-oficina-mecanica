@@ -111,6 +111,7 @@ func main() {
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
 	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository)
+	registrarSaida := estoqueApplication.NewRegistrarSaida(estoqueRepository)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -192,6 +193,8 @@ func main() {
 		pecaPresentation.NewDesativarPecaHandler(desativarPeca)))
 	mux.Handle("POST /estoque/entradas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
 		estoquePresentation.NewRegistrarEntradaHandler(registrarEntrada)))
+	mux.Handle("POST /estoque/saidas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
+		estoquePresentation.NewRegistrarSaidaHandler(registrarSaida)))
 
 	server := &http.Server{
 		Addr:    ":8080",

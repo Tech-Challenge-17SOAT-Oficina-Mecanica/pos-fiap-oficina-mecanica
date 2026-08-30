@@ -1317,6 +1317,53 @@ paths:
           content:
             application/problem+json:
               schema: { $ref: '#/components/schemas/Problema' }
+  /estoque/saidas:
+    post:
+      tags: [Estoque]
+      summary: Dá baixa das peças e insumos usados na execução
+      description: >-
+        Exige o escopo `estoque:movimentar`. Consome reservas ativas de peças e insumos
+        vinculadas a uma OS em `EM_EXECUCAO`, reduz o saldo físico e o saldo reservado,
+        registra movimentações de saída e acumula o custo dos materiais na OS. Por padrão,
+        o saldo reservado e não usado é liberado na mesma operação. A baixa não altera
+        orçamento nem status da OS. O header `Idempotency-Key` é obrigatório: a repetição
+        da mesma chave devolve `200` com a resposta original.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrarSaida' }
+      responses:
+        '201':
+          description: Baixa registrada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SaidaRegistrada' }
+        '200':
+          description: Requisição repetida com a mesma Idempotency-Key; devolve a resposta original
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SaidaRegistrada' }
+        '400':
+          description: Body inválido, Idempotency-Key ausente ou inválida, item repetido ou quantidade inválida
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
+        '401': { description: Token ausente, inválido ou expirado }
+        '403': { description: Usuário sem o escopo estoque:movimentar }
+        '404': { description: Ordem de Serviço ou item não encontrado }
+        '409':
+          description: OS fora de execução, item sem reserva ativa ou quantidade maior que a reservada
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
   /orcamentos/{orcamentoId}/calcular:
     post:
       tags: [Orçamento]
@@ -2184,6 +2231,57 @@ components:
               itensPendentes: { type: integer }
               dataEntradaFila: { type: string, format: date-time, nullable: true }
               version: { type: integer }
+    RegistrarSaida:
+      type: object
+      required: [ordemServicoId, itens]
+      additionalProperties: false
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        liberarSaldoNaoUsado: { type: boolean, default: true }
+        itens:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            required: [itemId, quantidade]
+            additionalProperties: false
+            properties:
+              itemId: { type: string, format: uuid }
+              quantidade: { type: number, format: double, exclusiveMinimum: true, minimum: 0 }
+      example:
+        ordemServicoId: 5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586
+        itens:
+          - itemId: 3f1a9c2e-4b7d-4f56-9a10-0c8e5d21b7a4
+            quantidade: 4
+          - itemId: c48e7d05-2a19-4b63-9f27-6e5a1c930b48
+            quantidade: 3.5
+        liberarSaldoNaoUsado: true
+    SaidaRegistrada:
+      type: object
+      required: [saidaId, ordemServicoId, registradoEm, itens, custoTotalSaida]
+      properties:
+        saidaId: { type: string, format: uuid }
+        ordemServicoId: { type: string, format: uuid }
+        registradoEm: { type: string, format: date-time }
+        registradoPor: { type: string, format: uuid }
+        itens:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string, format: uuid }
+              codigo: { type: string }
+              tipo: { type: string, enum: [PECA, INSUMO] }
+              unidadeMedida: { type: string }
+              quantidadeBaixada: { type: number, format: double }
+              quantidadeReservadaAntes: { type: number, format: double }
+              quantidadeLiberada: { type: number, format: double }
+              saldoFisicoAtual: { type: number, format: double }
+              saldoReservadoAtual: { type: number, format: double }
+              custoUnitario: { type: number, format: double }
+              custoTotal: { type: number, format: double }
+        custoTotalSaida: { type: number, format: double }
     CadastrarFornecedor:
       type: object
       required: [razaoSocial, documento, tipoDocumento]
