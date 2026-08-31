@@ -19,6 +19,68 @@ type PostgresRepository struct{ db *pgxpool.Pool }
 
 func NewPostgresRepository(db *pgxpool.Pool) PostgresRepository { return PostgresRepository{db: db} }
 
+func (repository PostgresRepository) ConsultarTempoExecucao(ctx context.Context, ordemServicoID string) (domain.TempoExecucao, error) {
+	var dataInicio, dataFinalizacao *time.Time
+	err := repository.db.QueryRow(ctx, `
+		SELECT iniciada_em, finalizada_em
+		FROM ordem_servico
+		WHERE id = $1`, ordemServicoID,
+	).Scan(&dataInicio, &dataFinalizacao)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.TempoExecucao{}, application.ErrOrdemServicoNaoEncontrada
+	}
+	if err != nil {
+		return domain.TempoExecucao{}, err
+	}
+	if dataInicio == nil || dataFinalizacao == nil {
+		return domain.TempoExecucao{}, domain.ErrTempoExecucaoIndisponivel
+	}
+	return domain.NovoTempoExecucao(ordemServicoID, *dataInicio, *dataFinalizacao)
+}
+
+func (repository PostgresRepository) ListarTemposExecucao(ctx context.Context, dataInicio, dataFim *time.Time, limite, deslocamento int) ([]domain.TempoExecucao, int, int64, error) {
+	const filtro = `
+		FROM ordem_servico
+		WHERE iniciada_em IS NOT NULL
+		  AND finalizada_em IS NOT NULL
+		  AND finalizada_em >= iniciada_em
+		  AND ($1::timestamptz IS NULL OR iniciada_em >= $1)
+		  AND ($2::timestamptz IS NULL OR iniciada_em < $2 + INTERVAL '1 day')`
+	var total int
+	var totalMinutos int64
+	if err := repository.db.QueryRow(ctx, `
+		SELECT COUNT(*), COALESCE(SUM(EXTRACT(EPOCH FROM finalizada_em - iniciada_em) / 60)::bigint, 0)`+filtro,
+		dataInicio, dataFim,
+	).Scan(&total, &totalMinutos); err != nil {
+		return nil, 0, 0, err
+	}
+	rows, err := repository.db.Query(ctx, `
+		SELECT id, iniciada_em, finalizada_em`+filtro+`
+		ORDER BY iniciada_em DESC, id DESC
+		LIMIT $3 OFFSET $4`, dataInicio, dataFim, limite, deslocamento)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer rows.Close()
+	itens := make([]domain.TempoExecucao, 0)
+	for rows.Next() {
+		var ordemServicoID string
+		var inicio, fim time.Time
+		if err = rows.Scan(&ordemServicoID, &inicio, &fim); err != nil {
+			return nil, 0, 0, err
+		}
+		tempoExecucao, err := domain.NovoTempoExecucao(ordemServicoID, inicio, fim)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		itens = append(itens, tempoExecucao)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, 0, 0, err
+	}
+	return itens, total, totalMinutos, nil
+}
+
 func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input application.IniciarExecucaoInput) (domain.ResultadoInicioExecucao, error) {
 	tx, err := repository.db.Begin(ctx)
 	if err != nil {

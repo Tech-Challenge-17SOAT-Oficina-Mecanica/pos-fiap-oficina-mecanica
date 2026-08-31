@@ -1,0 +1,28 @@
+package ordemservico
+
+import (
+	"errors"
+	"time"
+)
+
+var ErrTempoExecucaoIndisponivel = errors.New("ordem de servico nao possui inicio e finalizacao da execucao")
+var ErrTempoExecucaoInvalido = errors.New("dataFinalizacao nao pode ser anterior a dataInicioExecucao")
+
+type TempoExecucao struct {
+	OrdemServicoID       string
+	DataInicioExecucao   time.Time
+	DataFinalizacao      time.Time
+	TempoExecucaoMinutos int
+}
+
+func NovoTempoExecucao(ordemServicoID string, dataInicioExecucao, dataFinalizacao time.Time) (TempoExecucao, error) {
+	if dataFinalizacao.Before(dataInicioExecucao) {
+		return TempoExecucao{}, ErrTempoExecucaoInvalido
+	}
+	return TempoExecucao{
+		OrdemServicoID:       ordemServicoID,
+		DataInicioExecucao:   dataInicioExecucao,
+		DataFinalizacao:      dataFinalizacao,
+		TempoExecucaoMinutos: int(dataFinalizacao.Sub(dataInicioExecucao).Minutes()),
+	}, nil
+}

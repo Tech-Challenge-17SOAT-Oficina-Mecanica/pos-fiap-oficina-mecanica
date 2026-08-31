@@ -1478,6 +1478,62 @@ paths:
         '404': { description: OS não encontrada }
         '409': { description: OS fora da fila, orçamento ou serviço não aprovado, ou recurso sem reserva }
 
+  /ordens-servico/{osId}/tempo-execucao:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Consulta o tempo de execução de uma OS
+      description: Calcula a diferença entre o início e a finalização já registrados na OS. Exige o escopo `os:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: osId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tempo de execução calculado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TempoExecucao' }
+        '400': { description: osId inválido ou OS sem início e finalização registrados }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:ler }
+        '404': { description: OS não encontrada }
+
+  /ordens-servico/tempos-execucao:
+    get:
+      tags: [Ordem de Serviço]
+      summary: Lista tempos de execução e o tempo médio
+      description: >-
+        Considera somente OS com início e finalização registrados. Os filtros de período são
+        aplicados à data de início da execução e o tempo médio considera todas as OS elegíveis,
+        não apenas a página atual. Exige o escopo `os:ler`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: dataInicio
+          in: query
+          schema: { type: string, format: date }
+        - name: dataFim
+          in: query
+          schema: { type: string, format: date }
+        - name: pagina
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: tamanho
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Indicador e lista paginada; sem OS elegível, retorna data vazia e indicador zerado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListaTemposExecucao' }
+        '400': { description: Paginação ou período inválido }
+        '401': { description: Token ausente ou expirado }
+        '403': { description: Usuário sem o escopo os:ler }
+
   /ordens-servico/{osId}/finalizar:
     post:
       tags: [Ordem de Serviço]
@@ -1718,6 +1774,28 @@ components:
               custoUnitario: { type: number, format: double }
               custoTotal: { type: number, format: double }
         custoTotalMateriaisBaixados: { type: number, format: double }
+
+    TempoExecucao:
+      type: object
+      required: [ordemServicoId, dataInicioExecucao, dataFinalizacao, tempoExecucaoMinutos]
+      properties:
+        ordemServicoId: { type: string, format: uuid }
+        dataInicioExecucao: { type: string, format: date-time }
+        dataFinalizacao: { type: string, format: date-time }
+        tempoExecucaoMinutos: { type: integer, minimum: 0 }
+
+    ListaTemposExecucao:
+      type: object
+      required: [tempoMedioExecucaoMinutos, totalElementos, pagina, tamanho, totalPaginas, data]
+      properties:
+        tempoMedioExecucaoMinutos: { type: integer, minimum: 0 }
+        totalElementos: { type: integer, minimum: 0 }
+        pagina: { type: integer, minimum: 0 }
+        tamanho: { type: integer, minimum: 1 }
+        totalPaginas: { type: integer, minimum: 0 }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TempoExecucao' }
 
     Finalizacao:
       type: object

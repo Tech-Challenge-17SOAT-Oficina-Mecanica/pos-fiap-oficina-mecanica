@@ -109,6 +109,8 @@ func main() {
 	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository, enfileirarNotificacao, nil)
 	consultarOS := ordemServicoApplication.NewConsultar(ordemServicoRepository)
 	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
+	consultarTempoExecucao := ordemServicoApplication.NewConsultarTempoExecucaoDaOS(ordemServicoRepository)
+	consultarTempoMedioExecucao := ordemServicoApplication.NewConsultarTempoMedioExecucao(ordemServicoRepository)
 	consultarFila := ordemServicoApplication.NewConsultarFila(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
@@ -150,6 +152,8 @@ func main() {
 	mux.Handle("POST /ordens-servico/{osId}/servicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewRegistrarServicosHandler(registrarServicos)))
 	mux.Handle("POST /ordens-servico/{osId}/execucao/iniciar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewIniciarExecucaoHandler(iniciarExecucao)))
 	mux.Handle("POST /ordens-servico/{osId}/finalizar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewFinalizarHandler(finalizarServico)))
+	mux.Handle("GET /ordens-servico/{osId}/tempo-execucao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewConsultarTempoExecucaoHandler(consultarTempoExecucao)))
+	mux.Handle("GET /ordens-servico/tempos-execucao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewListarTemposExecucaoHandler(consultarTempoMedioExecucao)))
 	mux.Handle("POST /ordens-servico/{osId}/entrega", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewEntregarHandler(registrarEntrega)))
 	mux.Handle("POST /orcamentos/{orcamentoId}/enviar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
 		orcamentoPresentation.NewEnviarHandler(orcamentoApplication.NewEnviar(orcamentoRepository, enfileirarNotificacao, nil))))
