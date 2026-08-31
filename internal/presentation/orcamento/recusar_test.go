@@ -58,7 +58,7 @@ func TestRecusarHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			useCase := application.NewRecusar(recusarRepositoryStub{result: decisao, err: test.err})
+			useCase := application.NewRecusar(recusarRepositoryStub{result: decisao, err: test.err}, nil, nil)
 			mux.Handle("POST /orcamentos/{orcamentoId}/recusar", seguranca.RequireScope(jwt, "orcamentos:decidir", NewRecusarHandler(useCase)))
 			var body *strings.Reader
 			if test.body != "" {

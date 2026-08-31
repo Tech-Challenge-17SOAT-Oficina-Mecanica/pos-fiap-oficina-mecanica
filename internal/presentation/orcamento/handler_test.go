@@ -120,7 +120,7 @@ func TestAprovarHandler(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &aprovarStub{result: result, err: test.err}
 			mux := http.NewServeMux()
-			mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", seguranca.RequireScope(jwt, "orcamentos:decidir", NewAprovarHandler(application.NewAprovar(stub))))
+			mux.Handle("POST /orcamentos/{orcamentoId}/aprovar", seguranca.RequireScope(jwt, "orcamentos:decidir", NewAprovarHandler(application.NewAprovar(stub, nil, nil))))
 			request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+test.id+"/aprovar", strings.NewReader(test.body))
 			if test.token != "" {
 				request.Header.Set("Authorization", "Bearer "+test.token)

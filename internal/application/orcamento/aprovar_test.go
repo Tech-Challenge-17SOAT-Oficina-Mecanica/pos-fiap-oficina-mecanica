@@ -21,7 +21,7 @@ func (fake *aprovarRepositoryFake) Aprovar(_ context.Context, input AprovarInput
 
 func TestAprovarValidaEDelega(t *testing.T) {
 	repository := &aprovarRepositoryFake{resultado: domain.Aprovacao{OrcamentoID: idAprovacaoValido}}
-	resultado, err := NewAprovar(repository).Execute(context.Background(), inputAprovacaoValido())
+	resultado, err := NewAprovar(repository, nil, nil).Execute(context.Background(), inputAprovacaoValido())
 
 	if err != nil || resultado.OrcamentoID != idAprovacaoValido {
 		t.Fatalf("resultado=%+v erro=%v", resultado, err)
@@ -45,7 +45,7 @@ func TestAprovarValidacoes(t *testing.T) {
 		t.Run(caso.nome, func(t *testing.T) {
 			input := inputAprovacaoValido()
 			caso.mudar(&input)
-			_, err := NewAprovar(&aprovarRepositoryFake{}).Execute(context.Background(), input)
+			_, err := NewAprovar(&aprovarRepositoryFake{}, nil, nil).Execute(context.Background(), input)
 			if !errors.Is(err, caso.erro) {
 				t.Fatalf("erro=%v, esperado %v", err, caso.erro)
 			}
@@ -59,14 +59,14 @@ func TestAprovarAceitaMecanico(t *testing.T) {
 	input.ClienteID = ""
 	input.UsuarioID = "30000000-0000-0000-0000-000000000001"
 
-	if _, err := NewAprovar(repository).Execute(context.Background(), input); err != nil || repository.input.UsuarioID != input.UsuarioID {
+	if _, err := NewAprovar(repository, nil, nil).Execute(context.Background(), input); err != nil || repository.input.UsuarioID != input.UsuarioID {
 		t.Fatalf("input=%+v erro=%v", repository.input, err)
 	}
 }
 
 func TestAprovarPropagaErro(t *testing.T) {
 	esperado := errors.New("falha")
-	_, err := NewAprovar(&aprovarRepositoryFake{err: esperado}).Execute(context.Background(), inputAprovacaoValido())
+	_, err := NewAprovar(&aprovarRepositoryFake{err: esperado}, nil, nil).Execute(context.Background(), inputAprovacaoValido())
 	if !errors.Is(err, esperado) {
 		t.Fatalf("erro=%v", err)
 	}

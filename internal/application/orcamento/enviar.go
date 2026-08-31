@@ -2,7 +2,6 @@ package orcamento
 
 import (
 	"context"
-	"errors"
 	"log"
 	"time"
 
@@ -12,8 +11,6 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
-var errNotificadorAusente = errors.New("notificador nao configurado")
-
 // OrcamentoParaEnvio reune o que o envio precisa saber, sem carregar o agregado inteiro.
 type OrcamentoParaEnvio struct {
 	Orcamento      orcamento.Orcamento
@@ -22,12 +19,6 @@ type OrcamentoParaEnvio struct {
 	StatusOS       string
 	Calculado      bool
 	EstimativaDias int
-}
-
-// Notificador e a porta de aviso ao cliente, declarada aqui para o contexto nao depender
-// do pacote de notificacao inteiro.
-type Notificador interface {
-	Execute(ctx context.Context, pedido notificacaoApplication.Pedido) (notificacaoDominio.Notificacao, error)
 }
 
 type EnviarRepository interface {
