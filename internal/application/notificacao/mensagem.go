@@ -19,16 +19,41 @@ func Mensagem(tipoEvento, nomeCliente string, orcamento *ResumoOrcamento) (assun
 		tratamento = fmt.Sprintf("Olá, %s", nomeCliente)
 	}
 
+	// A ordem dos casos segue a maquina de estados da OS, de ponta a ponta.
 	switch tipoEvento {
-	case notificacao.EventoServicoFinalizado:
-		return "Seu veículo está pronto para retirada",
-			fmt.Sprintf("%s! O serviço do seu veículo foi concluído e ele já está disponível para retirada na oficina. Qualquer dúvida, é só falar com a gente.", tratamento),
-			"", nil
+	case notificacao.EventoDiagnosticoIniciado:
+		return "Recebemos seu veículo e começamos o diagnóstico",
+			aviso(tratamento, "Seu veículo já está com a nossa equipe e o diagnóstico foi iniciado. Assim que soubermos o que precisa ser feito, enviamos o orçamento para a sua aprovação."), "", nil
 
 	case notificacao.EventoOrcamentoPronto:
 		return "Seu orçamento está pronto",
 			textoOrcamento(tratamento, orcamento),
 			htmlOrcamento(tratamento, orcamento), nil
+
+	case notificacao.EventoOrcamentoAprovado:
+		return "Orçamento aprovado: seu veículo entrou na fila",
+			aviso(tratamento, "Recebemos a sua aprovação, e o seu veículo entrou na fila de execução. Começamos o serviço assim que chegar a vez dele, e avisamos você quando isso acontecer."), "", nil
+
+	case notificacao.EventoAguardandoRecursos:
+		return "Estamos aguardando as peças do seu serviço",
+			aviso(tratamento, "Seu orçamento foi aprovado, mas alguns itens ainda precisam ser comprados. Assim que eles chegarem, o seu veículo entra na fila de execução e avisamos você."), "", nil
+
+	case notificacao.EventoRecursosDisponiveis:
+		return "As peças chegaram: seu veículo entrou na fila",
+			aviso(tratamento, "As peças que faltavam para o seu serviço chegaram, e o seu veículo entrou na fila de execução. Começamos assim que chegar a vez dele."), "", nil
+
+	case notificacao.EventoExecucaoIniciada:
+		return "Começamos o serviço no seu veículo",
+			aviso(tratamento, "Nossa equipe iniciou a execução do serviço no seu veículo. Avisamos assim que ele estiver pronto para retirada."), "", nil
+
+	case notificacao.EventoServicoCancelado:
+		return "Seu atendimento foi cancelado",
+			aviso(tratamento, "Registramos a recusa do orçamento, e o atendimento do seu veículo foi cancelado. Ele está disponível para retirada, e seguimos à disposição se você mudar de ideia."), "", nil
+
+	case notificacao.EventoServicoFinalizado:
+		return "Seu veículo está pronto para retirada",
+			fmt.Sprintf("%s! O serviço do seu veículo foi concluído e ele já está disponível para retirada na oficina. Qualquer dúvida, é só falar com a gente.", tratamento),
+			"", nil
 
 	case notificacao.EventoVeiculoEntregue:
 		return "Confirmação da entrega do seu veículo",
@@ -38,6 +63,12 @@ func Mensagem(tipoEvento, nomeCliente string, orcamento *ResumoOrcamento) (assun
 	default:
 		return "", "", "", notificacao.ErrEventoInvalido
 	}
+}
+
+// aviso monta o corpo dos eventos que sao so texto. Existe para o switch acima mostrar a
+// mensagem de cada evento numa linha, sem repetir a saudacao em todos.
+func aviso(tratamento, corpo string) string {
+	return fmt.Sprintf("%s! %s", tratamento, corpo)
 }
 
 const aberturaOrcamento = "! O orçamento do serviço do seu veículo está pronto e aguarda a sua aprovação."

@@ -131,3 +131,36 @@ func TestDescricaoEhEscapadaNoHTML(t *testing.T) {
 		t.Fatal("a descrição deveria aparecer escapada")
 	}
 }
+
+// Todo evento conhecido precisa ter texto: um evento sem caso no switch cairia no default
+// e viraria erro de enfileiramento na hora em que o status mudasse, em produção.
+func TestTodoEventoConhecidoTemMensagem(t *testing.T) {
+	eventos := []string{
+		notificacao.EventoDiagnosticoIniciado,
+		notificacao.EventoOrcamentoPronto,
+		notificacao.EventoOrcamentoAprovado,
+		notificacao.EventoAguardandoRecursos,
+		notificacao.EventoRecursosDisponiveis,
+		notificacao.EventoExecucaoIniciada,
+		notificacao.EventoServicoCancelado,
+		notificacao.EventoServicoFinalizado,
+		notificacao.EventoVeiculoEntregue,
+	}
+	for _, evento := range eventos {
+		t.Run(evento, func(t *testing.T) {
+			if !notificacao.EventoConhecido(evento) {
+				t.Fatal("evento fora de EventoConhecido: Nova() vai recusá-lo")
+			}
+			assunto, conteudo, _, err := Mensagem(evento, "Ana", nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if assunto == "" || conteudo == "" {
+				t.Fatalf("assunto=%q conteudo=%q", assunto, conteudo)
+			}
+			if !strings.Contains(conteudo, "Ana") {
+				t.Fatalf("o corpo deveria tratar o cliente pelo nome: %q", conteudo)
+			}
+		})
+	}
+}
