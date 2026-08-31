@@ -118,7 +118,7 @@ func main() {
 	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository, enfileirarNotificacao, nil)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
-	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository)
+	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository, enfileirarNotificacao, nil)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)

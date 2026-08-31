@@ -96,7 +96,7 @@ func TestRegistrarEntradaEstoque(t *testing.T) {
 		_, _ = db.Exec(ctx, "DELETE FROM categoria WHERE id=$1", categoriaID)
 	})
 
-	useCase := application.NewRegistrarEntrada(infrastructure.NewPostgresRepository(db))
+	useCase := application.NewRegistrarEntrada(infrastructure.NewPostgresRepository(db), nil, nil)
 
 	// Entrada simples, sem pedido: saldo fisico sobe, custo atualiza, sem alterar reservado.
 	resultado, err := useCase.Execute(ctx, application.RegistrarEntradaInput{

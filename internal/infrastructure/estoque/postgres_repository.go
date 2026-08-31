@@ -366,8 +366,8 @@ func recalcularStatusPedido(ctx context.Context, tx pgx.Tx, pedidoID string) (st
 func liberarOrdensServico(ctx context.Context, tx pgx.Tx, ordensAfetadas map[string]struct{}) ([]domain.OrdemServicoLiberada, error) {
 	var resultado []domain.OrdemServicoLiberada
 	for ordemServicoID := range ordensAfetadas {
-		var statusAtual string
-		if err := tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&statusAtual); err != nil {
+		var statusAtual, clienteID string
+		if err := tx.QueryRow(ctx, "SELECT status, cliente_id::text FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&statusAtual, &clienteID); err != nil {
 			return nil, err
 		}
 		if statusAtual != "AGUARDANDO_RECURSOS" {
@@ -398,7 +398,7 @@ func liberarOrdensServico(ctx context.Context, tx pgx.Tx, ordensAfetadas map[str
 			dataEntradaFilaPtr = &dataEntradaFila
 		}
 		resultado = append(resultado, domain.OrdemServicoLiberada{
-			OrdemServicoID: ordemServicoID, StatusAnterior: statusAtual, Status: novoStatus, ItensPendentes: itensPendentes,
+			OrdemServicoID: ordemServicoID, ClienteID: clienteID, StatusAnterior: statusAtual, Status: novoStatus, ItensPendentes: itensPendentes,
 			DataEntradaFila: dataEntradaFilaPtr, Version: versao,
 		})
 	}

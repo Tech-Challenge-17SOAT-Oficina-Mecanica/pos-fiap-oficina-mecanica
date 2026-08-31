@@ -22,7 +22,7 @@ const idempotencyKeyValida = "10000000-0000-0000-0000-000000000001"
 const itemIDValido = "20000000-0000-0000-0000-000000000001"
 
 func TestRegistrarEntradaRejeitaIdempotencyKeyInvalida(t *testing.T) {
-	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{}, nil, nil)
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: "chave-invalida", DocumentoOrigem: "NF-1", Itens: []ItemInput{{ItemID: itemIDValido, Quantidade: 1, CustoUnitario: 1}},
 	})
@@ -32,7 +32,7 @@ func TestRegistrarEntradaRejeitaIdempotencyKeyInvalida(t *testing.T) {
 }
 
 func TestRegistrarEntradaRejeitaItemIDInvalido(t *testing.T) {
-	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{}, nil, nil)
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1", Itens: []ItemInput{{ItemID: "item-invalido", Quantidade: 1, CustoUnitario: 1}},
 	})
@@ -42,7 +42,7 @@ func TestRegistrarEntradaRejeitaItemIDInvalido(t *testing.T) {
 }
 
 func TestRegistrarEntradaRejeitaFornecedorIDInvalido(t *testing.T) {
-	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{}, nil, nil)
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1", FornecedorID: "fornecedor-invalido",
 		Itens: []ItemInput{{ItemID: itemIDValido, Quantidade: 1, CustoUnitario: 1}},
@@ -53,7 +53,7 @@ func TestRegistrarEntradaRejeitaFornecedorIDInvalido(t *testing.T) {
 }
 
 func TestRegistrarEntradaRejeitaSemItens(t *testing.T) {
-	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{}, nil, nil)
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1",
 	})
@@ -63,7 +63,7 @@ func TestRegistrarEntradaRejeitaSemItens(t *testing.T) {
 }
 
 func TestRegistrarEntradaRejeitaItemRepetido(t *testing.T) {
-	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{})
+	useCase := NewRegistrarEntrada(&registrarEntradaRepositoryFake{}, nil, nil)
 	_, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1",
 		Itens: []ItemInput{{ItemID: itemIDValido, Quantidade: 1, CustoUnitario: 1}, {ItemID: itemIDValido, Quantidade: 2, CustoUnitario: 1}},
@@ -75,7 +75,7 @@ func TestRegistrarEntradaRejeitaItemRepetido(t *testing.T) {
 
 func TestRegistrarEntradaDelegaAoRepositorio(t *testing.T) {
 	fake := &registrarEntradaRepositoryFake{resultado: Resultado{Entrada: domain.ResultadoEntrada{DocumentoOrigem: "NF-1"}}}
-	useCase := NewRegistrarEntrada(fake)
+	useCase := NewRegistrarEntrada(fake, nil, nil)
 	resultado, err := useCase.Execute(context.Background(), RegistrarEntradaInput{
 		IdempotencyKey: idempotencyKeyValida, DocumentoOrigem: "NF-1",
 		Itens: []ItemInput{{ItemID: itemIDValido, Quantidade: 1, CustoUnitario: 1}},
