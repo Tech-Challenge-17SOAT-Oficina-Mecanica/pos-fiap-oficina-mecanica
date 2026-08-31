@@ -22,7 +22,7 @@ func (fake *problemaRelatadoRepositoryFake) RegistrarProblemaRelatado(_ context.
 
 func TestRegistrarProblemaRelatado(t *testing.T) {
 	repository := &problemaRelatadoRepositoryFake{ordem: domain.OrdemDeServico{ID: "os", Status: domain.StatusEmDiagnostico}}
-	result, err := NewRegistrarProblemaRelatado(repository).Execute(context.Background(), RegistrarProblemaRelatadoInput{OrdemServicoID: "os", Descricao: "  Ruído ao frear  ", Observacoes: "  Há uma semana  "})
+	result, err := NewRegistrarProblemaRelatado(repository, nil, nil).Execute(context.Background(), RegistrarProblemaRelatadoInput{OrdemServicoID: "os", Descricao: "  Ruído ao frear  ", Observacoes: "  Há uma semana  "})
 	if err != nil || result.Status != domain.StatusEmDiagnostico {
 		t.Fatalf("resultado = %+v, erro = %v", result, err)
 	}
@@ -32,7 +32,7 @@ func TestRegistrarProblemaRelatado(t *testing.T) {
 }
 
 func TestRegistrarProblemaRelatadoRejeitaDescricaoVazia(t *testing.T) {
-	_, err := NewRegistrarProblemaRelatado(&problemaRelatadoRepositoryFake{}).Execute(context.Background(), RegistrarProblemaRelatadoInput{Descricao: "  "})
+	_, err := NewRegistrarProblemaRelatado(&problemaRelatadoRepositoryFake{}, nil, nil).Execute(context.Background(), RegistrarProblemaRelatadoInput{Descricao: "  "})
 	if !errors.Is(err, domain.ErrDescricaoProblemaRelatadoObrigatoria) {
 		t.Fatalf("erro = %v", err)
 	}
@@ -41,7 +41,7 @@ func TestRegistrarProblemaRelatadoRejeitaDescricaoVazia(t *testing.T) {
 func TestRegistrarProblemaRelatadoPropagaErrosDoRepository(t *testing.T) {
 	for _, expected := range []error{ErrOrdemServicoNaoEncontrada, ErrOrdemServicoForaDeRecebida, ErrProblemaRelatadoJaRegistrado, errors.New("db")} {
 		t.Run(expected.Error(), func(t *testing.T) {
-			_, err := NewRegistrarProblemaRelatado(&problemaRelatadoRepositoryFake{err: expected}).Execute(context.Background(), RegistrarProblemaRelatadoInput{Descricao: "Ruído"})
+			_, err := NewRegistrarProblemaRelatado(&problemaRelatadoRepositoryFake{err: expected}, nil, nil).Execute(context.Background(), RegistrarProblemaRelatadoInput{Descricao: "Ruído"})
 			if !errors.Is(err, expected) {
 				t.Fatalf("erro = %v", err)
 			}

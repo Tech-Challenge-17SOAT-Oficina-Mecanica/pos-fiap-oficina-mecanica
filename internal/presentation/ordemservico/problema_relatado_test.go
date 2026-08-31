@@ -44,7 +44,7 @@ func TestRegistrarProblemaRelatadoHandler(t *testing.T) {
 	}
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
-			handler := NewRegistrarProblemaRelatadoHandler(application.NewRegistrarProblemaRelatado(problemaRelatadoRepositoryStub{resultado: sucesso, err: caso.err}))
+			handler := NewRegistrarProblemaRelatadoHandler(application.NewRegistrarProblemaRelatado(problemaRelatadoRepositoryStub{resultado: sucesso, err: caso.err}, nil, nil))
 			requisicao := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+caso.id+"/problema-relatado", strings.NewReader(caso.corpo))
 			requisicao.SetPathValue("osId", caso.id)
 			resposta := httptest.NewRecorder()

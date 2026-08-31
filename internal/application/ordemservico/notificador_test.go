@@ -144,3 +144,98 @@ func TestEntregarSobreviveAFalhaDaNotificacao(t *testing.T) {
 		t.Fatalf("a falha na notificação não podia virar erro da entrega: %v", err)
 	}
 }
+
+type iniciarExecucaoFake struct {
+	resultado domain.ResultadoInicioExecucao
+	erro      error
+}
+
+func (fake iniciarExecucaoFake) IniciarExecucao(context.Context, IniciarExecucaoInput) (domain.ResultadoInicioExecucao, error) {
+	return fake.resultado, fake.erro
+}
+
+// OS -> EM_DIAGNOSTICO
+func TestRegistrarProblemaRelatadoEnfileiraNotificacao(t *testing.T) {
+	notificador := &notificadorFake{}
+	repo := &problemaRelatadoRepositoryFake{ordem: domain.OrdemDeServico{
+		ID: osID, ClienteID: clienteID, Status: domain.StatusEmDiagnostico,
+	}}
+
+	_, err := NewRegistrarProblemaRelatado(repo, notificador, silencioso()).
+		Execute(context.Background(), RegistrarProblemaRelatadoInput{OrdemServicoID: osID, Descricao: "barulho na suspensao"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notificador.recebido.TipoEvento != notificacaoDominio.EventoDiagnosticoIniciado {
+		t.Fatalf("evento = %q", notificador.recebido.TipoEvento)
+	}
+	if notificador.recebido.ClienteID != clienteID {
+		t.Fatalf("clienteID = %q", notificador.recebido.ClienteID)
+	}
+}
+
+// RNF-OS-44: o diagnóstico já começou e continua começado mesmo sem o aviso.
+func TestRegistrarProblemaRelatadoSobreviveAFalhaDaNotificacao(t *testing.T) {
+	notificador := &notificadorFake{erro: errors.New("cliente sem e-mail")}
+	repo := &problemaRelatadoRepositoryFake{ordem: domain.OrdemDeServico{
+		ID: osID, ClienteID: clienteID, Status: domain.StatusEmDiagnostico,
+	}}
+
+	resultado, err := NewRegistrarProblemaRelatado(repo, notificador, silencioso()).
+		Execute(context.Background(), RegistrarProblemaRelatadoInput{OrdemServicoID: osID, Descricao: "barulho na suspensao"})
+	if err != nil {
+		t.Fatalf("a falha na notificação não podia virar erro do registro: %v", err)
+	}
+	if resultado.Status != domain.StatusEmDiagnostico {
+		t.Fatalf("status = %q; a OS precisa continuar EM_DIAGNOSTICO", resultado.Status)
+	}
+}
+
+// OS -> EM_EXECUCAO
+func TestIniciarExecucaoEnfileiraNotificacao(t *testing.T) {
+	notificador := &notificadorFake{}
+	repo := iniciarExecucaoFake{resultado: domain.ResultadoInicioExecucao{
+		OrdemServicoID: osID, ClienteID: clienteID, Status: domain.StatusEmExecucao,
+	}}
+
+	if _, err := NewIniciarExecucao(repo, notificador, silencioso()).
+		Execute(context.Background(), IniciarExecucaoInput{OSID: osID}); err != nil {
+		t.Fatal(err)
+	}
+	if notificador.recebido.TipoEvento != notificacaoDominio.EventoExecucaoIniciada {
+		t.Fatalf("evento = %q", notificador.recebido.TipoEvento)
+	}
+	if notificador.recebido.Origem.Agregado != "ordem_servico" || notificador.recebido.Origem.ID != osID {
+		t.Fatalf("origem = %+v", notificador.recebido.Origem)
+	}
+}
+
+// A baixa de estoque do início da execução não pode ser desfeita por causa do e-mail.
+func TestIniciarExecucaoSobreviveAFalhaDaNotificacao(t *testing.T) {
+	notificador := &notificadorFake{erro: errors.New("smtp fora do ar")}
+	repo := iniciarExecucaoFake{resultado: domain.ResultadoInicioExecucao{
+		OrdemServicoID: osID, ClienteID: clienteID, Status: domain.StatusEmExecucao,
+	}}
+
+	resultado, err := NewIniciarExecucao(repo, notificador, silencioso()).
+		Execute(context.Background(), IniciarExecucaoInput{OSID: osID})
+	if err != nil {
+		t.Fatalf("a falha na notificação não podia virar erro do início da execução: %v", err)
+	}
+	if resultado.Status != domain.StatusEmExecucao {
+		t.Fatalf("status = %q; a OS precisa continuar EM_EXECUCAO", resultado.Status)
+	}
+}
+
+func TestIniciarExecucaoComErroNaoNotifica(t *testing.T) {
+	notificador := &notificadorFake{}
+	repo := iniciarExecucaoFake{erro: domain.ErrRecursosIndisponiveis}
+
+	if _, err := NewIniciarExecucao(repo, notificador, silencioso()).
+		Execute(context.Background(), IniciarExecucaoInput{OSID: osID}); err == nil {
+		t.Fatal("o erro do repositório deveria ser propagado")
+	}
+	if notificador.chamado {
+		t.Fatal("não se avisa início de execução que não aconteceu")
+	}
+}

@@ -88,11 +88,11 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 	}
 	defer tx.Rollback(ctx)
 
-	var status, mecanicoResponsavelID string
+	var status, mecanicoResponsavelID, clienteID string
 	err = tx.QueryRow(ctx, `
-		SELECT status, COALESCE(mecanico_responsavel_id::text, '')
+		SELECT status, COALESCE(mecanico_responsavel_id::text, ''), cliente_id::text
 		FROM ordem_servico WHERE id = $1 FOR UPDATE`, input.OSID,
-	).Scan(&status, &mecanicoResponsavelID)
+	).Scan(&status, &mecanicoResponsavelID, &clienteID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.ResultadoInicioExecucao{}, application.ErrOrdemServicoNaoEncontrada
 	}
@@ -181,7 +181,7 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 		return domain.ResultadoInicioExecucao{}, err
 	}
 	return domain.ResultadoInicioExecucao{
-		OrdemServicoID: input.OSID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
+		OrdemServicoID: input.OSID, ClienteID: clienteID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
 		ItensBaixados: itensBaixados, CustoTotalMateriaisBaixados: custoTotalMateriais,
 	}, nil
 }
@@ -689,8 +689,8 @@ func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Conte
 
 	var status string
 	var descricaoExistente *string
-	err = tx.QueryRow(ctx, `SELECT status, problema_relatado_descricao
-		FROM ordem_servico WHERE id = $1 FOR UPDATE`, ordemServicoID).Scan(&status, &descricaoExistente)
+	err = tx.QueryRow(ctx, `SELECT status, problema_relatado_descricao, cliente_id::text
+		FROM ordem_servico WHERE id = $1 FOR UPDATE`, ordemServicoID).Scan(&status, &descricaoExistente, &resultado.ClienteID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return resultado, application.ErrOrdemServicoNaoEncontrada
 	}
