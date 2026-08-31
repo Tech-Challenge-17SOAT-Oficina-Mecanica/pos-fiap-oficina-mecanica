@@ -1,16 +1,17 @@
 ---
 documento: Modelo Entidade-Relacionamento
 dono: A definir
-versao: 0.3
-atualizado_em: 2026-08-23
+versao: 0.4
+atualizado_em: 2026-08-30
 status: rascunho
 ---
 
 # Modelo Entidade-Relacionamento
 
-Modelo logico revisado a partir da `main` atualizada em 22/08/2026. Consolida os sete contextos
-refinados e as decisoes fechadas: Peças e Insumos separados nos fluxos, reserva para ambos os
-tipos de item, Compras compartilhadas e trilha de auditoria da Ordem de Servico.
+Modelo logico revisado a partir da `main` e da feature aberta de disparo de notificacoes em
+30/08/2026. Consolida os sete contextos refinados e as decisoes fechadas: Peças e Insumos
+separados nos fluxos, reserva para ambos os tipos de item, Compras compartilhadas, trilhas de
+auditoria e notificacoes ao cliente.
 
 O modelo descreve entidades, atributos essenciais e cardinalidades. Tipos especificos do SGBD,
 indices fisicos e nomes finais de colunas devem ser definidos nas migrations.
@@ -65,11 +66,25 @@ erDiagram
         decimal custo_total_materiais
         decimal valor_final
         datetime criada_em
+        datetime iniciada_em
+        datetime finalizada_em
+        string observacoes_finalizacao
+        datetime entregue_em
+        uuid cliente_retirada_id FK
+        uuid responsavel_entrega_id
+        string observacoes_entrega
+        string problema_relatado_descricao
+        string problema_relatado_observacoes
+        datetime data_inicio_diagnostico
+        datetime data_entrada_fila
+        integer version
     }
     PROBLEMA_ORDEM_SERVICO {
         uuid id PK
         uuid ordem_servico_id FK
         string descricao
+        uuid orcamento_id FK
+        string observacoes
         datetime registrado_em
     }
     SERVICO {
@@ -79,6 +94,10 @@ erDiagram
         decimal valor
         integer tempo_estimado_minutos
         boolean ativo
+        datetime data_atualizacao
+        uuid usuario_atualizacao FK
+        uuid usuario_criacao FK
+        uuid usuario_desativacao FK
         integer version
     }
     ORDEM_SERVICO_SERVICO {
@@ -109,6 +128,8 @@ erDiagram
         decimal preco_venda
         decimal custo_unitario
         boolean ativo
+        datetime data_atualizacao
+        uuid usuario_atualizacao FK
         integer version
     }
     ORDEM_SERVICO_ITEM {
@@ -126,6 +147,9 @@ erDiagram
         uuid orcamento_original_id FK
         string tipo_orcamento
         string status
+        uuid cliente_aprovador_id FK
+        uuid cliente_recusador_id FK
+        string motivo_recusa
         integer estimativa_entrega_dias
         datetime criado_em
     }
@@ -139,6 +163,7 @@ erDiagram
         decimal quantidade
         decimal valor_unitario
         decimal valor_total
+        string observacao
     }
     RESERVA_ESTOQUE {
         uuid id PK
@@ -155,6 +180,7 @@ erDiagram
         uuid ordem_servico_id FK
         uuid reserva_estoque_id FK
         uuid pedido_compra_id FK
+        uuid fornecedor_id FK
         string tipo
         decimal quantidade
         decimal custo_unitario
@@ -206,6 +232,43 @@ erDiagram
         datetime ocorrido_em
         datetime registrado_em
     }
+    HISTORICO_PRECO_ITEM {
+        uuid id PK
+        uuid item_estoque_id FK
+        decimal preco_anterior
+        decimal preco_novo
+        uuid usuario_id FK
+        datetime registrado_em
+    }
+    AUDITORIA_ESTOQUE {
+        uuid id PK
+        uuid item_estoque_id FK
+        uuid fornecedor_id FK
+        uuid pedido_compra_id FK
+        uuid usuario_id FK
+        string tipo_evento
+        string documento_origem
+        json dados
+        datetime ocorrido_em
+        datetime registrado_em
+    }
+    NOTIFICACAO {
+        uuid id PK
+        uuid cliente_id FK
+        string canal
+        string tipo_evento
+        string agregado
+        uuid agregado_id
+        string destinatario
+        string assunto
+        string conteudo
+        string conteudo_html
+        string status
+        integer tentativas
+        string ultimo_erro
+        datetime criada_em
+        datetime enviada_em
+    }
     CHAVE_IDEMPOTENCIA {
         uuid id PK
         string chave UK
@@ -220,8 +283,11 @@ erDiagram
     MECANICO o|--o{ ORDEM_SERVICO : executa
     CLIENTE ||--o{ VEICULO : possui
     CLIENTE ||--o{ ORDEM_SERVICO : solicita
+    CLIENTE o|--o{ ORDEM_SERVICO : retira
+    CLIENTE ||--o{ NOTIFICACAO : recebe
     VEICULO ||--o{ ORDEM_SERVICO : atende
     ORDEM_SERVICO ||--o{ PROBLEMA_ORDEM_SERVICO : registra
+    ORCAMENTO o|--o{ PROBLEMA_ORDEM_SERVICO : relaciona
     ORDEM_SERVICO ||--o{ ORDEM_SERVICO_SERVICO : inclui
     SERVICO ||--o{ ORDEM_SERVICO_SERVICO : referencia
     CATEGORIA ||--o{ ITEM_ESTOQUE : classifica
@@ -235,6 +301,7 @@ erDiagram
     ORDEM_SERVICO_ITEM ||--o{ RESERVA_ESTOQUE : recebe
     ITEM_ESTOQUE ||--o{ RESERVA_ESTOQUE : reserva
     ITEM_ESTOQUE ||--o{ MOVIMENTACAO_ESTOQUE : movimenta
+    FORNECEDOR o|--o{ MOVIMENTACAO_ESTOQUE : fornece
     RESERVA_ESTOQUE o|--o{ MOVIMENTACAO_ESTOQUE : registra
     ORDEM_SERVICO o|--o{ MOVIMENTACAO_ESTOQUE : contextualiza
     FORNECEDOR ||--o{ PEDIDO_COMPRA : recebe
@@ -245,6 +312,12 @@ erDiagram
     PEDIDO_COMPRA o|--o{ MOVIMENTACAO_ESTOQUE : origina
     PEDIDO_COMPRA_ITEM o|--o{ RESERVA_ESTOQUE : financia
     ORDEM_SERVICO ||--o{ AUDITORIA_ORDEM_SERVICO : audita
+    ITEM_ESTOQUE ||--o{ HISTORICO_PRECO_ITEM : possui
+    USUARIO o|--o{ HISTORICO_PRECO_ITEM : altera
+    ITEM_ESTOQUE ||--o{ AUDITORIA_ESTOQUE : audita
+    FORNECEDOR o|--o{ AUDITORIA_ESTOQUE : referencia
+    PEDIDO_COMPRA o|--o{ AUDITORIA_ESTOQUE : referencia
+    USUARIO o|--o{ AUDITORIA_ESTOQUE : registra
 ```
 
 ## Dicionario de dados
@@ -347,6 +420,11 @@ proprietario atual; nao existe historico de proprietarios.
 | `cliente_retirada_id` | `uuid` | FK opcional para `CLIENTE` |
 | `responsavel_entrega_id` | `uuid` | Usuario responsavel |
 | `observacoes_entrega` | `string` | Opcional |
+| `problema_relatado_descricao` | `string` | Descricao informada pelo cliente; opcional ate o inicio do diagnostico |
+| `problema_relatado_observacoes` | `string` | Observacoes adicionais; opcional |
+| `data_inicio_diagnostico` | `datetime` | Preenchida junto ao problema relatado |
+| `data_entrada_fila` | `datetime` | Ordenacao da fila de atendimento; opcional fora da fila |
+| `version` | `integer` | Controle otimista |
 
 Relacionamentos: N:1 com cliente, veiculo e mecanico responsavel; 1:N com problemas, servicos, materiais, orcamentos,
 movimentacoes e registros de auditoria.
@@ -358,9 +436,12 @@ movimentacoes e registros de auditoria.
 | `id` | `uuid` | PK |
 | `ordem_servico_id` | `uuid` | FK para `ORDEM_SERVICO` |
 | `descricao` | `string` | Obrigatoria |
+| `orcamento_id` | `uuid` | FK opcional para `ORCAMENTO` relacionado ao problema encontrado |
+| `observacoes` | `string` | Opcional |
 | `registrado_em` | `datetime` | Distingue relatado de encontrado pelo momento do fluxo |
 
-Relacionamento: N:1 com `ORDEM_SERVICO`. Nao ha tipo proprio de problema no modelo consolidado.
+Relacionamentos: N:1 com `ORDEM_SERVICO` e N:1 opcional com `ORCAMENTO`. Nao ha tipo proprio de
+problema no modelo consolidado.
 
 #### `ORDEM_SERVICO_SERVICO`
 
@@ -425,6 +506,9 @@ nao representa mensageria.
 | `data_desativacao` | `datetime` | Nulo enquanto ativo |
 | `usuario_desativacao` | `uuid` | Usuario responsavel |
 | `data_criacao` | `datetime` | Imutavel |
+| `usuario_criacao` | `uuid` | FK opcional para `USUARIO` responsavel pela criacao |
+| `data_atualizacao` | `datetime` | Alterada a cada atualizacao |
+| `usuario_atualizacao` | `uuid` | FK opcional para `USUARIO` responsavel pela ultima atualizacao |
 | `version` | `integer` | Controle otimista |
 
 Relacionamentos: 1:N com `ORDEM_SERVICO_SERVICO` e 0:N com `ORCAMENTO_ITEM`.
@@ -448,6 +532,9 @@ Relacionamento: 1:N com `ITEM_ESTOQUE`.
 | `orcamento_original_id` | `uuid` | FK opcional para o principal |
 | `tipo_orcamento` | `string` | `PRINCIPAL` ou `COMPLEMENTAR`, validado no dominio |
 | `status` | `string` | `CRIADO`, `APROVADO` ou `RECUSADO`, validado no dominio |
+| `cliente_aprovador_id` | `uuid` | FK opcional para `CLIENTE` que aprovou |
+| `cliente_recusador_id` | `uuid` | FK opcional para `CLIENTE` que recusou |
+| `motivo_recusa` | `string` | Motivo informado na recusa; opcional |
 | `estimativa_entrega_dias` | `integer` | Calculada |
 | `criado_em` | `datetime` | — |
 | `aprovado_em` | `datetime` | Opcional |
@@ -470,6 +557,7 @@ Existe um unico orcamento principal por OS; complementar referencia o principal 
 | `quantidade` | `decimal` | Maior que zero |
 | `valor_unitario` | `decimal` | Fotografia do valor |
 | `valor_total` | `decimal` | `quantidade x valor_unitario` |
+| `observacao` | `string` | Opcional |
 
 Relacionamento: N:1 com orcamento; referencia exatamente um de `SERVICO` ou `ITEM_ESTOQUE`.
 
@@ -497,6 +585,8 @@ Relacionamento: N:1 com orcamento; referencia exatamente um de `SERVICO` ou `ITE
 | `ativo` | `boolean` | Exclusao logica |
 | `data_desativacao` | `datetime` | Nulo enquanto ativo |
 | `usuario_desativacao` | `uuid` | Usuario responsavel |
+| `data_atualizacao` | `datetime` | Alterada a cada atualizacao |
+| `usuario_atualizacao` | `uuid` | FK opcional para `USUARIO` responsavel pela ultima atualizacao |
 | `version` | `integer` | Controle otimista |
 
 Relacionamentos: N:1 com categoria; N:1 opcional com fornecedor; 1:N com itens da OS, itens de orcamento, reservas,
@@ -527,14 +617,46 @@ uma reserva vale tanto para peca quanto para insumo.
 | `ordem_servico_id` | `uuid` | FK opcional para `ORDEM_SERVICO` |
 | `reserva_estoque_id` | `uuid` | FK opcional para `RESERVA_ESTOQUE` |
 | `pedido_compra_id` | `uuid` | FK opcional para `PEDIDO_COMPRA` |
+| `fornecedor_id` | `uuid` | FK opcional para `FORNECEDOR` na entrada de estoque |
 | `tipo` | `string` | Entrada, reserva, liberacao, saida ou retorno, validado no dominio |
 | `quantidade` | `decimal` | Maior que zero |
 | `custo_unitario` | `decimal` | Custo da entrada ou saida |
 | `documento_origem` | `string` | UK quando aplicavel ao recebimento |
 | `ocorrida_em` | `datetime` | — |
 
-Relacionamentos: N:1 com item de estoque e referencias opcionais a OS, reserva e pedido. E um
-historico imutavel e a origem dos saldos correntes.
+Relacionamentos: N:1 com item de estoque e referencias opcionais a OS, reserva, pedido e
+fornecedor. E um historico imutavel e a origem dos saldos correntes.
+
+#### `HISTORICO_PRECO_ITEM`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `item_estoque_id` | `uuid` | FK para `ITEM_ESTOQUE` |
+| `preco_anterior` | `decimal` | Opcional; maior ou igual a zero |
+| `preco_novo` | `decimal` | Obrigatorio; maior ou igual a zero |
+| `usuario_id` | `uuid` | FK opcional para `USUARIO` |
+| `registrado_em` | `datetime` | Momento da alteracao |
+
+Relacionamentos: N:1 com `ITEM_ESTOQUE` e N:1 opcional com `USUARIO`.
+
+#### `AUDITORIA_ESTOQUE`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `item_estoque_id` | `uuid` | FK para `ITEM_ESTOQUE` |
+| `fornecedor_id` | `uuid` | FK opcional para `FORNECEDOR` |
+| `pedido_compra_id` | `uuid` | FK opcional para `PEDIDO_COMPRA` |
+| `usuario_id` | `uuid` | FK opcional para `USUARIO` |
+| `tipo_evento` | `string` | Acao de estoque auditada |
+| `documento_origem` | `string` | Documento informado na entrada |
+| `dados` | `json` | Dados da operacao |
+| `ocorrido_em` | `datetime` | Quando a operacao ocorreu |
+| `registrado_em` | `datetime` | Quando a auditoria foi persistida |
+
+Relacionamentos: N:1 com `ITEM_ESTOQUE` e referencias opcionais a `FORNECEDOR`,
+`PEDIDO_COMPRA` e `USUARIO`.
 
 #### `FORNECEDOR`
 
@@ -598,6 +720,33 @@ Relacionamentos: N:1 com pedido e item de estoque; N:N com itens da OS por
 
 Relacionamento: tabela associativa entre a linha de compra e as necessidades de materiais das OS.
 
+### Notificacoes
+
+#### `NOTIFICACAO`
+
+| Campo | Tipo | Chave ou regra |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `cliente_id` | `uuid` | FK para `CLIENTE` destinatario |
+| `canal` | `string` | Atualmente `EMAIL` |
+| `tipo_evento` | `string` | `ORCAMENTO_PRONTO`, `SERVICO_FINALIZADO` ou `VEICULO_ENTREGUE` |
+| `agregado` | `string` | Nome do agregado que originou o aviso |
+| `agregado_id` | `uuid` | Identificador logico da origem, sem FK |
+| `destinatario` | `string` | Endereco de e-mail usado no envio |
+| `assunto` | `string` | Assunto da mensagem |
+| `conteudo` | `string` | Versao obrigatoria em texto puro |
+| `conteudo_html` | `string` | Versao HTML opcional |
+| `status` | `string` | `PENDENTE`, `ENVIADA` ou `FALHOU` |
+| `tentativas` | `integer` | Quantidade de tentativas; nunca negativa |
+| `ultimo_erro` | `string` | Motivo da ultima falha; opcional |
+| `criada_em` | `datetime` | Momento do enfileiramento |
+| `enviada_em` | `datetime` | Obrigatoria apenas quando o status for `ENVIADA` |
+
+Relacionamento formal N:1 com `CLIENTE`. `agregado` e `agregado_id` permitem rastrear
+logicamente `ORCAMENTO` ou `ORDEM_SERVICO`, mas nao formam foreign key. Resend, SMTP e Mailpit
+sao detalhes de infraestrutura e, por isso, nao sao entidades deste MER. O identificador devolvido
+pelo Resend e registrado apenas em log na implementacao atual e nao integra o modelo persistido.
+
 ### Controle Tecnico
 
 #### `CHAVE_IDEMPOTENCIA`
@@ -628,3 +777,7 @@ saldo: reserva, compra, entrada, saida e devolucao.
   derivado de `saldo_fisico - saldo_reservado`.
 - Movimentacoes, reservas, pedido e atualizacao de saldo devem ocorrer na mesma transacao, com lock
   de linha ordenado por `item_estoque_id`.
+- `NOTIFICACAO.cliente_id` e uma FK real; `agregado` e `agregado_id` formam somente uma referencia
+  logica para a origem e nao devem receber FK polimorfica.
+- Notificacao `ENVIADA` deve possuir `enviada_em`; notificacoes `PENDENTE` ou `FALHOU` nao devem
+  possuir essa data. Falha no envio nao desfaz a operacao de negocio que originou o aviso.
