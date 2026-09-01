@@ -8,9 +8,15 @@ var (
 	ErrPecaFracionada        = errors.New("a quantidade de peca deve ser inteira")
 )
 
+// PermiteRegistroDeItens diz se a OS aceita novos itens no orcamento.
+//
+// AGUARDANDO_APROVACAO ficou de fora: nesse estado o cliente ja recebeu o orcamento por
+// e-mail e esta decidindo sobre ele. Aceitar item aqui faria o cliente aprovar uma coisa
+// diferente da que leu. Para mudar o orcamento e preciso que ele volte para a oficina,
+// seja pela recusa do cliente, seja por um complementar depois que a execucao comecar.
 func PermiteRegistroDeItens(status string) bool {
 	switch status {
-	case "RECEBIDA", "EM_DIAGNOSTICO", "AGUARDANDO_APROVACAO", "AGUARDANDO_RECURSOS", "AGUARDANDO_EXECUCAO", "EM_EXECUCAO":
+	case "RECEBIDA", "EM_DIAGNOSTICO", "AGUARDANDO_RECURSOS", "AGUARDANDO_EXECUCAO", "EM_EXECUCAO":
 		return true
 	default:
 		return false
