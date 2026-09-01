@@ -95,6 +95,7 @@ oficina não consegue mostrar o que mudou nem por quê.
 |---|---|---|
 | A1 | OS não encontrada | Impede a operação. |
 | A2 | OS em status que não permite registro de itens, como finalizada, entregue ou cancelada | Impede a operação. |
+| A3 | OS em `AGUARDANDO_APROVACAO` | Impede a operação: o cliente já recebeu esse orçamento e está decidindo sobre ele. Alterar os itens agora o faria aprovar algo diferente do que leu. |
 | A3 | Item não encontrado ou inativo | Impede o registro do item. |
 | A4 | Item de tipo divergente do endpoint utilizado | Impede o registro. |
 | A5 | Quantidade menor ou igual a zero | Impede o registro. |
