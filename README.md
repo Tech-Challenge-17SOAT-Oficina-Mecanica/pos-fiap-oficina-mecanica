@@ -194,3 +194,25 @@ domínio (não há requisito de dados extremamente heterogêneos, agregados inde
 escala horizontal extrema que justifique essa troca). A análise completa está registrada em
 [docs/02-decisoes-arquiteturais.md](docs/02-decisoes-arquiteturais.md) e no
 [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md).
+
+## 👥 Integrantes
+
+##### João Victor — RM376616 - jhonnysket
+
+- [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
+
+##### José Lázaro — RM371406 - joselzro
+
+- [LinkedIn](https://www.linkedin.com/in/lazaro-contato/)
+
+##### Hemily Nara — RM373944 - hemilyynara
+
+- [LinkedIn](https://www.linkedin.com/in/hemilynara/)
+
+##### Carlos Henrique — RM376201 - caohz_55485
+
+- [LinkedIn](https://www.linkedin.com/in/carlos1br/)
+
+##### Helena Miranda — RM376202 - helenamiranda6974
+
+- [LinkedIn](https://www.linkedin.com/in/hmirandas/)
