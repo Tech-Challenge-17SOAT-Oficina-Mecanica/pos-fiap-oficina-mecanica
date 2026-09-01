@@ -3,13 +3,17 @@ package orcamento
 import (
 	"context"
 	"errors"
+	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	notificacaoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/notificacao"
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
+	notificacaoDominio "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/notificacao"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/orcamento"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/seguranca"
 	seguranca "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/presentation/seguranca"
@@ -33,6 +37,29 @@ type aprovarStub struct {
 func (stub *aprovarStub) Aprovar(_ context.Context, input application.AprovarInput) (domain.Aprovacao, error) {
 	stub.input = input
 	return stub.result, stub.err
+}
+
+type enviarRepositoryStub struct {
+	dados     application.OrcamentoParaEnvio
+	enviadoEm time.Time
+	errBusca  error
+	errMarca  error
+	usuarioID string
+}
+
+func (stub *enviarRepositoryStub) BuscarParaEnvio(context.Context, string) (application.OrcamentoParaEnvio, error) {
+	return stub.dados, stub.errBusca
+}
+
+func (stub *enviarRepositoryStub) MarcarEnviado(_ context.Context, _, _, _, usuarioID string) (time.Time, error) {
+	stub.usuarioID = usuarioID
+	return stub.enviadoEm, stub.errMarca
+}
+
+type enviarNotificadorStub struct{ err error }
+
+func (stub enviarNotificadorStub) Execute(context.Context, notificacaoApplication.Pedido) (notificacaoDominio.Notificacao, error) {
+	return notificacaoDominio.Notificacao{}, stub.err
 }
 
 func TestConsultarHandler(t *testing.T) {
@@ -135,6 +162,71 @@ func TestAprovarHandler(t *testing.T) {
 			}
 			if test.name == "mecanico" && (stub.input.ClienteID != "" || stub.input.UsuarioID != mecanicoID) {
 				t.Fatalf("input=%+v", stub.input)
+			}
+		})
+	}
+}
+
+func TestEnviarHandler(t *testing.T) {
+	const (
+		orcamentoID = "10000000-0000-0000-0000-000000000001"
+		osID        = "20000000-0000-0000-0000-000000000001"
+		usuarioID   = "30000000-0000-0000-0000-000000000001"
+	)
+	jwt, err := infrastructure.NewJWT("segredo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, _ := jwt.Gerar(usuarioID, []string{"orcamentos:escrever"})
+	enviadoEm := time.Date(2026, time.August, 31, 9, 0, 0, 0, time.UTC)
+	dados := application.OrcamentoParaEnvio{
+		Orcamento: domain.Orcamento{
+			ID:     orcamentoID,
+			Tipo:   domain.TipoPrincipal,
+			Status: domain.StatusCriado,
+			Itens:  []domain.Item{{Tipo: "SERVICO", Descricao: "Troca", Quantidade: 1, ValorUnitario: 100}},
+		},
+		OrdemServicoID: osID,
+		ClienteID:      "40000000-0000-0000-0000-000000000001",
+		StatusOS:       "EM_DIAGNOSTICO",
+		Calculado:      true,
+		EstimativaDias: 2,
+	}
+	tests := []struct {
+		name, id, token string
+		err             error
+		notificadorErr  error
+		want            int
+		body            string
+	}{
+		{"sem token", orcamentoID, "", nil, nil, http.StatusUnauthorized, ""},
+		{"id invalido", "invalido", token, nil, nil, http.StatusBadRequest, ""},
+		{"nao encontrado", orcamentoID, token, application.ErrOrcamentoNaoEncontrado, nil, http.StatusNotFound, ""},
+		{"nao calculado", orcamentoID, token, domain.ErrOrcamentoNaoCalculado, nil, http.StatusConflict, ""},
+		{"erro interno", orcamentoID, token, errors.New("falhou"), nil, http.StatusInternalServerError, ""},
+		{"sucesso", orcamentoID, token, nil, nil, http.StatusOK, `"notificacaoEnviada":true`},
+		{"notificacao falha", orcamentoID, token, nil, errors.New("smtp"), http.StatusOK, `"notificacaoEnviada":false`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := &enviarRepositoryStub{dados: dados, enviadoEm: enviadoEm, errBusca: test.err}
+			useCase := application.NewEnviar(repository, enviarNotificadorStub{err: test.notificadorErr}, log.New(io.Discard, "", 0))
+			mux := http.NewServeMux()
+			mux.Handle("POST /orcamentos/{orcamentoId}/enviar", seguranca.RequireScope(jwt, "orcamentos:escrever", NewEnviarHandler(useCase)))
+			request := httptest.NewRequest(http.MethodPost, "/orcamentos/"+test.id+"/enviar", nil)
+			if test.token != "" {
+				request.Header.Set("Authorization", "Bearer "+test.token)
+			}
+			writer := httptest.NewRecorder()
+			mux.ServeHTTP(writer, request)
+			if writer.Code != test.want {
+				t.Fatalf("status=%d body=%s", writer.Code, writer.Body.String())
+			}
+			if test.body != "" && !strings.Contains(writer.Body.String(), test.body) {
+				t.Fatalf("body=%s", writer.Body.String())
+			}
+			if test.name == "sucesso" && repository.usuarioID != usuarioID {
+				t.Fatalf("usuarioID=%q", repository.usuarioID)
 			}
 		})
 	}
