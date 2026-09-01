@@ -1,0 +1,25 @@
+meta {
+  name: GET /estoque/pecas/{pecaId}
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/estoque/pecas/{{pecaId}}
+  auth: bearer
+}
+params:query {
+  ~quantidadeDesejada: 1
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  quantidadeDesejada e opcional: quando informada, a resposta diz se a peca atende a quantidade.
+
+  Escopo exigido: estoque:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

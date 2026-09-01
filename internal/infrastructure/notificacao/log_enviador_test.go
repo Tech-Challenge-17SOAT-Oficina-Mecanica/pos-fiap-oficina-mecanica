@@ -68,11 +68,12 @@ func (linha linhaNotificacaoFake) Scan(destinos ...any) error {
 	*(destinos[6].(*string)) = "cliente@example.com"
 	*(destinos[7].(*string)) = "Orcamento pronto"
 	*(destinos[8].(*string)) = "Conteudo"
-	*(destinos[9].(*string)) = domain.StatusFalhou
-	*(destinos[10].(*int)) = 2
-	*(destinos[11].(**string)) = &ultimoErro
-	*(destinos[12].(*time.Time)) = time.Now()
-	*(destinos[13].(**time.Time)) = &enviadaEm
+	*(destinos[9].(*string)) = "<p>Conteudo</p>"
+	*(destinos[10].(*string)) = domain.StatusFalhou
+	*(destinos[11].(*int)) = 2
+	*(destinos[12].(**string)) = &ultimoErro
+	*(destinos[13].(*time.Time)) = time.Now()
+	*(destinos[14].(**time.Time)) = &enviadaEm
 	return nil
 }
 
@@ -80,6 +81,9 @@ func TestLer(t *testing.T) {
 	aviso, err := ler(linhaNotificacaoFake{})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if aviso.ConteudoHTML != "<p>Conteudo</p>" {
+		t.Fatalf("conteudoHTML nao foi lido: %q", aviso.ConteudoHTML)
 	}
 	if aviso.ID != "notificacao-id" || aviso.Origem.Agregado != "ORCAMENTO" || aviso.UltimoErro == nil || aviso.EnviadaEm == nil {
 		t.Fatalf("notificacao invalida: %+v", aviso)

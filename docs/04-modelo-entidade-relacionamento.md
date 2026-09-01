@@ -729,7 +729,7 @@ Relacionamento: tabela associativa entre a linha de compra e as necessidades de 
 | `id` | `uuid` | PK |
 | `cliente_id` | `uuid` | FK para `CLIENTE` destinatario |
 | `canal` | `string` | Atualmente `EMAIL` |
-| `tipo_evento` | `string` | `ORCAMENTO_PRONTO`, `SERVICO_FINALIZADO` ou `VEICULO_ENTREGUE` |
+| `tipo_evento` | `string` | Um por mudanca de status da OS: `DIAGNOSTICO_INICIADO`, `ORCAMENTO_PRONTO`, `ORCAMENTO_APROVADO`, `AGUARDANDO_RECURSOS`, `RECURSOS_DISPONIVEIS`, `EXECUCAO_INICIADA`, `SERVICO_CANCELADO`, `SERVICO_FINALIZADO` ou `VEICULO_ENTREGUE` |
 | `agregado` | `string` | Nome do agregado que originou o aviso |
 | `agregado_id` | `uuid` | Identificador logico da origem, sem FK |
 | `destinatario` | `string` | Endereco de e-mail usado no envio |

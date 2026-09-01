@@ -102,7 +102,7 @@ func TestIniciarExecucao(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := segurancaPresentation.RequireScope(jwt, "os:escrever", presentation.NewIniciarExecucaoHandler(application.NewIniciarExecucao(infrastructure.NewPostgresRepository(db))))
+	handler := segurancaPresentation.RequireScope(jwt, "os:escrever", presentation.NewIniciarExecucaoHandler(application.NewIniciarExecucao(infrastructure.NewPostgresRepository(db), nil, nil)))
 	requisitar := func(osID, tokenAutorizacao string) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osID+"/execucao/iniciar", nil)
 		request.SetPathValue("osId", osID)

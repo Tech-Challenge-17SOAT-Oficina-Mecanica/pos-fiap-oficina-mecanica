@@ -1,0 +1,41 @@
+meta {
+  name: 03 - Criar veiculo
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/clientes/{{clienteId}}/veiculos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Placa unica no padrao Mercosul: LLLNLNN
+  const L = () => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random() * 26)];
+  const N = () => Math.floor(Math.random() * 10);
+  bru.setVar("novaPlaca", `${L()}${L()}${L()}${N()}${L()}${N()}${N()}`);
+}
+
+body:json {
+  {
+    "placa": "{{novaPlaca}}",
+    "marca": "Volkswagen",
+    "modelo": "Gol",
+    "ano": 2020
+  }
+}
+
+script:post-response {
+  bru.setVar("veiculoId", res.body.id);
+}
+
+tests {
+  test("veiculo criado", function() {
+    expect(res.getStatus()).to.equal(201);
+  });
+}

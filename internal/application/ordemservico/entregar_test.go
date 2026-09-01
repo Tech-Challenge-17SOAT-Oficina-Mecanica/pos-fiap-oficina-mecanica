@@ -20,7 +20,7 @@ func (fake *entregarRepositoryFake) Entregar(_ context.Context, input EntregarIn
 
 func TestEntregarNormalizaEntrada(t *testing.T) {
 	fake := &entregarRepositoryFake{}
-	useCase := NewEntregar(fake)
+	useCase := NewEntregar(fake, nil, nil)
 	_, err := useCase.Execute(context.Background(), EntregarInput{
 		ClienteID: " 20000000-0000-0000-0000-000000000001 ", Observacoes: "  sem ressalvas  ",
 	})
@@ -34,7 +34,7 @@ func TestEntregarNormalizaEntrada(t *testing.T) {
 
 func TestEntregarRejeitaClienteIDInvalido(t *testing.T) {
 	fake := &entregarRepositoryFake{}
-	_, err := NewEntregar(fake).Execute(context.Background(), EntregarInput{ClienteID: "invalido"})
+	_, err := NewEntregar(fake, nil, nil).Execute(context.Background(), EntregarInput{ClienteID: "invalido"})
 	if err != ErrClienteIDInvalido {
 		t.Fatalf("erro=%v, esperado %v", err, ErrClienteIDInvalido)
 	}
@@ -43,7 +43,7 @@ func TestEntregarRejeitaClienteIDInvalido(t *testing.T) {
 func TestEntregarDelegaAoRepositorio(t *testing.T) {
 	esperado := domain.ResultadoEntrega{OrdemServicoID: "os-1", Status: domain.StatusEntregue}
 	fake := &entregarRepositoryFake{resultado: esperado}
-	resultado, err := NewEntregar(fake).Execute(context.Background(), EntregarInput{OSID: "os-1"})
+	resultado, err := NewEntregar(fake, nil, nil).Execute(context.Background(), EntregarInput{OSID: "os-1"})
 	if err != nil || resultado.Status != domain.StatusEntregue {
 		t.Fatalf("resultado=%+v erro=%v", resultado, err)
 	}

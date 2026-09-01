@@ -1,0 +1,29 @@
+meta {
+  name: GET /ordens-servico
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/ordens-servico
+  auth: bearer
+}
+params:query {
+  ~status: 
+  ~documento: 
+  ~placa: 
+  ~pagina: 0
+  ~tamanho: 20
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Filtros opcionais.
+
+  Escopo exigido: os:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

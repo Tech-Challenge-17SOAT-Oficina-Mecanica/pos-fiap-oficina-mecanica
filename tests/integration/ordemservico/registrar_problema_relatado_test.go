@@ -50,7 +50,7 @@ func TestRegistrarProblemaRelatado(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := segurancaPresentation.RequireScope(jwt, "os:escrever", presentation.NewRegistrarProblemaRelatadoHandler(application.NewRegistrarProblemaRelatado(infrastructure.NewPostgresRepository(db))))
+	handler := segurancaPresentation.RequireScope(jwt, "os:escrever", presentation.NewRegistrarProblemaRelatadoHandler(application.NewRegistrarProblemaRelatado(infrastructure.NewPostgresRepository(db), nil, nil)))
 	semEscopo, err := jwt.Gerar("usuario", []string{"os:ler"})
 	if err != nil {
 		t.Fatal(err)

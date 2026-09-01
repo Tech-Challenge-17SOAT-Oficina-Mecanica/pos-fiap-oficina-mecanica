@@ -1,0 +1,22 @@
+meta {
+  name: POST /orcamentos/{orcamentoId}/aprovar
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/aprovar
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Esta rota nao recebe corpo.
+
+  Escopo exigido: orcamentos:decidir
+
+  Rode 00-auth/Login antes para preencher o token.
+}

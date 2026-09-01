@@ -3,8 +3,10 @@ package estoque
 import (
 	"context"
 	"errors"
+	"log"
 
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/estoque"
+	notificacaoDominio "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/notificacao"
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
@@ -46,10 +48,17 @@ type EntradaRepository interface {
 	RegistrarEntrada(context.Context, RegistrarEntradaInput, domain.EntradaCadastro) (Resultado, error)
 }
 
-type RegistrarEntrada struct{ repository EntradaRepository }
+type RegistrarEntrada struct {
+	repository  EntradaRepository
+	notificador Notificador
+	logger      *log.Logger
+}
 
-func NewRegistrarEntrada(repository EntradaRepository) RegistrarEntrada {
-	return RegistrarEntrada{repository: repository}
+func NewRegistrarEntrada(repository EntradaRepository, notificador Notificador, logger *log.Logger) RegistrarEntrada {
+	if logger == nil {
+		logger = log.Default()
+	}
+	return RegistrarEntrada{repository: repository, notificador: notificador, logger: logger}
 }
 
 func (useCase RegistrarEntrada) Execute(ctx context.Context, input RegistrarEntradaInput) (Resultado, error) {
@@ -70,5 +79,31 @@ func (useCase RegistrarEntrada) Execute(ctx context.Context, input RegistrarEntr
 	if err != nil {
 		return Resultado{}, err
 	}
-	return useCase.repository.RegistrarEntrada(ctx, input, cadastro)
+	resultado, err := useCase.repository.RegistrarEntrada(ctx, input, cadastro)
+	if err != nil {
+		return Resultado{}, err
+	}
+
+	// A repeticao por idempotencia devolve a resposta guardada sem mexer em nada: avisar
+	// de novo mandaria o mesmo e-mail ao cliente por causa de um retry da integracao.
+	if !resultado.JaProcessada {
+		useCase.avisarOrdensLiberadas(ctx, resultado.Entrada.OrdensServico)
+	}
+	return resultado, nil
+}
+
+// avisarOrdensLiberadas comunica o cliente cuja OS saiu da espera por pecas. Acontece fora
+// da transacao, e uma OS que continua em AGUARDANDO_RECURSOS nao gera aviso: para o
+// cliente nada mudou, porque ainda faltam itens.
+func (useCase RegistrarEntrada) avisarOrdensLiberadas(ctx context.Context, ordens []domain.OrdemServicoLiberada) {
+	for _, ordem := range ordens {
+		if ordem.Status != "AGUARDANDO_EXECUCAO" || ordem.Status == ordem.StatusAnterior {
+			continue
+		}
+		avisar(ctx, useCase.notificador, ordem.ClienteID,
+			notificacaoDominio.EventoRecursosDisponiveis, ordem.OrdemServicoID,
+			func(erro error) {
+				useCase.logger.Printf("notificacao de liberacao da OS %s nao pode ser enfileirada: %v", ordem.OrdemServicoID, erro)
+			})
+	}
 }

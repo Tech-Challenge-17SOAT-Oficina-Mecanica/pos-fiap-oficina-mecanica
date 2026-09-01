@@ -1,0 +1,30 @@
+meta {
+  name: PUT /veiculos/{veiculoId}
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/veiculos/{{veiculoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "placa": "ABC1D23",
+    "marca": "Toyota",
+    "modelo": "Corolla",
+    "ano": 2024
+  }
+}
+
+docs {
+  Escopo exigido: veiculos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

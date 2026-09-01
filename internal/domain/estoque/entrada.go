@@ -96,7 +96,10 @@ type PedidoCompraResultado struct {
 
 // OrdemServicoLiberada informa se uma OS vinculada ao pedido mudou de status.
 type OrdemServicoLiberada struct {
-	OrdemServicoID  string     `json:"ordemServicoId"`
+	OrdemServicoID string `json:"ordemServicoId"`
+	// ClienteID fica fora do JSON: serve para o caso de uso avisar o dono da OS, e nao
+	// tem por que aparecer na resposta de uma entrada de estoque.
+	ClienteID       string     `json:"-"`
 	StatusAnterior  string     `json:"statusAnterior"`
 	Status          string     `json:"status"`
 	ItensPendentes  int        `json:"itensPendentes"`

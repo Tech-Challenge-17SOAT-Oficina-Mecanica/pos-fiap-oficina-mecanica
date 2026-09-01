@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -89,11 +88,11 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 	}
 	defer tx.Rollback(ctx)
 
-	var status, mecanicoResponsavelID string
+	var status, mecanicoResponsavelID, clienteID string
 	err = tx.QueryRow(ctx, `
-		SELECT status, COALESCE(mecanico_responsavel_id::text, '')
+		SELECT status, COALESCE(mecanico_responsavel_id::text, ''), cliente_id::text
 		FROM ordem_servico WHERE id = $1 FOR UPDATE`, input.OSID,
-	).Scan(&status, &mecanicoResponsavelID)
+	).Scan(&status, &mecanicoResponsavelID, &clienteID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.ResultadoInicioExecucao{}, application.ErrOrdemServicoNaoEncontrada
 	}
@@ -182,7 +181,7 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 		return domain.ResultadoInicioExecucao{}, err
 	}
 	return domain.ResultadoInicioExecucao{
-		OrdemServicoID: input.OSID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
+		OrdemServicoID: input.OSID, ClienteID: clienteID, Status: ordem.Status, MecanicoID: mecanicoResponsavelID, DataInicioExecucao: dataInicio,
 		ItensBaixados: itensBaixados, CustoTotalMateriaisBaixados: custoTotalMateriais,
 	}, nil
 }
@@ -205,16 +204,27 @@ func baixarReservasNoInicioDaExecucao(ctx context.Context, tx pgx.Tx, ordemServi
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
+	// O cursor precisa ser consumido e fechado ANTES de qualquer outra query: o pgx
+	// mantem a conexao ocupada enquanto ha Rows aberto, e escrever dentro do loop
+	// devolve "conn busy".
+	var reservas []reservaInicioExecucaoRow
+	for rows.Next() {
+		var reserva reservaInicioExecucaoRow
+		if err = rows.Scan(&reserva.reservaID, &reserva.osItemID, &reserva.itemID, &reserva.codigo, &reserva.tipo, &reserva.unidadeMedida, &reserva.quantidade, &reserva.custoUnitario); err != nil {
+			rows.Close()
+			return nil, 0, err
+		}
+		reservas = append(reservas, reserva)
+	}
+	rows.Close()
+	if err = rows.Err(); err != nil {
+		return nil, 0, err
+	}
 
 	porItem := map[string]int{}
 	var itens []domain.ItemBaixadoInicioExecucao
 	var custoTotal float64
-	for rows.Next() {
-		var reserva reservaInicioExecucaoRow
-		if err = rows.Scan(&reserva.reservaID, &reserva.osItemID, &reserva.itemID, &reserva.codigo, &reserva.tipo, &reserva.unidadeMedida, &reserva.quantidade, &reserva.custoUnitario); err != nil {
-			return nil, 0, err
-		}
+	for _, reserva := range reservas {
 		custo := reserva.quantidade * reserva.custoUnitario
 		var saldoFisicoAtual, saldoReservadoAtual float64
 		if err = tx.QueryRow(ctx, `
@@ -272,9 +282,6 @@ func baixarReservasNoInicioDaExecucao(ctx context.Context, tx pgx.Tx, ordemServi
 			})
 		}
 		custoTotal += custo
-	}
-	if err = rows.Err(); err != nil {
-		return nil, 0, err
 	}
 	return itens, custoTotal, nil
 }
@@ -621,11 +628,12 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 	}
 
 	var dataFinalizacao time.Time
+	var clienteID string
 	if err = tx.QueryRow(ctx, `
 		UPDATE ordem_servico SET status = $2, finalizada_em = CURRENT_TIMESTAMP, observacoes_finalizacao = NULLIF($3, '')
 		WHERE id = $1
-		RETURNING finalizada_em`, input.OSID, domain.StatusFinalizada, input.Observacoes,
-	).Scan(&dataFinalizacao); err != nil {
+		RETURNING finalizada_em, cliente_id`, input.OSID, domain.StatusFinalizada, input.Observacoes,
+	).Scan(&dataFinalizacao, &clienteID); err != nil {
 		return domain.ResultadoFinalizacao{}, err
 	}
 	if _, err = tx.Exec(ctx, `
@@ -640,10 +648,12 @@ func (repository PostgresRepository) Finalizar(ctx context.Context, input applic
 		return domain.ResultadoFinalizacao{}, err
 	}
 
+	// A notificacao nao acontece aqui: quem finaliza so devolve o cliente, e o caso de
+	// uso enfileira o aviso depois do commit (RNF-OS-44).
 	resultado := domain.ResultadoFinalizacao{
-		OrdemServicoID: input.OSID, Status: domain.StatusFinalizada, DataFinalizacao: dataFinalizacao, Observacoes: input.Observacoes,
+		OrdemServicoID: input.OSID, ClienteID: clienteID, Status: domain.StatusFinalizada,
+		DataFinalizacao: dataFinalizacao, Observacoes: input.Observacoes,
 	}
-	resultado.NotificacaoEnviada = notificarClienteVeiculoDisponivel(input.OSID)
 	return resultado, nil
 }
 
@@ -670,13 +680,6 @@ func reservasAtivasDaOS(ctx context.Context, tx pgx.Tx, ordemServicoID string) (
 	return itens, rows.Err()
 }
 
-// notificarClienteVeiculoDisponivel e um envio best-effort: sem provedor de e-mail configurado
-// neste projeto, o "envio" e apenas registrado em log, e uma falha aqui nunca desfaz a finalizacao.
-func notificarClienteVeiculoDisponivel(ordemServicoID string) bool {
-	log.Printf("notificacao: veiculo da OS %s disponivel para retirada", ordemServicoID)
-	return true
-}
-
 func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Context, ordemServicoID string, problema domain.ProblemaRelatado) (resultado domain.OrdemDeServico, err error) {
 	tx, err := repository.db.Begin(ctx)
 	if err != nil {
@@ -686,8 +689,8 @@ func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Conte
 
 	var status string
 	var descricaoExistente *string
-	err = tx.QueryRow(ctx, `SELECT status, problema_relatado_descricao
-		FROM ordem_servico WHERE id = $1 FOR UPDATE`, ordemServicoID).Scan(&status, &descricaoExistente)
+	err = tx.QueryRow(ctx, `SELECT status, problema_relatado_descricao, cliente_id::text
+		FROM ordem_servico WHERE id = $1 FOR UPDATE`, ordemServicoID).Scan(&status, &descricaoExistente, &resultado.ClienteID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return resultado, application.ErrOrdemServicoNaoEncontrada
 	}
@@ -828,6 +831,14 @@ func (repository PostgresRepository) RegistrarItens(ctx context.Context, input a
 	}
 	if err = tx.QueryRow(ctx, `SELECT COALESCE(SUM(oi.valor_total), 0) FROM orcamento_item oi JOIN orcamento o ON o.id = oi.orcamento_id WHERE o.ordem_servico_id = $1`, input.OSID).Scan(&result.ValorTotalGeral); err != nil {
 		return domainOrcamento.Resultado{}, fmt.Errorf("calcular total da os: %w", err)
+	}
+	// Novo item invalida o calculo anterior: a estimativa de entrega depende do prazo dos
+	// itens sem saldo, e o total precisa ser refeito. Zerar aqui faz o envio ao cliente
+	// exigir um novo calcular, em vez de mandar um prazo que nao considera este item.
+	if _, err = tx.Exec(ctx, `
+		UPDATE orcamento SET estimativa_entrega_dias = NULL, data_atualizacao = CURRENT_TIMESTAMP
+		WHERE id = $1`, budgetID); err != nil {
+		return domainOrcamento.Resultado{}, fmt.Errorf("invalidar o calculo do orcamento: %w", err)
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em) VALUES ($1, NULLIF($2, '')::uuid, 'ORCAMENTO', $3, 'ITENS_REGISTRADOS', jsonb_build_object('tipoItem', $4::text, 'quantidadeItens', $5::integer), '{}'::jsonb, CURRENT_TIMESTAMP)`, input.OSID, input.UsuarioID, budgetID, input.Tipo, len(input.Itens)); err != nil {
 		return domainOrcamento.Resultado{}, fmt.Errorf("registrar auditoria: %w", err)
@@ -996,7 +1007,10 @@ func (repository PostgresRepository) RegistrarServicos(ctx context.Context, orde
 	if err = tx.QueryRow(ctx, "SELECT COALESCE(SUM(valor_total), 0) FROM orcamento_item WHERE orcamento_id = $1", orcamento.ID).Scan(&resultado.Orcamento.ValorTotal); err != nil {
 		return application.ResultadoRegistroServicos{}, err
 	}
-	if _, err = tx.Exec(ctx, "UPDATE orcamento SET data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1", orcamento.ID); err != nil {
+	// Mesmo motivo do registro de pecas e insumos: o servico entra no total e no prazo.
+	if _, err = tx.Exec(ctx, `
+		UPDATE orcamento SET estimativa_entrega_dias = NULL, data_atualizacao = CURRENT_TIMESTAMP
+		WHERE id = $1`, orcamento.ID); err != nil {
 		return application.ResultadoRegistroServicos{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {

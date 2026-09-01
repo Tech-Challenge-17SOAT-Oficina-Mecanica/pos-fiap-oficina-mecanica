@@ -1,0 +1,22 @@
+meta {
+  name: POST /veiculos/{veiculoId}/reativacao
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/veiculos/{{veiculoId}}/reativacao
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Esta rota nao recebe corpo.
+
+  Escopo exigido: veiculos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

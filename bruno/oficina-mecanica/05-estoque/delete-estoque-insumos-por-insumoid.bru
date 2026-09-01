@@ -1,0 +1,20 @@
+meta {
+  name: DELETE /estoque/insumos/{insumoId}
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}/estoque/insumos/{{insumoId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Escopo exigido: estoque:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

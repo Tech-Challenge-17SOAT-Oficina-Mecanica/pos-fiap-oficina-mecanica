@@ -1,0 +1,31 @@
+meta {
+  name: GET /estoque/insumos
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/estoque/insumos?descricao=oleo
+  auth: bearer
+}
+params:query {
+  descricao: oleo
+  ~codigo: INS-000001
+  ~quantidadeDesejada: 1
+  ~somenteDisponiveis: false
+  ~incluirInativos: false
+  ~pagina: 0
+  ~tamanho: 20
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Mesmas regras da consulta de pecas: ao menos codigo ou descricao.
+
+  Escopo exigido: estoque:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

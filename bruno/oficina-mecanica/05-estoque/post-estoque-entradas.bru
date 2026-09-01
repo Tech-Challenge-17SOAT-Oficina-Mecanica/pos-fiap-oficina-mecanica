@@ -1,0 +1,37 @@
+meta {
+  name: POST /estoque/entradas
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/estoque/entradas
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "documentoOrigem": "NF-88421",
+    "fornecedorId": "{{fornecedorId}}",
+    "pedidoCompraId": "{{clienteId}}",
+    "confirmarDivergencia": false,
+    "itens": [
+      {
+        "itemId": "{{clienteId}}",
+        "quantidade": 10.0,
+        "custoUnitario": 10.0
+      }
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: estoque:movimentar
+
+  Rode 00-auth/Login antes para preencher o token.
+}

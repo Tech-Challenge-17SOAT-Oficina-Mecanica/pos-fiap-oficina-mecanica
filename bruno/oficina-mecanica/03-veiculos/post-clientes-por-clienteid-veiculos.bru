@@ -1,0 +1,37 @@
+meta {
+  name: POST /clientes/{clienteId}/veiculos
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/clientes/{{clienteId}}/veiculos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // Placa nova a cada execucao: e unica entre veiculos ativos.
+  const L = () => "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[Math.floor(Math.random()*26)];
+  const N = () => Math.floor(Math.random()*10);
+  bru.setVar("novaPlaca", `${L()}${L()}${L()}${N()}${L()}${N()}${N()}`);
+}
+
+body:json {
+  {
+    "placa": "{{novaPlaca}}",
+    "marca": "Toyota",
+    "modelo": "Corolla",
+    "ano": 2024
+  }
+}
+
+docs {
+  Escopo exigido: veiculos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

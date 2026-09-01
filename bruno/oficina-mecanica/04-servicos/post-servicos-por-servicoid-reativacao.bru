@@ -1,0 +1,22 @@
+meta {
+  name: POST /servicos/{servicoId}/reativacao
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/servicos/{{servicoId}}/reativacao
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Esta rota nao recebe corpo.
+
+  Escopo exigido: servicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

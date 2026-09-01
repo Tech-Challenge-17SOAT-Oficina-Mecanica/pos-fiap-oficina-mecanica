@@ -114,7 +114,7 @@ func TestMensagemCobreTodosOsEventos(t *testing.T) {
 		notificacao.EventoVeiculoEntregue,
 	} {
 		t.Run(evento, func(t *testing.T) {
-			assunto, conteudo, err := Mensagem(evento, "Maria")
+			assunto, conteudo, _, err := Mensagem(evento, "Maria", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,7 +127,7 @@ func TestMensagemCobreTodosOsEventos(t *testing.T) {
 
 // Sem nome cadastrado o texto ainda precisa fazer sentido.
 func TestMensagemSemNome(t *testing.T) {
-	_, conteudo, err := Mensagem(notificacao.EventoServicoFinalizado, "")
+	_, conteudo, _, err := Mensagem(notificacao.EventoServicoFinalizado, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

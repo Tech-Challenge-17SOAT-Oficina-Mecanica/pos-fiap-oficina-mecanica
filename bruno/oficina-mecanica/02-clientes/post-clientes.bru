@@ -1,0 +1,53 @@
+meta {
+  name: POST /clientes
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/clientes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:pre-request {
+  // CPF valido e novo a cada execucao: o documento e unico entre clientes ativos.
+  function gerarCPF() {
+    const n = Array.from({length: 9}, () => Math.floor(Math.random() * 10));
+    const dv = (base) => {
+      let soma = 0;
+      for (let i = 0; i < base.length; i++) soma += base[i] * (base.length + 1 - i);
+      const r = (soma * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    const d1 = dv(n);
+    const d2 = dv([...n, d1]);
+    return [...n, d1, d2].join('');
+  }
+  bru.setVar("novoDocumento", gerarCPF());
+  bru.setVar("emailCliente", bru.getEnvVar("emailCliente") || `cliente${Date.now().toString().slice(-6)}@example.com`);
+}
+
+body:json {
+  {
+    "nome": "Ana Martins",
+    "documento": "{{novoDocumento}}",
+    "tipoDocumento": "CPF",
+    "telefone": "11988887777",
+    "email": "{{emailCliente}}"
+  }
+}
+
+docs {
+  Gera CPF novo a cada execucao, entao pode repetir sem 409 de duplicidade.
+  O e-mail vem da variavel emailCliente do ambiente.
+
+
+  Escopo exigido: clientes:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

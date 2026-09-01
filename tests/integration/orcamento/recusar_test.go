@@ -81,7 +81,7 @@ func TestRecusarOrcamento(t *testing.T) {
 	clienteOutraOS, _ := jwt.GerarCliente("00000000-0000-0000-0000-000000000000", osPrincipalID)
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", securityPresentation.RequireScope(jwt, "orcamentos:decidir", presentation.NewRecusarHandler(application.NewRecusar(infrastructure.NewPostgresRepository(db)))))
+	mux.Handle("POST /orcamentos/{orcamentoId}/recusar", securityPresentation.RequireScope(jwt, "orcamentos:decidir", presentation.NewRecusarHandler(application.NewRecusar(infrastructure.NewPostgresRepository(db), nil, nil))))
 
 	request := func(token, orcamentoID, body string) *httptest.ResponseRecorder {
 		writer := httptest.NewRecorder()

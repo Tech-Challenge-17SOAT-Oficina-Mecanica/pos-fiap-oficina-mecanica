@@ -1,0 +1,33 @@
+meta {
+  name: 04 - Criar OS
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "clienteId": "{{clienteId}}",
+    "veiculoId": "{{veiculoId}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("osId", res.body.ordemServicoId);
+}
+
+tests {
+  test("OS criada em RECEBIDA", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.body.status).to.equal("RECEBIDA");
+  });
+}

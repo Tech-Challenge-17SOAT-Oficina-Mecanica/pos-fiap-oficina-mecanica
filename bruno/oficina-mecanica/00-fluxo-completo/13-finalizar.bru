@@ -1,0 +1,39 @@
+meta {
+  name: 13 - Finalizar (dispara e-mail)
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/finalizar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "observacoes": "Servico concluido"
+  }
+}
+
+docs {
+  DISPARA E-MAIL: "Seu veiculo esta pronto para retirada".
+
+  ATENCAO — passo manual antes deste: as reservas de estoque precisam estar
+  baixadas, senao responde 409. Rode no terminal:
+
+    ./scripts/avancar-os.sh baixa <osId>
+
+  O jeito correto seria POST /estoque/saidas, que ainda nao esta na colecao.
+}
+
+tests {
+  test("finalizada", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.status).to.equal("FINALIZADA");
+  });
+}

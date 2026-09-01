@@ -1,0 +1,13 @@
+meta {
+  name: Mailpit - limpar caixa
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{mailpitUrl}}/api/v1/messages
+}
+
+docs {
+  Esvazia a caixa do Mailpit, util para comecar um teste do zero.
+}

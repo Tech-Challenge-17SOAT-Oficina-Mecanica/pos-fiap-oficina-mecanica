@@ -19,10 +19,21 @@ const (
 )
 
 // Tipos de evento que geram aviso. Novos gatilhos entram aqui, nao em cada modulo.
+//
+// A lista acompanha a maquina de estados da Ordem de Servico: cada mudanca de status
+// visivel para o cliente tem o seu evento. AGUARDANDO_EXECUCAO aparece em dois deles
+// porque a OS chega la por dois caminhos diferentes, e o que o cliente precisa saber
+// muda: aprovou o orcamento, ou as pecas que faltavam chegaram.
 const (
-	EventoServicoFinalizado = "SERVICO_FINALIZADO"
-	EventoOrcamentoPronto   = "ORCAMENTO_PRONTO"
-	EventoVeiculoEntregue   = "VEICULO_ENTREGUE"
+	EventoDiagnosticoIniciado = "DIAGNOSTICO_INICIADO" // OS -> EM_DIAGNOSTICO
+	EventoOrcamentoPronto     = "ORCAMENTO_PRONTO"     // OS -> AGUARDANDO_APROVACAO
+	EventoOrcamentoAprovado   = "ORCAMENTO_APROVADO"   // OS -> AGUARDANDO_EXECUCAO
+	EventoAguardandoRecursos  = "AGUARDANDO_RECURSOS"  // OS -> AGUARDANDO_RECURSOS
+	EventoRecursosDisponiveis = "RECURSOS_DISPONIVEIS" // OS -> AGUARDANDO_EXECUCAO
+	EventoExecucaoIniciada    = "EXECUCAO_INICIADA"    // OS -> EM_EXECUCAO
+	EventoServicoCancelado    = "SERVICO_CANCELADO"    // OS -> CANCELADA
+	EventoServicoFinalizado   = "SERVICO_FINALIZADO"   // OS -> FINALIZADA
+	EventoVeiculoEntregue     = "VEICULO_ENTREGUE"     // OS -> ENTREGUE
 )
 
 var (
@@ -51,6 +62,9 @@ type Notificacao struct {
 	Destinatario string
 	Assunto      string
 	Conteudo     string
+	// ConteudoHTML e opcional: quando presente, o e-mail vai em multipart e o cliente
+	// escolhe a melhor versao. Vazio significa apenas texto.
+	ConteudoHTML string
 	Status       string
 	Tentativas   int
 	UltimoErro   *string
@@ -61,6 +75,11 @@ type Notificacao struct {
 // Nova monta uma notificacao pronta para a fila, ja validada. Nasce PENDENTE: quem
 // dispara so registra a intencao, o envio acontece depois.
 func Nova(clienteID, destinatario, tipoEvento, assunto, conteudo string, origem Origem) (Notificacao, error) {
+	return NovaComHTML(clienteID, destinatario, tipoEvento, assunto, conteudo, "", origem)
+}
+
+// NovaComHTML monta a notificacao com corpo alternativo em HTML.
+func NovaComHTML(clienteID, destinatario, tipoEvento, assunto, conteudo, conteudoHTML string, origem Origem) (Notificacao, error) {
 	nova := Notificacao{
 		ClienteID:    strings.TrimSpace(clienteID),
 		Canal:        CanalEmail,
@@ -69,6 +88,7 @@ func Nova(clienteID, destinatario, tipoEvento, assunto, conteudo string, origem 
 		Destinatario: strings.TrimSpace(destinatario),
 		Assunto:      strings.TrimSpace(assunto),
 		Conteudo:     strings.TrimSpace(conteudo),
+		ConteudoHTML: strings.TrimSpace(conteudoHTML),
 		Status:       StatusPendente,
 	}
 
@@ -98,7 +118,9 @@ func Nova(clienteID, destinatario, tipoEvento, assunto, conteudo string, origem 
 
 func EventoConhecido(tipoEvento string) bool {
 	switch tipoEvento {
-	case EventoServicoFinalizado, EventoOrcamentoPronto, EventoVeiculoEntregue:
+	case EventoDiagnosticoIniciado, EventoOrcamentoPronto, EventoOrcamentoAprovado,
+		EventoAguardandoRecursos, EventoRecursosDisponiveis, EventoExecucaoIniciada,
+		EventoServicoCancelado, EventoServicoFinalizado, EventoVeiculoEntregue:
 		return true
 	default:
 		return false

@@ -1,0 +1,26 @@
+meta {
+  name: Mailpit - caixa de entrada
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{mailpitUrl}}/api/v1/messages
+}
+
+docs {
+  Le os e-mails capturados pelo Mailpit. Interface web em http://localhost:8025
+
+  So aparece algo aqui quando a aplicacao esta usando SMTP. Com RESEND_API_KEY
+  preenchida no .env, o envio vai para o Resend e esta caixa fica vazia.
+
+  Confira o canal em uso com:
+    docker compose logs app | grep notificac
+}
+
+tests {
+  test("chegou pelo menos um e-mail", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.total).to.be.above(0);
+  });
+}

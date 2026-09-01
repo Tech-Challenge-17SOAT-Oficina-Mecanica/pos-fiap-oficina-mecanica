@@ -41,6 +41,26 @@ type Pedido struct {
 	ClienteID  string
 	TipoEvento string
 	Origem     notificacao.Origem
+	// Orcamento e opcional e so faz sentido no evento ORCAMENTO_PRONTO: quando presente,
+	// o e-mail traz a tabela de itens em vez de um aviso generico.
+	Orcamento *ResumoOrcamento
+}
+
+// ResumoOrcamento e o recorte do orcamento que aparece no e-mail. Fica aqui, e nao no
+// pacote de orcamento, para o modulo de notificacao continuar dono do que ele renderiza.
+type ResumoOrcamento struct {
+	Numero         string
+	Itens          []ItemOrcamento
+	ValorTotal     float64
+	EstimativaDias int
+}
+
+type ItemOrcamento struct {
+	Tipo          string
+	Descricao     string
+	Quantidade    float64
+	ValorUnitario float64
+	ValorTotal    float64
 }
 
 func (useCase Enfileirar) Execute(ctx context.Context, pedido Pedido) (notificacao.Notificacao, error) {
@@ -49,12 +69,12 @@ func (useCase Enfileirar) Execute(ctx context.Context, pedido Pedido) (notificac
 		return notificacao.Notificacao{}, err
 	}
 
-	assunto, conteudo, err := Mensagem(pedido.TipoEvento, contato.Nome)
+	assunto, conteudo, conteudoHTML, err := Mensagem(pedido.TipoEvento, contato.Nome, pedido.Orcamento)
 	if err != nil {
 		return notificacao.Notificacao{}, err
 	}
 
-	nova, err := notificacao.Nova(pedido.ClienteID, contato.Email, pedido.TipoEvento, assunto, conteudo, pedido.Origem)
+	nova, err := notificacao.NovaComHTML(pedido.ClienteID, contato.Email, pedido.TipoEvento, assunto, conteudo, conteudoHTML, pedido.Origem)
 	if err != nil {
 		return notificacao.Notificacao{}, err
 	}

@@ -20,7 +20,7 @@ func (fake *finalizarRepositoryFake) Finalizar(_ context.Context, input Finaliza
 
 func TestFinalizarNormalizaObservacoes(t *testing.T) {
 	fake := &finalizarRepositoryFake{resultado: domain.ResultadoFinalizacao{OrdemServicoID: "os-1"}}
-	useCase := NewFinalizar(fake)
+	useCase := NewFinalizar(fake, nil, nil)
 	_, err := useCase.Execute(context.Background(), FinalizarInput{OSID: "os-1", Observacoes: "  tudo certo  "})
 	if err != nil {
 		t.Fatalf("erro inesperado: %v", err)
@@ -33,7 +33,7 @@ func TestFinalizarNormalizaObservacoes(t *testing.T) {
 func TestFinalizarDelegaAoRepositorio(t *testing.T) {
 	esperado := domain.ResultadoFinalizacao{OrdemServicoID: "os-1", Status: domain.StatusFinalizada}
 	fake := &finalizarRepositoryFake{resultado: esperado}
-	useCase := NewFinalizar(fake)
+	useCase := NewFinalizar(fake, nil, nil)
 	resultado, err := useCase.Execute(context.Background(), FinalizarInput{OSID: "os-1"})
 	if err != nil {
 		t.Fatalf("erro inesperado: %v", err)
@@ -45,7 +45,7 @@ func TestFinalizarDelegaAoRepositorio(t *testing.T) {
 
 func TestFinalizarPropagaErro(t *testing.T) {
 	fake := &finalizarRepositoryFake{err: domain.ErrOSNaoEmExecucao}
-	useCase := NewFinalizar(fake)
+	useCase := NewFinalizar(fake, nil, nil)
 	_, err := useCase.Execute(context.Background(), FinalizarInput{OSID: "os-1"})
 	if err != domain.ErrOSNaoEmExecucao {
 		t.Fatalf("erro=%v, esperado %v", err, domain.ErrOSNaoEmExecucao)

@@ -70,7 +70,7 @@ func TestAprovarOrcamento(t *testing.T) {
 	token, _ := jwt.GerarCliente(clienteID, osID)
 	tokenOutraOS, _ := jwt.GerarCliente(clienteID, outroOSID)
 	handler := segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosDecidir,
-		orcamentoPresentation.NewAprovarHandler(application.NewAprovar(orcamentoInfra.NewPostgresRepository(db))))
+		orcamentoPresentation.NewAprovarHandler(application.NewAprovar(orcamentoInfra.NewPostgresRepository(db), nil, nil)))
 
 	if response := postAprovacao(handler, orcamentoID, ""); response.Code != http.StatusUnauthorized {
 		t.Fatalf("sem token=%d", response.Code)

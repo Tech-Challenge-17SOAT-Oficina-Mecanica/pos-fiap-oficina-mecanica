@@ -1,0 +1,36 @@
+meta {
+  name: Login
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/autenticacao/login
+  body: json
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "senha": "{{senha}}"
+  }
+}
+
+script:post-response {
+  // Guarda o token para todas as demais requisicoes da colecao.
+  bru.setVar("token", res.body.accessToken);
+}
+
+docs {
+  Rode este primeiro. O token fica guardado na variavel {{token}} e as outras
+  requisicoes ja o usam automaticamente.
+
+  Usuario do seed: mecanico@oficina.local / mecanico123
+}
+
+tests {
+  test("autenticou", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.accessToken).to.be.a("string");
+  });
+}

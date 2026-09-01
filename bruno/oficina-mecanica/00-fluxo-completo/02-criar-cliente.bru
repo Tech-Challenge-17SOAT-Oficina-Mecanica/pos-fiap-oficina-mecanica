@@ -1,0 +1,64 @@
+meta {
+  name: 02 - Criar cliente
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/clientes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Cliente Teste {{sufixo}}",
+    "documento": "{{novoDocumento}}",
+    "tipoDocumento": "CPF",
+    "telefone": "11988887777",
+    "email": "{{emailCliente}}"
+  }
+}
+
+script:pre-request {
+  // CPF novo a cada execucao, com digito verificador valido.
+  // Sem isso a segunda rodada bateria em 409 de documento duplicado.
+  function gerarCPF() {
+    const n = Array.from({length: 9}, () => Math.floor(Math.random() * 10));
+    const dv = (base) => {
+      let soma = 0;
+      for (let i = 0; i < base.length; i++) soma += base[i] * (base.length + 1 - i);
+      const r = (soma * 10) % 11;
+      return r === 10 ? 0 : r;
+    };
+    const d1 = dv(n);
+    const d2 = dv([...n, d1]);
+    return [...n, d1, d2].join('');
+  }
+  bru.setVar("novoDocumento", gerarCPF());
+  bru.setVar("sufixo", Date.now().toString().slice(-6));
+
+  // O e-mail vem do ambiente e NAO precisa ser unico (so o documento e).
+  // Com Mailpit, qualquer endereco serve. Com Resend, aponte emailCliente para o
+  // e-mail dono da sua conta, senao ele recusa o envio.
+  if (!bru.getEnvVar("emailCliente")) {
+    bru.setVar("emailCliente", `cliente${bru.getVar("sufixo")}@example.com`);
+  } else {
+    bru.setVar("emailCliente", bru.getEnvVar("emailCliente"));
+  }
+}
+
+script:post-response {
+  bru.setVar("clienteId", res.body.id);
+}
+
+tests {
+  test("cliente criado", function() {
+    expect(res.getStatus()).to.equal(201);
+    expect(res.body.id).to.be.a("string");
+  });
+}

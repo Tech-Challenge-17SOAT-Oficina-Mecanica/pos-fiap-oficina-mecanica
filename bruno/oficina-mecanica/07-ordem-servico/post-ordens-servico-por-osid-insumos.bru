@@ -1,0 +1,32 @@
+meta {
+  name: POST /ordens-servico/{osId}/insumos
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/insumos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "itens": [
+      {
+        "itemId": "{{clienteId}}",
+        "quantidade": 10.0
+      }
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: os:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

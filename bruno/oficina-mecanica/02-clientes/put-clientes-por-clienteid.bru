@@ -1,0 +1,31 @@
+meta {
+  name: PUT /clientes/{clienteId}
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/clientes/{{clienteId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Ana Martins",
+    "documento": "39053344705",
+    "tipoDocumento": "CPF",
+    "telefone": "11988887777",
+    "email": "{{emailCliente}}"
+  }
+}
+
+docs {
+  Escopo exigido: clientes:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

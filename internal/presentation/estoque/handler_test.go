@@ -32,7 +32,7 @@ func requisicaoValida() string {
 
 func TestRegistrarEntradaHandlerSucesso(t *testing.T) {
 	stub := &registrarEntradaRepositoryStub{resultado: application.Resultado{Entrada: domain.ResultadoEntrada{DocumentoOrigem: "NF-1"}}}
-	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub))
+	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/estoque/entradas", strings.NewReader(requisicaoValida()))
 	request.Header.Set("Idempotency-Key", idempotencyKeyValida)
 	writer := httptest.NewRecorder()
@@ -51,7 +51,7 @@ func TestRegistrarEntradaHandlerSucesso(t *testing.T) {
 
 func TestRegistrarEntradaHandlerRepeticaoRetorna200(t *testing.T) {
 	stub := &registrarEntradaRepositoryStub{resultado: application.Resultado{Entrada: domain.ResultadoEntrada{DocumentoOrigem: "NF-1"}, JaProcessada: true}}
-	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub))
+	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/estoque/entradas", strings.NewReader(requisicaoValida()))
 	request.Header.Set("Idempotency-Key", idempotencyKeyValida)
 	writer := httptest.NewRecorder()
@@ -62,7 +62,7 @@ func TestRegistrarEntradaHandlerRepeticaoRetorna200(t *testing.T) {
 }
 
 func TestRegistrarEntradaHandlerSemIdempotencyKey(t *testing.T) {
-	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(&registrarEntradaRepositoryStub{}))
+	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(&registrarEntradaRepositoryStub{}, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/estoque/entradas", strings.NewReader(requisicaoValida()))
 	writer := httptest.NewRecorder()
 	handler(writer, request)
@@ -72,7 +72,7 @@ func TestRegistrarEntradaHandlerSemIdempotencyKey(t *testing.T) {
 }
 
 func TestRegistrarEntradaHandlerCorpoInvalido(t *testing.T) {
-	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(&registrarEntradaRepositoryStub{}))
+	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(&registrarEntradaRepositoryStub{}, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/estoque/entradas", strings.NewReader("{invalido"))
 	request.Header.Set("Idempotency-Key", idempotencyKeyValida)
 	writer := httptest.NewRecorder()
@@ -84,7 +84,7 @@ func TestRegistrarEntradaHandlerCorpoInvalido(t *testing.T) {
 
 func TestRegistrarEntradaHandlerErroDoRepositorioMapeado(t *testing.T) {
 	stub := &registrarEntradaRepositoryStub{err: application.ErrItemInativo}
-	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub))
+	handler := NewRegistrarEntradaHandler(application.NewRegistrarEntrada(stub, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/estoque/entradas", strings.NewReader(requisicaoValida()))
 	request.Header.Set("Idempotency-Key", idempotencyKeyValida)
 	writer := httptest.NewRecorder()

@@ -1,0 +1,28 @@
+meta {
+  name: GET /fila-atendimento
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/fila-atendimento?pagina=0&tamanho=20
+  auth: bearer
+}
+
+params:query {
+  ~pagina: 0
+  ~tamanho: 20
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Lista as OS aptas para execucao, com as do mecanico responsavel primeiro.
+  So aparecem OS em AGUARDANDO_EXECUCAO com data de entrada na fila.
+
+  Escopo exigido: os:ler
+
+  Rode 00-auth/Login antes para preencher o token.
+}

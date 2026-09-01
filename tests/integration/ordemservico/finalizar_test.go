@@ -98,7 +98,7 @@ func TestFinalizarServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	handler := segurancaPresentation.RequireScope(jwt, "os:escrever",
-		presentation.NewFinalizarHandler(application.NewFinalizar(infrastructure.NewPostgresRepository(db))))
+		presentation.NewFinalizarHandler(application.NewFinalizar(infrastructure.NewPostgresRepository(db), nil, nil)))
 
 	requisitar := func(osID, corpo string) *httptest.ResponseRecorder {
 		request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+osID+"/finalizar", strings.NewReader(corpo))

@@ -14,7 +14,9 @@ var ErrRecursosIndisponiveis = errors.New("existem pecas ou insumos necessarios 
 var ErrMecanicoAutenticadoNaoEncontrado = errors.New("usuario autenticado nao possui mecanico cadastrado")
 
 type ResultadoInicioExecucao struct {
-	OrdemServicoID              string
+	OrdemServicoID string
+	// ClienteID nao vai na resposta HTTP: existe para o caso de uso saber quem avisar.
+	ClienteID                   string
 	Status                      string
 	MecanicoID                  string
 	DataInicioExecucao          time.Time

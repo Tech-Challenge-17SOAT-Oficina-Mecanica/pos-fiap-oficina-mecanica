@@ -1,0 +1,24 @@
+meta {
+  name: 15 - Conferir e-mails no Mailpit
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{mailpitUrl}}/api/v1/messages
+}
+
+docs {
+  Devem aparecer dois e-mails desta execucao. Se vierem zero:
+
+  - a fila pode nao ter processado ainda (NOTIFICACAO_INTERVALO_SEGUNDOS)
+  - ou a app esta usando o Resend: confira com
+      docker compose logs app | grep notificac
+}
+
+tests {
+  test("chegaram e-mails", function() {
+    expect(res.getStatus()).to.equal(200);
+    expect(res.body.total).to.be.above(0);
+  });
+}

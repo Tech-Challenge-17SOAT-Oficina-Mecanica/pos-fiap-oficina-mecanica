@@ -1,0 +1,20 @@
+meta {
+  name: DELETE /servicos/{servicoId}
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/servicos/{{servicoId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Escopo exigido: servicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

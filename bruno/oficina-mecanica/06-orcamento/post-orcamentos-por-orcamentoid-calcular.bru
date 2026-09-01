@@ -1,0 +1,22 @@
+meta {
+  name: POST /orcamentos/{orcamentoId}/calcular
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/calcular
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Esta rota nao recebe corpo.
+
+  Escopo exigido: orcamentos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

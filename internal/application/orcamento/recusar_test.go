@@ -21,7 +21,7 @@ func (stub *recusarRepositoryStub) Recusar(_ context.Context, input RecusarInput
 
 func TestRecusarDelegaAoRepositorioComMotivoNormalizado(t *testing.T) {
 	stub := &recusarRepositoryStub{result: domain.Decisao{OrcamentoID: "orcamento"}}
-	result, err := NewRecusar(stub).Execute(context.Background(), RecusarInput{
+	result, err := NewRecusar(stub, nil, nil).Execute(context.Background(), RecusarInput{
 		OrcamentoID: "orcamento",
 		ClienteID:   "cliente",
 		Motivo:      "  valor acima do esperado  ",
@@ -36,7 +36,7 @@ func TestRecusarDelegaAoRepositorioComMotivoNormalizado(t *testing.T) {
 
 func TestRecusarRejeitaMotivoMuitoLongo(t *testing.T) {
 	stub := &recusarRepositoryStub{}
-	_, err := NewRecusar(stub).Execute(context.Background(), RecusarInput{
+	_, err := NewRecusar(stub, nil, nil).Execute(context.Background(), RecusarInput{
 		OrcamentoID: "orcamento",
 		Motivo:      strings.Repeat("a", 501),
 	})

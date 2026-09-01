@@ -1,0 +1,28 @@
+meta {
+  name: POST /ordens-servico/{osId}/problema-relatado
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/ordens-servico/{{osId}}/problema-relatado
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "descricao": "Veículo apresenta ruído ao frear",
+    "observacoes": "O problema começou há uma semana"
+  }
+}
+
+docs {
+  Escopo exigido: os:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

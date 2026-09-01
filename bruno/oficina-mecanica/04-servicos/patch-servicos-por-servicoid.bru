@@ -1,0 +1,30 @@
+meta {
+  name: PATCH /servicos/{servicoId}
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/servicos/{{servicoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Troca de oleo premium",
+    "descricao": "Troca com oleo sintetico",
+    "valor": 180.0,
+    "tempoEstimadoMinutos": 75
+  }
+}
+
+docs {
+  Escopo exigido: servicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

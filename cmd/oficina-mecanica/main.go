@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
 	estoqueApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/estoque"
 	fornecedorApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/fornecedor"
 	insumoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/insumo"
 	mecanicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/mecanico"
+	notificacaoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/notificacao"
 	orcamentoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/orcamento"
 	ordemServicoApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	pecaApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/peca"
@@ -24,6 +27,7 @@ import (
 	fornecedorInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/fornecedor"
 	insumoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/insumo"
 	mecanicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/mecanico"
+	notificacaoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/notificacao"
 	orcamentoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/orcamento"
 	ordemServicoInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/ordemservico"
 	pecaInfrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/peca"
@@ -92,15 +96,17 @@ func main() {
 	atualizarServico := servicoApplication.NewAtualizar(servicoRepository)
 	desativarServico := servicoApplication.NewDesativar(servicoRepository)
 	reativarServico := servicoApplication.NewReativar(servicoRepository)
+	notificacaoRepository := notificacaoInfrastructure.NewPostgresRepository(db)
+	enfileirarNotificacao := notificacaoApplication.NewEnfileirar(notificacaoRepository)
 	ordemServicoRepository := ordemServicoInfrastructure.NewPostgresRepository(db)
 	criarOrdemServico := ordemServicoApplication.NewCriar(ordemServicoRepository)
-	registrarProblemaRelatado := ordemServicoApplication.NewRegistrarProblemaRelatado(ordemServicoRepository)
+	registrarProblemaRelatado := ordemServicoApplication.NewRegistrarProblemaRelatado(ordemServicoRepository, enfileirarNotificacao, nil)
 	registrarProblema := ordemServicoApplication.NewRegistrarProblema(ordemServicoRepository)
 	registrarServicos := ordemServicoApplication.NewRegistrarServicos(ordemServicoRepository)
 	registrarItensOS := ordemServicoApplication.NewRegistrarItens(ordemServicoRepository)
-	iniciarExecucao := ordemServicoApplication.NewIniciarExecucao(ordemServicoRepository)
-	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository)
-	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository)
+	iniciarExecucao := ordemServicoApplication.NewIniciarExecucao(ordemServicoRepository, enfileirarNotificacao, nil)
+	finalizarServico := ordemServicoApplication.NewFinalizar(ordemServicoRepository, enfileirarNotificacao, nil)
+	registrarEntrega := ordemServicoApplication.NewEntregar(ordemServicoRepository, enfileirarNotificacao, nil)
 	consultarOS := ordemServicoApplication.NewConsultar(ordemServicoRepository)
 	listarOS := ordemServicoApplication.NewListar(ordemServicoRepository)
 	consultarTempoExecucao := ordemServicoApplication.NewConsultarTempoExecucaoDaOS(ordemServicoRepository)
@@ -108,11 +114,11 @@ func main() {
 	consultarFila := ordemServicoApplication.NewConsultarFila(ordemServicoRepository)
 	orcamentoRepository := orcamentoInfrastructure.NewPostgresRepository(db)
 	consultarOrcamento := orcamentoApplication.NewConsultar(orcamentoRepository)
-	aprovarOrcamento := orcamentoApplication.NewAprovar(orcamentoRepository)
-	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository)
+	aprovarOrcamento := orcamentoApplication.NewAprovar(orcamentoRepository, enfileirarNotificacao, nil)
+	recusarOrcamento := orcamentoApplication.NewRecusar(orcamentoRepository, enfileirarNotificacao, nil)
 	fornecedorRepository := fornecedorInfrastructure.NewPostgresRepository(db)
 	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
-	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository)
+	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository, enfileirarNotificacao, nil)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
@@ -149,6 +155,8 @@ func main() {
 	mux.Handle("GET /ordens-servico/{osId}/tempo-execucao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewConsultarTempoExecucaoHandler(consultarTempoExecucao)))
 	mux.Handle("GET /ordens-servico/tempos-execucao", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSLer, ordemServicoPresentation.NewListarTemposExecucaoHandler(consultarTempoMedioExecucao)))
 	mux.Handle("POST /ordens-servico/{osId}/entrega", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOSEscrever, ordemServicoPresentation.NewEntregarHandler(registrarEntrega)))
+	mux.Handle("POST /orcamentos/{orcamentoId}/enviar", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
+		orcamentoPresentation.NewEnviarHandler(orcamentoApplication.NewEnviar(orcamentoRepository, enfileirarNotificacao, nil))))
 	mux.Handle("POST /orcamentos/{orcamentoId}/calcular", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoOrcamentosEscrever,
 		orcamentoPresentation.NewCalcularHandler(orcamentoApplication.NewCalcular(orcamentoRepository, capacidadeDiariaOS))))
 	mux.Handle("GET /ordens-servico/{osId}", segurancaPresentation.RequireAnyScope(jwt, []string{segurancaDominio.EscopoOSLer, segurancaDominio.EscopoOrcamentosLer}, ordemServicoPresentation.NewConsultarHandler(consultarOS)))
@@ -197,6 +205,16 @@ func main() {
 	mux.Handle("POST /estoque/entradas", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoEstoqueMovimentar,
 		estoquePresentation.NewRegistrarEntradaHandler(registrarEntrada)))
 
+	// A fila de notificacoes e consumida em segundo plano: enfileirar acontece na
+	// requisicao, enviar nao. Se o processo cair, o que estava PENDENTE continua no
+	// banco e sai na proxima subida.
+	processador := notificacaoApplication.NewProcessar(notificacaoRepository, enviadorDeNotificacao())
+	contexto, encerrar := context.WithCancel(context.Background())
+	defer encerrar()
+	go consumirNotificacoes(contexto, processador,
+		time.Duration(inteiroDoAmbiente("NOTIFICACAO_INTERVALO_SEGUNDOS", 30))*time.Second,
+		inteiroDoAmbiente("NOTIFICACAO_LOTE", 20))
+
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: sharedhttp.CORS(mux),
@@ -213,6 +231,58 @@ func inteiroDoAmbiente(nome string, padrao int) int {
 		return padrao
 	}
 	return valor
+}
+
+// enviadorDeNotificacao escolhe o canal pela configuracao presente, do mais especifico
+// para o mais generico. Sem nada configurado cai no log, que permite exercitar a fila
+// inteira sem servidor de e-mail nenhum.
+func enviadorDeNotificacao() notificacaoApplication.Enviador {
+	remetente := textoDoAmbiente("EMAIL_REMETENTE", "Oficina Mecanica <onboarding@resend.dev>")
+
+	if chave := textoDoAmbiente("RESEND_API_KEY", ""); chave != "" {
+		log.Printf("notificacoes por Resend, remetente %s", remetente)
+		return notificacaoInfrastructure.NewResendEnviador(chave, remetente, log.Default())
+	}
+
+	if host := textoDoAmbiente("SMTP_HOST", ""); host != "" {
+		porta := inteiroDoAmbiente("SMTP_PORT", 1025)
+		log.Printf("notificacoes por SMTP em %s:%d, remetente %s", host, porta, remetente)
+		return notificacaoInfrastructure.NewSMTPEnviador(host, porta, remetente,
+			textoDoAmbiente("SMTP_USUARIO", ""), textoDoAmbiente("SMTP_SENHA", ""))
+	}
+
+	log.Print("notificacoes apenas em log: configure SMTP_HOST ou RESEND_API_KEY para enviar")
+	return notificacaoInfrastructure.NewLogEnviador(log.Default())
+}
+
+func textoDoAmbiente(nome, padrao string) string {
+	if valor := strings.TrimSpace(os.Getenv(nome)); valor != "" {
+		return valor
+	}
+	return padrao
+}
+
+// consumirNotificacoes roda ate o contexto ser cancelado. Uma rodada que falha nao
+// derruba o laco: a proxima tenta de novo, e as notificacoes seguem na fila.
+func consumirNotificacoes(ctx context.Context, processador notificacaoApplication.Processar, intervalo time.Duration, lote int) {
+	relogio := time.NewTicker(intervalo)
+	defer relogio.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-relogio.C:
+			resultado, err := processador.Execute(ctx, lote)
+			if err != nil {
+				log.Printf("processamento de notificacoes falhou: %v", err)
+				continue
+			}
+			if resultado.Processadas > 0 {
+				log.Printf("notificacoes processadas: %d enviadas, %d falhas", resultado.Enviadas, resultado.Falhas)
+			}
+		}
+	}
 }
 
 func healthHandler(writer http.ResponseWriter, _ *http.Request) {

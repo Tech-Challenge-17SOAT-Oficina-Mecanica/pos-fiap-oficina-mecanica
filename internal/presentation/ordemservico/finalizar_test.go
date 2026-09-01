@@ -43,7 +43,7 @@ func TestFinalizarHandler(t *testing.T) {
 	}
 	for _, caso := range casos {
 		t.Run(caso.nome, func(t *testing.T) {
-			useCase := application.NewFinalizar(finalizarRepositoryStub{resultado: sucesso, err: caso.err})
+			useCase := application.NewFinalizar(finalizarRepositoryStub{resultado: sucesso, err: caso.err}, nil, nil)
 			mux := http.NewServeMux()
 			mux.Handle("POST /ordens-servico/{osId}/finalizar", NewFinalizarHandler(useCase))
 			request := httptest.NewRequest(http.MethodPost, "/ordens-servico/"+caso.id+"/finalizar", strings.NewReader(caso.corpo))

@@ -1,0 +1,23 @@
+meta {
+  name: POST /orcamentos/{orcamentoId}/enviar
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/enviar
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Envia o orcamento ao cliente e move a OS para AGUARDANDO_APROVACAO.
+  Dispara e-mail "Seu orcamento esta pronto". Nao recebe corpo.
+
+  Escopo exigido: orcamentos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

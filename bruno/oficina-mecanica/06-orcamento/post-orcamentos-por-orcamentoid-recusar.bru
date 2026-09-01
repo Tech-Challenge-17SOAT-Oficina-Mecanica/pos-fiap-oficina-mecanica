@@ -1,0 +1,27 @@
+meta {
+  name: POST /orcamentos/{orcamentoId}/recusar
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/orcamentos/{{orcamentoId}}/recusar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "motivo": "Motivo de exemplo"
+  }
+}
+
+docs {
+  Escopo exigido: orcamentos:decidir
+
+  Rode 00-auth/Login antes para preencher o token.
+}

@@ -1,0 +1,31 @@
+meta {
+  name: PUT /mecanicos/{mecanicoId}
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/mecanicos/{{mecanicoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Mecanico Atualizado",
+    "email": "atualizado@oficina.local",
+    "escopos": [
+      "os:ler"
+    ]
+  }
+}
+
+docs {
+  Escopo exigido: mecanicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

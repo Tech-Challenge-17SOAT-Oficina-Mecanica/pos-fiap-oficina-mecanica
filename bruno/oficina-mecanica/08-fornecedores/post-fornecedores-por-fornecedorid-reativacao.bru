@@ -1,0 +1,22 @@
+meta {
+  name: POST /fornecedores/{fornecedorId}/reativacao
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/fornecedores/{{fornecedorId}}/reativacao
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Esta rota nao recebe corpo.
+
+  Escopo exigido: compras:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}

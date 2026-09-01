@@ -1,0 +1,30 @@
+meta {
+  name: POST /servicos
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/servicos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "nome": "Troca de óleo",
+    "descricao": "Troca de óleo e filtro",
+    "valor": 150.0,
+    "tempoEstimadoMinutos": 60
+  }
+}
+
+docs {
+  Escopo exigido: servicos:escrever
+
+  Rode 00-auth/Login antes para preencher o token.
+}
