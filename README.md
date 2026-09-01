@@ -197,22 +197,12 @@ escala horizontal extrema que justifique essa troca). A análise completa está 
 
 ## 👥 Integrantes
 
-##### João Victor — RM376616 - jhonnysket
+##### João Victor — RM376616 - jhonnysket - [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
 
-- [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
+##### José Lázaro — RM371406 - joselzro - [LinkedIn](https://www.linkedin.com/in/lazaro-contato/)
 
-##### José Lázaro — RM371406 - joselzro
+##### Hemily Nara — RM373944 - hemilyynara - [LinkedIn](https://www.linkedin.com/in/hemilynara/)
 
-- [LinkedIn](https://www.linkedin.com/in/lazaro-contato/)
+##### Carlos Henrique — RM376201 - caohz_55485 - [LinkedIn](https://www.linkedin.com/in/carlos1br/)
 
-##### Hemily Nara — RM373944 - hemilyynara
-
-- [LinkedIn](https://www.linkedin.com/in/hemilynara/)
-
-##### Carlos Henrique — RM376201 - caohz_55485
-
-- [LinkedIn](https://www.linkedin.com/in/carlos1br/)
-
-##### Helena Miranda — RM376202 - helenamiranda6974
-
-- [LinkedIn](https://www.linkedin.com/in/hmirandas/)
+##### Helena Miranda — RM376202 - helenamiranda6974 - [LinkedIn](https://www.linkedin.com/in/hmirandas/)
