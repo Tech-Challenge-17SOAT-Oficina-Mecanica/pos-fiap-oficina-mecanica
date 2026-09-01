@@ -195,6 +195,14 @@ escala horizontal extrema que justifique essa troca). A análise completa está 
 [docs/02-decisoes-arquiteturais.md](docs/02-decisoes-arquiteturais.md) e no
 [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md).
 
+## 👽 Vulnerabilidades
+|Problema| O docker-compose.yml possuía credenciais fixas do PostgreSQL versionadas no repositório. Isso é considerado risco porque expõe segredo diretamente no código e facilita reutilização indevida em ambientes diferentes.|A imagem final baseada em Alpine executava a aplicação com o usuário padrão root. Isso aumenta o impacto de uma eventual exploração dentro do container.|
+|--------|------------------------------------------------------------------|------------------------------------------------------------------------------------|
+|Correção Aplicada|As credenciais fixas foram removidas e substituídas por variáveis de ambiente obrigatórias.|Foi criado um usuário não-root específico para a aplicação e o container passou a executar com esse usuário.|
+|Relatório|<img width="500" height="538" alt="_Tech Challenge - 17SOAT - Pos Tech  Software Arquiteture - Fase 1" src="https://github.com/user-attachments/assets/d1897d2e-8ed0-4638-a87c-b92cffd7b7ef" />|<img width="583" height="540" alt="_Tech Challenge - 17SOAT - Pos Tech  Software Arquiteture - Fase 1 (1)" src="https://github.com/user-attachments/assets/5c4c9961-9d5f-4c4c-a6a0-e2235cecfe4f" />|
+
+
+
 ## 👥 Integrantes
 
 ##### João Victor — RM376616 - jhonnysket - [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
