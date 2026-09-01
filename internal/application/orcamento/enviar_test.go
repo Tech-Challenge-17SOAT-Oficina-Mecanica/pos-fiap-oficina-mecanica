@@ -18,14 +18,17 @@ type enviarRepositoryFake struct {
 	erroBusca  error
 	erroMarcar error
 	marcou     bool
+	// statusEsperado guarda o que o caso de uso mandou o repositorio conferir no UPDATE.
+	statusEsperado string
 }
 
 func (fake *enviarRepositoryFake) BuscarParaEnvio(context.Context, string) (OrcamentoParaEnvio, error) {
 	return fake.dados, fake.erroBusca
 }
 
-func (fake *enviarRepositoryFake) MarcarEnviado(context.Context, string, string, string) (time.Time, error) {
+func (fake *enviarRepositoryFake) MarcarEnviado(_ context.Context, _, _, statusEsperado, _ string) (time.Time, error) {
 	fake.marcou = true
+	fake.statusEsperado = statusEsperado
 	return time.Now(), fake.erroMarcar
 }
 
@@ -147,5 +150,32 @@ func TestEnviarPropagaRegrasDeDominio(t *testing.T) {
 				t.Fatal("a OS nao podia ter transitado")
 			}
 		})
+	}
+}
+
+// A gravação precisa exigir o mesmo status que a validação observou: entre uma e outra a
+// OS pode ter mudado, e dois envios simultâneos mandariam dois e-mails ao cliente.
+func TestEnviarExigeNoUpdateOStatusQueValidou(t *testing.T) {
+	repo := &enviarRepositoryFake{dados: dadosValidos()}
+
+	if _, err := NewEnviar(repo, &notificadorFake{}, mudo()).Execute(context.Background(), principalID, "usuario-1"); err != nil {
+		t.Fatal(err)
+	}
+	if repo.statusEsperado != orcamento.OSStatusEmDiagnostico {
+		t.Fatalf("statusEsperado = %q; o UPDATE precisa condicionar ao status validado", repo.statusEsperado)
+	}
+}
+
+// Quem perde a corrida não avisa o cliente: a OS não foi marcada por este envio.
+func TestEnviarQuePerdeACorridaNaoNotifica(t *testing.T) {
+	notificador := &notificadorFake{}
+	repo := &enviarRepositoryFake{dados: dadosValidos(), erroMarcar: orcamento.ErrOSNaoPermiteEnvio}
+
+	_, err := NewEnviar(repo, notificador, mudo()).Execute(context.Background(), principalID, "usuario-1")
+	if !errors.Is(err, orcamento.ErrOSNaoPermiteEnvio) {
+		t.Fatalf("err = %v; o conflito precisa chegar ao cliente da API", err)
+	}
+	if notificador.chamado {
+		t.Fatal("não se envia e-mail de um orçamento que outro envio já marcou")
 	}
 }

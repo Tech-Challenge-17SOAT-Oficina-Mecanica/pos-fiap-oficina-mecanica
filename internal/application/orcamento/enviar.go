@@ -24,8 +24,9 @@ type OrcamentoParaEnvio struct {
 type EnviarRepository interface {
 	// BuscarParaEnvio traz o orcamento com seus itens e o estado da OS dona.
 	BuscarParaEnvio(ctx context.Context, orcamentoID string) (OrcamentoParaEnvio, error)
-	// MarcarEnviado poe a OS em AGUARDANDO_APROVACAO e registra o envio.
-	MarcarEnviado(ctx context.Context, orcamentoID, ordemServicoID, usuarioID string) (time.Time, error)
+	// MarcarEnviado poe a OS em AGUARDANDO_APROVACAO e registra o envio. Recebe o status
+	// que a validacao observou para so gravar se a OS ainda estiver nele.
+	MarcarEnviado(ctx context.Context, orcamentoID, ordemServicoID, statusEsperado, usuarioID string) (time.Time, error)
 }
 
 type ResultadoEnvio struct {
@@ -64,7 +65,7 @@ func (useCase Enviar) Execute(ctx context.Context, orcamentoID, usuarioID string
 		return ResultadoEnvio{}, err
 	}
 
-	enviadoEm, err := useCase.repository.MarcarEnviado(ctx, orcamentoID, dados.OrdemServicoID, usuarioID)
+	enviadoEm, err := useCase.repository.MarcarEnviado(ctx, orcamentoID, dados.OrdemServicoID, dados.StatusOS, usuarioID)
 	if err != nil {
 		return ResultadoEnvio{}, err
 	}

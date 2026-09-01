@@ -218,7 +218,12 @@ func (repository PostgresRepository) BuscarParaEnvio(ctx context.Context, orcame
 // MarcarEnviado poe a OS em AGUARDANDO_APROVACAO e deixa a trilha do envio na auditoria.
 // Tudo numa transacao: a OS nao pode ficar aguardando decisao sem registro de que o
 // orcamento foi enviado.
-func (repository PostgresRepository) MarcarEnviado(ctx context.Context, orcamentoID, ordemServicoID, usuarioID string) (time.Time, error) {
+//
+// O UPDATE exige o status que a validacao observou. A validacao roda em BuscarParaEnvio,
+// noutra conexao e sem lock, entao entre ela e este UPDATE a OS pode ter mudado — dois
+// envios simultaneos passariam os dois, e o cliente receberia o e-mail duas vezes. Sem
+// linha afetada, o envio perdeu a corrida e vira conflito.
+func (repository PostgresRepository) MarcarEnviado(ctx context.Context, orcamentoID, ordemServicoID, statusEsperado, usuarioID string) (time.Time, error) {
 	transacao, err := repository.db.Begin(ctx)
 	if err != nil {
 		return time.Time{}, err
@@ -226,11 +231,15 @@ func (repository PostgresRepository) MarcarEnviado(ctx context.Context, orcament
 	defer func() { _ = transacao.Rollback(ctx) }()
 
 	var enviadoEm time.Time
-	if err = transacao.QueryRow(ctx, `
-		UPDATE ordem_servico SET status = $2
-		WHERE id = $1
+	err = transacao.QueryRow(ctx, `
+		UPDATE ordem_servico SET status = $2, version = version + 1
+		WHERE id = $1 AND status = $3
 		RETURNING CURRENT_TIMESTAMP`,
-		ordemServicoID, orcamento.OSStatusAguardandoAprovacao).Scan(&enviadoEm); err != nil {
+		ordemServicoID, orcamento.OSStatusAguardandoAprovacao, statusEsperado).Scan(&enviadoEm)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, orcamento.ErrOSNaoPermiteEnvio
+	}
+	if err != nil {
 		return time.Time{}, err
 	}
 
