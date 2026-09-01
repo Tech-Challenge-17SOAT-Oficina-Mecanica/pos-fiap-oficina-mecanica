@@ -1957,10 +1957,6 @@ components:
       properties:
         orcamentoId: { type: string, format: uuid }
         ordemServicoId: { type: string, format: uuid }
-        valorTotal:
-          type: number
-          format: double
-          description: Soma dos itens deste orçamento.
         valorTotalGeral:
           type: number
           format: double
@@ -1973,6 +1969,18 @@ components:
             indisponíveis, o tempo médio de execução das OS já finalizadas e os dias de
             fila. Parcelas sem dado valem zero: oficina sem histórico ou sem capacidade
             configurada recebe estimativa menor, e não erro.
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalculoOrcamentoItem'
+    CalculoOrcamentoItem:
+      type: object
+      properties:
+        tipo: { type: string, enum: [SERVICO, PECA, INSUMO] }
+        descricao: { type: string }
+        quantidade: { type: number }
+        valorUnitario: { type: number, format: double }
+        valorTotal: { type: number, format: double }
     CadastrarPeca:
       type: object
       required: [nome, descricao, categoriaId]

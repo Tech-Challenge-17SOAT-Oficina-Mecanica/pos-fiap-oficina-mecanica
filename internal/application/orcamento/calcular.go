@@ -37,6 +37,7 @@ type ResultadoCalculo struct {
 	ValorTotal      float64
 	ValorTotalGeral float64
 	EstimativaDias  int
+	Itens           []orcamento.Item
 }
 
 type Calcular struct {
@@ -122,6 +123,7 @@ func (useCase Calcular) Execute(ctx context.Context, orcamentoID string) (Result
 		ValorTotal:      total,
 		ValorTotalGeral: arredondar(totalGeral),
 		EstimativaDias:  estimativa,
+		Itens:           itens,
 	}, nil
 }
 

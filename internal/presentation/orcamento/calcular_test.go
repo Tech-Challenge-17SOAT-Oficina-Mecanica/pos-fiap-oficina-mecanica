@@ -49,7 +49,7 @@ func calcular(t *testing.T, id string, fake calcularFake) *httptest.ResponseReco
 func TestCalcularRetorna200(t *testing.T) {
 	fake := calcularFake{alvo: orcamentoDomain.Orcamento{
 		ID: orcamentoID, Tipo: orcamentoDomain.TipoPrincipal, Status: orcamentoDomain.StatusCriado,
-		Itens: []orcamentoDomain.Item{{ID: "i1", Quantidade: 2, ValorUnitario: 45}},
+		Itens: []orcamentoDomain.Item{{ID: "i1", Tipo: "SERVICO", Descricao: "Troca de óleo", Quantidade: 2, ValorUnitario: 45}},
 	}}
 
 	response := calcular(t, orcamentoID, fake)
@@ -63,6 +63,17 @@ func TestCalcularRetorna200(t *testing.T) {
 	}
 	if corpo["valorTotalGeral"] != 90.00 {
 		t.Fatalf("valorTotalGeral = %v, esperado 90", corpo["valorTotalGeral"])
+	}
+	if _, presente := corpo["valorTotal"]; presente {
+		t.Fatal("valorTotal nao deve ser retornado no nivel externo")
+	}
+	itens, ok := corpo["itens"].([]any)
+	if !ok || len(itens) != 1 {
+		t.Fatalf("itens = %#v, esperado um item", corpo["itens"])
+	}
+	item := itens[0].(map[string]any)
+	if item["tipo"] != "SERVICO" || item["valorUnitario"] != 45.00 || item["valorTotal"] != 90.00 {
+		t.Fatalf("item calculado = %#v", item)
 	}
 	if _, presente := corpo["estimativaEntregaDias"]; !presente {
 		t.Fatal("estimativaEntregaDias deveria estar na resposta")

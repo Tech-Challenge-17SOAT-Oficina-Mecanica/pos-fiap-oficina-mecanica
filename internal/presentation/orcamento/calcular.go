@@ -12,10 +12,10 @@ import (
 type calculoResponse struct {
 	OrcamentoID     string  `json:"orcamentoId"`
 	OrdemServicoID  string  `json:"ordemServicoId"`
-	ValorTotal      float64 `json:"valorTotal"`
 	ValorTotalGeral float64 `json:"valorTotalGeral"`
 	// Em dias inteiros, sem data exata (RF-ORC-42, RNF-ORC-16).
-	EstimativaEntregaDias int `json:"estimativaEntregaDias"`
+	EstimativaEntregaDias int            `json:"estimativaEntregaDias"`
+	Itens                 []itemResponse `json:"itens"`
 }
 
 func NewCalcularHandler(useCase orcamento.Calcular) http.HandlerFunc {
@@ -27,13 +27,22 @@ func NewCalcularHandler(useCase orcamento.Calcular) http.HandlerFunc {
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
+		itens := make([]itemResponse, 0, len(resultado.Itens))
+		for _, item := range resultado.Itens {
+			itens = append(itens, itemResponse{
+				Tipo:          item.Tipo,
+				Descricao:     item.Descricao,
+				Quantidade:    item.Quantidade,
+				ValorUnitario: item.ValorUnitario,
+				ValorTotal:    item.ValorTotal,
+			})
+		}
 		_ = json.NewEncoder(writer).Encode(calculoResponse{
-			OrcamentoID:     resultado.OrcamentoID,
-			OrdemServicoID:  resultado.OrdemServicoID,
-			ValorTotal:      resultado.ValorTotal,
-			ValorTotalGeral: resultado.ValorTotalGeral,
-
+			OrcamentoID:           resultado.OrcamentoID,
+			OrdemServicoID:        resultado.OrdemServicoID,
+			ValorTotalGeral:       resultado.ValorTotalGeral,
 			EstimativaEntregaDias: resultado.EstimativaDias,
+			Itens:                 itens,
 		})
 	}
 }
