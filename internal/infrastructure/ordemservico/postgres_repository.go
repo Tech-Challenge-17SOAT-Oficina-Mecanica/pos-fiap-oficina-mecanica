@@ -832,6 +832,14 @@ func (repository PostgresRepository) RegistrarItens(ctx context.Context, input a
 	if err = tx.QueryRow(ctx, `SELECT COALESCE(SUM(oi.valor_total), 0) FROM orcamento_item oi JOIN orcamento o ON o.id = oi.orcamento_id WHERE o.ordem_servico_id = $1`, input.OSID).Scan(&result.ValorTotalGeral); err != nil {
 		return domainOrcamento.Resultado{}, fmt.Errorf("calcular total da os: %w", err)
 	}
+	// Novo item invalida o calculo anterior: a estimativa de entrega depende do prazo dos
+	// itens sem saldo, e o total precisa ser refeito. Zerar aqui faz o envio ao cliente
+	// exigir um novo calcular, em vez de mandar um prazo que nao considera este item.
+	if _, err = tx.Exec(ctx, `
+		UPDATE orcamento SET estimativa_entrega_dias = NULL, data_atualizacao = CURRENT_TIMESTAMP
+		WHERE id = $1`, budgetID); err != nil {
+		return domainOrcamento.Resultado{}, fmt.Errorf("invalidar o calculo do orcamento: %w", err)
+	}
 	if _, err = tx.Exec(ctx, `INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em) VALUES ($1, NULLIF($2, '')::uuid, 'ORCAMENTO', $3, 'ITENS_REGISTRADOS', jsonb_build_object('tipoItem', $4::text, 'quantidadeItens', $5::integer), '{}'::jsonb, CURRENT_TIMESTAMP)`, input.OSID, input.UsuarioID, budgetID, input.Tipo, len(input.Itens)); err != nil {
 		return domainOrcamento.Resultado{}, fmt.Errorf("registrar auditoria: %w", err)
 	}
@@ -999,7 +1007,10 @@ func (repository PostgresRepository) RegistrarServicos(ctx context.Context, orde
 	if err = tx.QueryRow(ctx, "SELECT COALESCE(SUM(valor_total), 0) FROM orcamento_item WHERE orcamento_id = $1", orcamento.ID).Scan(&resultado.Orcamento.ValorTotal); err != nil {
 		return application.ResultadoRegistroServicos{}, err
 	}
-	if _, err = tx.Exec(ctx, "UPDATE orcamento SET data_atualizacao = CURRENT_TIMESTAMP WHERE id = $1", orcamento.ID); err != nil {
+	// Mesmo motivo do registro de pecas e insumos: o servico entra no total e no prazo.
+	if _, err = tx.Exec(ctx, `
+		UPDATE orcamento SET estimativa_entrega_dias = NULL, data_atualizacao = CURRENT_TIMESTAMP
+		WHERE id = $1`, orcamento.ID); err != nil {
 		return application.ResultadoRegistroServicos{}, err
 	}
 	if err = tx.Commit(ctx); err != nil {
