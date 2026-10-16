@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DB_PASSWORD: oficina
-      JWT_SECRET: segredo-local
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
       DATABASE_URL: postgres://oficina:oficina@localhost:5432/oficina?sslmode=disable
 
     services:
