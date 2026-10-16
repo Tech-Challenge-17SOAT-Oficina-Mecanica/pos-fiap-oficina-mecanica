@@ -20,3 +20,48 @@ jobs:
 
       - name: Build application
         run: CGO_ENABLED=0 GOOS=linux go build -o oficina-mecanica ./cmd/oficina-mecanica
+
+  test:
+    name: Test application
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: oficina
+      JWT_SECRET: segredo-local
+      DATABASE_URL: postgres://oficina:oficina@localhost:5432/oficina?sslmode=disable
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: oficina
+          POSTGRES_USER: oficina
+          POSTGRES_PASSWORD: oficina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oficina -d oficina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Init database
+        run: |
+          docker run --rm \
+            --network "${{ job.services.postgres.network }}" \
+            -v "${{ github.workspace }}:/workspace" \
+            -e PGPASSWORD=oficina \
+            postgres:16-alpine \
+            sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
+
+      - name: Run tests
+        run: go test ./...
