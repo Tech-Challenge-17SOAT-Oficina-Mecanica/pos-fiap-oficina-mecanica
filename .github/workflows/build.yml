@@ -63,5 +63,34 @@ jobs:
             postgres:16-alpine \
             sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
-      - name: 🧪 Run tests
-        run: go test ./...
+      - name: 🧪 Run tests with coverage
+        run: |
+          go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
+          go tool cover -func=coverage.out | tee coverage.txt
+
+      - name: 📤 Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.txt
+          if-no-files-found: error
+
+  coverage:
+    name: 📊 Check coverage
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+
+      - name: 📊 Enforce minimum coverage
+        run: |
+          coverage=$(awk '/^total:/ { gsub("%", "", $3); print $3 }' coverage.txt)
+          if [ -z "$coverage" ] || ! awk "BEGIN { exit !($coverage >= 80) }"; then
+            echo "::error::Cobertura total ${coverage:-indisponivel}%. O mínimo é 80%."
+            exit 1
+          fi
+          echo "Cobertura total: $coverage% (mínimo: 80%)."
