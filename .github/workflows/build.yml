@@ -26,9 +26,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     env:
-      DB_PASSWORD: oficina
+      DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      DATABASE_URL: postgres://oficina:oficina@localhost:5432/oficina?sslmode=disable
+      DATABASE_URL: postgres://oficina:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/oficina?sslmode=disable
 
     services:
       postgres:
@@ -36,7 +36,7 @@ jobs:
         env:
           POSTGRES_DB: oficina
           POSTGRES_USER: oficina
-          POSTGRES_PASSWORD: oficina
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
@@ -59,7 +59,7 @@ jobs:
           docker run --rm \
             --network "${{ job.services.postgres.network }}" \
             -v "${{ github.workspace }}:/workspace" \
-            -e PGPASSWORD=oficina \
+            -e PGPASSWORD="$DB_PASSWORD" \
             postgres:16-alpine \
             sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
