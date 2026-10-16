@@ -63,32 +63,55 @@ jobs:
             postgres:16-alpine \
             sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
-      - name: 🧪 Run tests with coverage
-        run: |
-          go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
-          go tool cover -func=coverage.out | tee coverage.txt
-
-      - name: 📤 Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage.txt
-          if-no-files-found: error
+      - name: 🧪 Run tests
+        run: go test ./...
 
   coverage:
     name: 📊 Check coverage
-    needs: test
+    needs: build
     runs-on: ubuntu-latest
+    env:
+      DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      DATABASE_URL: postgres://oficina:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/oficina?sslmode=disable
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: oficina
+          POSTGRES_USER: oficina
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oficina -d oficina"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - name: 📥 Download coverage report
-        uses: actions/download-artifact@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup Go
+        uses: actions/setup-go@v6
         with:
-          name: coverage-report
+          go-version-file: go.mod
+
+      - name: 🗃️ Init database
+        run: |
+          docker run --rm \
+            --network "${{ job.services.postgres.network }}" \
+            -v "${{ github.workspace }}:/workspace" \
+            -e PGPASSWORD="$DB_PASSWORD" \
+            postgres:16-alpine \
+            sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
       - name: 📊 Enforce minimum coverage
         run: |
-          coverage=$(awk '/^total:/ { gsub("%", "", $3); print $3 }' coverage.txt)
+          go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
+          coverage=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub("%", "", $3); print $3 }')
           if [ -z "$coverage" ] || ! awk "BEGIN { exit !($coverage >= 80) }"; then
             echo "::error::Cobertura total ${coverage:-indisponivel}%. O mínimo é 80%."
             exit 1
