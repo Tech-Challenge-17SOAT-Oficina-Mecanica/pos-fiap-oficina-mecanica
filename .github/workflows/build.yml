@@ -1,4 +1,4 @@
-name: Build
+name: 🏗️ Build
 
 on:
   pull_request:
@@ -10,19 +10,19 @@ permissions:
 
 jobs:
   build:
-    name: Build application
+    name: 🔨 Build application
     runs-on: ubuntu-latest
     container: golang:1.25-alpine
 
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: Build application
+      - name: 🔨 Build application
         run: CGO_ENABLED=0 GOOS=linux go build -o oficina-mecanica ./cmd/oficina-mecanica
 
   test:
-    name: Test application
+    name: 🧪 Test application
     needs: build
     runs-on: ubuntu-latest
     env:
@@ -46,15 +46,15 @@ jobs:
           --health-retries 5
 
     steps:
-      - name: Checkout
+      - name: 📥 Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Go
+      - name: ⚙️ Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
-      - name: Init database
+      - name: 🗃️ Init database
         run: |
           docker run --rm \
             --network "${{ job.services.postgres.network }}" \
@@ -63,5 +63,5 @@ jobs:
             postgres:16-alpine \
             sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
-      - name: Run tests
+      - name: 🧪 Run tests
         run: go test ./...
