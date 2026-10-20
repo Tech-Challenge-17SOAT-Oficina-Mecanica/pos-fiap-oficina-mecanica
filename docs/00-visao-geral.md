@@ -202,7 +202,7 @@ listagens de peça e insumo passaram a devolver `version`.
 | [`insumos/`](insumos/) | Contexto de Insumos: um arquivo por tarefa, mais o resumo e os pontos em aberto |
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
 | [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
-| [`05-kubernetes.md`](05-kubernetes.md) | Deployment, Service, endpoints de saúde e execução no Kubernetes |
+| [`05-kubernetes.md`](05-kubernetes.md) | Configuração, variáveis de ambiente, Deployment, Service, escala e execução no Kubernetes |
 | `<contexto>/00-resumo.md` | O que o contexto cobre: tarefas, rotas, tipos e convenções em vigor |
 | `<contexto>/pontos-em-aberto.md` | Decisões pendentes e inconsistências a corrigir naquele contexto |
 | [`files/`](files/) | Material de apoio: enunciado do Tech Challenge, board de Event Storming, levantamento dos fluxos atuais |

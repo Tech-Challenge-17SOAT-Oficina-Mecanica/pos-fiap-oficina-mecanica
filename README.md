@@ -18,8 +18,9 @@ executado pelos containers.
 ## Kubernetes - Fase 2
 
 Os manifestos de namespace, Deployment e Service estão em `k8s/`. As configurações,
-os endpoints de saúde e os comandos de execução estão documentados em
-[Kubernetes — Deployment e Service](docs/05-kubernetes.md).
+as variáveis de ambiente, os endpoints de saúde, os parâmetros de escala e os
+comandos de execução estão documentados em
+[Kubernetes — Configuração e execução](docs/05-kubernetes.md).
 
 ## 🗃️ Modelagem de dados
 
