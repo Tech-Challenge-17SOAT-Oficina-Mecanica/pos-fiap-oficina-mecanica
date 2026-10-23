@@ -5,3 +5,4 @@ coverage
 .gocache/
 .scannerwork/
 reports/
+k8s/secret.yaml

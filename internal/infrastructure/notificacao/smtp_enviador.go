@@ -2,11 +2,14 @@ package notificacao
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/notificacao"
 )
@@ -47,9 +50,58 @@ func apenasEndereco(remetente string) string {
 	return remetente
 }
 
-func (enviador SMTPEnviador) Enviar(_ context.Context, aviso notificacao.Notificacao) error {
-	return smtp.SendMail(enviador.endereco, enviador.autenticar, enviador.enderecoRemetente,
-		[]string{aviso.Destinatario}, mensagemRFC822(enviador.remetente, aviso))
+func (enviador SMTPEnviador) Enviar(ctx context.Context, aviso notificacao.Notificacao) error {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	host, _, err := net.SplitHostPort(enviador.endereco)
+	if err != nil {
+		return err
+	}
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", enviador.endereco)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	deadline, _ := ctx.Deadline()
+	if err = conn.SetDeadline(deadline); err != nil {
+		return err
+	}
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err = client.StartTLS(&tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}); err != nil {
+			return err
+		}
+	}
+	if enviador.autenticar != nil {
+		if err = client.Auth(enviador.autenticar); err != nil {
+			return err
+		}
+	}
+	if err = client.Mail(enviador.enderecoRemetente); err != nil {
+		return err
+	}
+	if err = client.Rcpt(aviso.Destinatario); err != nil {
+		return err
+	}
+	writer, err := client.Data()
+	if err != nil {
+		return err
+	}
+	if _, err = writer.Write(mensagemRFC822(enviador.remetente, aviso)); err != nil {
+		return err
+	}
+	if err = writer.Close(); err != nil {
+		return err
+	}
+	// DATA ja foi aceito: falha ao fechar a sessao nao exige reenviar a mensagem.
+	_ = client.Quit()
+	return nil
 }
 
 // mensagemRFC822 monta o e-mail. O assunto vai codificado em UTF-8 porque os avisos tem
