@@ -203,6 +203,7 @@ listagens de peça e insumo passaram a devolver `version`.
 | [`02-decisoes-arquiteturais.md`](02-decisoes-arquiteturais.md) | Decisões pendentes, com opções e recomendação, para discussão em equipe |
 | [`03-endpoints.md`](03-endpoints.md) | Catálogo de todas as rotas da API, com método, caminho, escopo e documento de origem |
 | [`05-kubernetes.md`](05-kubernetes.md) | Documentação Kubernetes: recursos, configuração e execução |
+| [`06-clean-code.md`](06-clean-code.md) | Clean Code: nomes claros, simplicidade, coesão e validação |
 | `<contexto>/00-resumo.md` | O que o contexto cobre: tarefas, rotas, tipos e convenções em vigor |
 | `<contexto>/pontos-em-aberto.md` | Decisões pendentes e inconsistências a corrigir naquele contexto |
 | [`files/`](files/) | Material de apoio: enunciado do Tech Challenge, board de Event Storming, levantamento dos fluxos atuais |
