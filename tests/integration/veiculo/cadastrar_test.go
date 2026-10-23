@@ -52,7 +52,7 @@ func TestCadastrarVeiculo(t *testing.T) {
 		t.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	handler := presentation.NewHandler(application.NewCadastrar(infrastructure.NewPostgresRepository(db)))
+	handler := presentation.NewCadastrarHandler(application.NewCadastrar(infrastructure.NewPostgresRepository(db)))
 	mux.Handle("POST /clientes/{clienteId}/veiculos", securityPresentation.RequireScope(jwt, "veiculos:escrever", handler))
 	now := time.Now().UnixNano()
 	placa := fmt.Sprintf("X%c%c%d%c%02d", 'A'+now%26, 'A'+now/26%26, now/676%10, 'A'+now/6760%26, now/175760%100)
