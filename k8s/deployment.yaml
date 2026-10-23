@@ -22,6 +22,7 @@ spec:
       labels:
         app: oficina-api
     spec:
+      terminationGracePeriodSeconds: 30
       automountServiceAccountToken: false
       containers:
         - name: api

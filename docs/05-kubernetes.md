@@ -1,7 +1,7 @@
 ---
 documento: Kubernetes
 dono: Hemily Nara
-versao: 0.4
+versao: 0.5
 atualizado_em: 2026-10-23
 status: em revisao
 ---
@@ -92,8 +92,29 @@ O Deployment utiliza `RollingUpdate`, com:
 
 A atualização permite um pod adicional e aguarda a disponibilidade das novas
 réplicas antes de reduzir as anteriores. O histórico permite consultar revisões
-e executar rollback. Esses parâmetros não garantem, isoladamente, a conclusão
-de todas as requisições em andamento durante a terminação.
+e executar rollback.
+
+### Encerramento da API e notificações
+
+Ao receber `SIGTERM` ou `SIGINT`, a API passa a responder `503` em `/ready`,
+interrompe o consumidor de notificações e mantém o HTTP disponível por cinco
+segundos para propagação da retirada do pod. Depois, aguarda até 20 segundos
+pelas requisições em andamento. Ao atingir o prazo, fecha as conexões restantes.
+O Deployment define `terminationGracePeriodSeconds: 30`. Encerramentos forçados
+não permitem essa espera.
+
+Cada notificação é reservada com `FOR UPDATE SKIP LOCKED`, em uma transação que
+permanece aberta até o envio e a gravação do resultado. Assim, consumidores de
+réplicas diferentes não enviam simultaneamente a mesma mensagem. Falhas voltam
+para uma rodada posterior; cancelamentos desfazem a transação e liberam a reserva.
+O envio tem timeout de dez segundos e a transação, de 15 segundos, mantendo uma
+conexão do pool ocupada durante esse período. Não há alteração de schema.
+
+O Resend recebe uma chave de idempotência derivada do ID da notificação para
+reutilização nas tentativas. O SMTP respeita cancelamento e timeout, mas não
+oferece idempotência: uma queda depois da aceitação pelo servidor e antes do
+commit ainda pode causar reenvio. A reserva evita a concorrência entre réplicas;
+ela não garante entrega exatamente uma vez em qualquer falha.
 
 ## 3. Service
 
@@ -134,7 +155,7 @@ Versionado em `k8s/configmap.yaml`. Todos os valores são strings.
 
 `DB_HOST` deve apontar para o Service ou endpoint do banco no ambiente; `postgres`
 é o nome de referência. `NOTIFICACAO_INTERVALO_SEGUNDOS` precisa ser positivo:
-com `0` a API encerra ao iniciar o processamento da fila. `CAPACIDADE_DIARIA_OS`
+valores inválidos ou `0` utilizam o padrão de 30 segundos. `CAPACIDADE_DIARIA_OS`
 igual a `0` deixa a fila fora da estimativa de entrega.
 
 A porta HTTP é fixa em `:8080` no código e a aplicação não possui nível de log
