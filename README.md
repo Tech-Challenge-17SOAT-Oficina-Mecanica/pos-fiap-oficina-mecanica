@@ -17,8 +17,9 @@ executado pelos containers.
 
 ## Kubernetes - Fase 2
 
-Os manifestos de namespace, Deployment e Service estão em `k8s/`. A implementação,
-os endpoints de saúde e os comandos de execução estão documentados em
+Os manifestos de namespace, Deployment, Service, ConfigMap e o exemplo do Secret
+estão em `k8s/`. A implementação, as variáveis de configuração, os endpoints de
+saúde e os comandos de execução estão documentados em
 [Kubernetes](docs/05-kubernetes.md).
 
 ## 🗃️ Modelagem de dados

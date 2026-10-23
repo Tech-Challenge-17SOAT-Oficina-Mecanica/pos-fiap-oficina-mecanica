@@ -1,8 +1,8 @@
 ---
 documento: Kubernetes
 dono: Hemily Nara
-versao: 0.3
-atualizado_em: 2026-10-19
+versao: 0.4
+atualizado_em: 2026-10-23
 status: em revisao
 ---
 
@@ -19,6 +19,8 @@ de prontidão que verifica a conexão com o PostgreSQL.
 | `k8s/namespace.yaml` | Namespace | `oficina` | — |
 | `k8s/deployment.yaml` | Deployment | `oficina-api` | `oficina` |
 | `k8s/service.yaml` | Service | `oficina-api` | `oficina` |
+| `k8s/configmap.yaml` | ConfigMap | `oficina-api-config` | `oficina` |
+| `k8s/secret.yaml.example` | Secret (exemplo) | `oficina-api-secret` | `oficina` |
 
 O label `app: oficina-api` identifica os pods e é utilizado pelos selectors do
 Deployment e do Service. O container da aplicação se chama `api`.
@@ -108,7 +110,100 @@ O endereço do Service permanece estável quando o Deployment substitui os pods.
 
 ## 4. ConfigMaps e Secrets
 
-<!-- Acrescentar a documentação dos recursos quando os manifestos forem incorporados. -->
+As variáveis são separadas pela sensibilidade: o ConfigMap guarda o que pode ser
+versionado e o Secret guarda credenciais. Os nomes das chaves são os lidos pelo
+código; renomear uma chave no manifesto não altera o nome lido pela aplicação.
+Não repetir a mesma chave nos dois recursos.
+
+### ConfigMap `oficina-api-config`
+
+Versionado em `k8s/configmap.yaml`. Todos os valores são strings.
+
+| Variável | Finalidade | Valor versionado |
+| --- | --- | --- |
+| `DB_HOST` | Host do PostgreSQL visto pelo pod | `postgres` |
+| `DB_PORT` | Porta do PostgreSQL | `5432` |
+| `DB_NAME` | Banco utilizado | `oficina` |
+| `SMTP_HOST` | Servidor SMTP; vazio desliga o canal | vazio |
+| `SMTP_PORT` | Porta SMTP | `1025` |
+| `SMTP_USUARIO` | Usuário SMTP, quando exigido | vazio |
+| `EMAIL_REMETENTE` | Remetente das notificações | `Oficina Mecanica <onboarding@resend.dev>` |
+| `NOTIFICACAO_INTERVALO_SEGUNDOS` | Intervalo da fila de notificações | `30` |
+| `NOTIFICACAO_LOTE` | Notificações por rodada | `20` |
+| `CAPACIDADE_DIARIA_OS` | Capacidade usada na estimativa de entrega | `0` |
+
+`DB_HOST` deve apontar para o Service ou endpoint do banco no ambiente; `postgres`
+é o nome de referência. `NOTIFICACAO_INTERVALO_SEGUNDOS` precisa ser positivo:
+com `0` a API encerra ao iniciar o processamento da fila. `CAPACIDADE_DIARIA_OS`
+igual a `0` deixa a fila fora da estimativa de entrega.
+
+A porta HTTP é fixa em `:8080` no código e a aplicação não possui nível de log
+configurável; por isso essas configurações não fazem parte do ConfigMap.
+
+### Secret `oficina-api-secret`
+
+Somente o exemplo `k8s/secret.yaml.example` é versionado, com marcadores no lugar
+das credenciais. A extensão `.example` impede que `kubectl apply -f k8s/` aplique
+os marcadores sobre o Secret real. O arquivo preenchido `k8s/secret.yaml` está
+no `.gitignore` e no `.dockerignore`.
+
+| Variável | Obrigatória | Finalidade |
+| --- | --- | --- |
+| `DB_USER` | Sim, sem `DATABASE_URL` | Usuário do PostgreSQL |
+| `DB_PASSWORD` | Sim, sem `DATABASE_URL` | Senha do PostgreSQL |
+| `JWT_SECRET` | Sim | Chave de assinatura dos tokens; igual entre réplicas |
+| `SMTP_SENHA` | Não | Senha SMTP, quando exigida pelo servidor |
+| `RESEND_API_KEY` | Não | Token do Resend; quando preenchido, tem prioridade sobre o SMTP |
+| `DATABASE_URL` | Não | Conexão completa; quando preenchida, substitui as variáveis `DB_*` |
+
+A URL de conexão é montada com `DB_*` sem codificação e com `sslmode=disable`.
+Para senha com caracteres reservados de URL (`@ : / ? #`) ou banco que exige TLS,
+utilizar `DATABASE_URL` com a senha codificada. Uma URL com senha não deve ficar
+no ConfigMap. `SONAR_TOKEN` não é usado pela API e não entra no Secret.
+
+O canal de notificação segue esta ordem: `RESEND_API_KEY` preenchida usa o
+Resend; sem ela, `SMTP_HOST` preenchido usa SMTP; sem os dois, as notificações
+vão apenas para o log.
+
+### Criação do Secret
+
+Em ambiente local, copiar o exemplo, preencher os marcadores e aplicar:
+
+```bash
+cp k8s/secret.yaml.example k8s/secret.yaml
+kubectl apply -f k8s/secret.yaml
+```
+
+Na pipeline, o Secret é gerado a partir dos secrets do repositório, sem arquivo
+em disco:
+
+```bash
+kubectl -n oficina create secret generic oficina-api-secret \
+  --from-literal=DB_USER="$DB_USER" \
+  --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+  --from-literal=JWT_SECRET="$JWT_SECRET" \
+  --from-literal=RESEND_API_KEY="$RESEND_API_KEY" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+O `--dry-run=client` com `apply` cria ou atualiza o recurso no mesmo comando.
+Base64 não é criptografia: a proteção do Secret depende das permissões do cluster.
+
+### Atualização da configuração
+
+As variáveis são injetadas por `envFrom` na criação do container. Pods em execução
+não recebem novos valores; depois de alterar o ConfigMap ou o Secret, recriar os pods:
+
+```bash
+kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml
+kubectl -n oficina rollout restart deployment/oficina-api
+kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
+```
+
+O `rollout undo` reverte o template dos pods, mas não restaura valores anteriores
+do ConfigMap ou do Secret. Alterar `JWT_SECRET` invalida os tokens já emitidos.
+Se um valor novo impedir a conexão com o banco, o pod novo não fica pronto e,
+com `maxUnavailable: 0`, os pods anteriores continuam atendendo.
 
 ## 5. Horizontal Pod Autoscaler (HPA)
 
@@ -121,7 +216,7 @@ O endereço do Service permanece estável quando o Deployment substitui os pods.
 - Docker e cluster Kubernetes disponíveis;
 - `kubectl` configurado para o cluster correto;
 - imagem acessível pelo runtime do cluster;
-- ConfigMap e Secret referenciados pelo Deployment;
+- `k8s/secret.yaml` preenchido a partir do exemplo (seção 4);
 - PostgreSQL acessível, com as migrations aplicadas.
 
 Executar os comandos a partir da raiz do repositório.
@@ -147,6 +242,7 @@ Executar somente o comando correspondente ao ambiente utilizado.
 ```bash
 kubectl config current-context
 kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml
 kubectl -n oficina get configmap oficina-api-config
 kubectl -n oficina get secret oficina-api-secret
 kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml
@@ -223,3 +319,11 @@ o substituto ficar pronto.
   para a imagem original.
 - Amostra local de 435 chamadas curtas pelo Service durante as trocas, todas com
   resposta HTTP `200`; esse resultado não representa garantia geral de disponibilidade.
+- ConfigMap e Secret aplicados em cluster Kind com o Deployment: API pronta,
+  `/ready` com o banco, login e consulta autenticada com o `JWT_SECRET` do Secret.
+- `SMTP_HOST` alterado no ConfigMap: o pod em execução manteve o valor anterior e,
+  após `rollout restart`, a notificação de diagnóstico chegou ao Mailpit.
+- Senha incorreta no Secret: o pod novo não ficou pronto e o anterior continuou
+  atendendo.
+- Nenhum valor do Secret encontrado nos logs da API, nos eventos do namespace ou
+  no `describe` do Deployment.
