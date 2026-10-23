@@ -19,7 +19,7 @@ data:
   SMTP_USUARIO: ""
   EMAIL_REMETENTE: "Oficina Mecanica <onboarding@resend.dev>"
 
-  # Usar valores positivos: intervalo zero derruba a API ao iniciar o ticker.
+  # Intervalo invalido ou zero utiliza o padrao de 30 segundos na aplicacao.
   NOTIFICACAO_INTERVALO_SEGUNDOS: "30"
   NOTIFICACAO_LOTE: "20"
 
