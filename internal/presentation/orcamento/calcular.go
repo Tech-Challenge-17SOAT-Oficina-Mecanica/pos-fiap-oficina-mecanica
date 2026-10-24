@@ -18,7 +18,7 @@ type calculoResponse struct {
 	Itens                 []itemResponse `json:"itens"`
 }
 
-func NewCalcularHandler(useCase orcamento.Calcular) http.HandlerFunc {
+func NewCalcularHandler(useCase CalcularUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		resultado, err := useCase.Execute(request.Context(), request.PathValue("orcamentoId"))
 		if err != nil {

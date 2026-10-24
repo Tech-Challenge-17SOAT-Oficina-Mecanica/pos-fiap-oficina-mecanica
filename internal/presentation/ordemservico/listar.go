@@ -29,7 +29,7 @@ type listagemItemResponse struct {
 	Status         string                  `json:"status"`
 }
 
-func NewListarHandler(useCase application.Listar) http.HandlerFunc {
+func NewListarHandler(useCase ListarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		query := request.URL.Query()
 		paginacao, err := sharedhttp.LerPaginacao(query)

@@ -5,27 +5,23 @@ import (
 	"errors"
 
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/mecanico"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrEmailDuplicado = errors.New("e-mail já cadastrado")
 var ErrMecanicoNaoEncontrado = errors.New("mecânico não encontrado")
 var ErrVersaoDivergente = errors.New("If-Match divergente")
 
-type MecanicoRepository interface {
-	EmailExiste(context.Context, string) (bool, error)
-	EmailExisteExcetoMecanico(context.Context, string, string) (bool, error)
-	BuscarPorID(context.Context, string) (domain.Mecanico, error)
-	SalvarMecanico(context.Context, domain.Mecanico, string) (domain.Mecanico, error)
-	AtualizarMecanico(context.Context, domain.Mecanico, int) (domain.Mecanico, error)
+type GeradorHashSenha interface {
+	Gerar(senha string) (string, error)
 }
 
 type Cadastrar struct {
-	repository MecanicoRepository
+	senhas     GeradorHashSenha
+	repository CadastrarRepository
 }
 
-func NewCadastrar(repository MecanicoRepository) Cadastrar {
-	return Cadastrar{repository: repository}
+func NewCadastrar(repository CadastrarRepository, senhas GeradorHashSenha) Cadastrar {
+	return Cadastrar{repository: repository, senhas: senhas}
 }
 
 func (useCase Cadastrar) Execute(ctx context.Context, input domain.NovoMecanicoInput) (domain.Mecanico, error) {
@@ -40,11 +36,11 @@ func (useCase Cadastrar) Execute(ctx context.Context, input domain.NovoMecanicoI
 	if exists {
 		return domain.Mecanico{}, ErrEmailDuplicado
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
+	hash, err := useCase.senhas.Gerar(senha)
 	if err != nil {
 		return domain.Mecanico{}, err
 	}
-	return useCase.repository.SalvarMecanico(ctx, mecanico, string(hash))
+	return useCase.repository.SalvarMecanico(ctx, mecanico, hash)
 }
 
 type AtualizarInput struct {
@@ -54,10 +50,10 @@ type AtualizarInput struct {
 }
 
 type Atualizar struct {
-	repository MecanicoRepository
+	repository AtualizarRepository
 }
 
-func NewAtualizar(repository MecanicoRepository) Atualizar {
+func NewAtualizar(repository AtualizarRepository) Atualizar {
 	return Atualizar{repository: repository}
 }
 

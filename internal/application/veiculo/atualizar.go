@@ -8,9 +8,9 @@ import (
 
 var ErrVersaoDivergente = errors.New("versão do veículo divergente")
 
-type Atualizar struct{ repository Repository }
+type Atualizar struct{ repository AtualizarRepository }
 
-func NewAtualizar(repository Repository) Atualizar { return Atualizar{repository} }
+func NewAtualizar(repository AtualizarRepository) Atualizar { return Atualizar{repository} }
 func (useCase Atualizar) Execute(ctx context.Context, id string, version int, cadastro domain.Cadastro) (domain.Veiculo, error) {
 	return useCase.repository.Atualizar(ctx, id, version, cadastro)
 }

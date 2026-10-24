@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/seguranca"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type repositoryFake struct {
@@ -26,8 +25,8 @@ type tokenFake struct {
 func (fake tokenFake) Gerar(string, []string) (string, error) { return fake.token, fake.err }
 
 func TestAutenticar(t *testing.T) {
-	hash, _ := bcrypt.GenerateFromPassword([]byte("senha"), bcrypt.MinCost)
-	valid := domain.Usuario{ID: "id", SenhaHash: string(hash), Ativo: true, Escopos: []string{"veiculos:ler"}}
+	hash := "hash-senha"
+	valid := domain.Usuario{ID: "id", SenhaHash: hash, Ativo: true, Escopos: []string{"veiculos:ler"}}
 	cases := []struct {
 		name, email, senha string
 		repository         repositoryFake
@@ -44,7 +43,7 @@ func TestAutenticar(t *testing.T) {
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := NewAutenticar(test.repository, test.token).Execute(context.Background(), test.email, test.senha)
+			got, err := NewAutenticar(test.repository, test.token, verificadorSenhaFake{}).Execute(context.Background(), test.email, test.senha)
 			if test.want != nil && (err == nil || err.Error() != test.want.Error()) {
 				t.Fatalf("erro: %v", err)
 			}
@@ -56,4 +55,13 @@ func TestAutenticar(t *testing.T) {
 			}
 		})
 	}
+}
+
+type verificadorSenhaFake struct{}
+
+func (verificadorSenhaFake) Verificar(hash, senha string) error {
+	if hash == "hash-senha" && senha == "senha" {
+		return nil
+	}
+	return errors.New("senha invalida")
 }
