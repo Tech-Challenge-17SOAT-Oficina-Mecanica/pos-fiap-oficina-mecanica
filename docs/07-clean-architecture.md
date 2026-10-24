@@ -1,7 +1,7 @@
 ---
 documento: Clean Architecture
 dono: Hemily Nara
-versao: 1.2
+versao: 1.3
 atualizado_em: 2026-10-24
 status: implementado
 ---
@@ -17,7 +17,35 @@ O projeto mantém a estrutura de monólito, com os contextos de negócio agrupad
 dentro das camadas: clientes, veículos, mecânicos, fornecedores, serviços,
 ordens de serviço, orçamentos, peças, insumos, estoque, segurança e notificações.
 
-## 1. Organização das camadas
+## 1. Por que escolhemos Clean Architecture
+
+Escolhemos Clean Architecture por sua aderência à organização em camadas que o
+projeto já utilizava e ao requisito da Fase 2 de separar adequadamente as camadas
+e suas dependências. A adoção aproveitou a estrutura existente do monólito e
+formalizou os contratos entre regras de negócio, casos de uso e adaptadores.
+
+A decisão considerou quatro aspectos do projeto:
+
+- **Aproveitamento da estrutura existente:** os diretórios `domain`,
+  `application`, `presentation` e `infrastructure` já organizavam o código.
+  Essa base permitiu aplicar os contratos e a direção das dependências mantendo
+  os contextos de negócio e a composição da aplicação.
+- **Proteção das regras de negócio:** decisões de execução e entrega de OS
+  passaram a ser expressas no domínio, enquanto HTTP, SQL, JWT e bcrypt
+  permaneceram nas bordas correspondentes. Os casos de uso consomem esses
+  recursos por contratos.
+- **Testabilidade:** interfaces de persistência, senha e casos de uso permitem
+  testar cada responsabilidade com substitutos controlados. Testes de
+  integração e do roteador verificam a composição com os adaptadores reais.
+- **Manutenção e coesão:** contratos específicos tornam explícito o que cada
+  operação utiliza. As declarações de conformidade e os testes de arquitetura
+  verificam essa separação automaticamente.
+
+A implementação preservou os endpoints, os contratos HTTP e o comportamento dos
+fluxos existentes. Assim, a escolha uniu a separação de responsabilidades exigida
+pela entrega à continuidade da aplicação já desenvolvida pelo grupo.
+
+## 2. Organização das camadas
 
 | Diretório | Responsabilidade | Exemplos implementados |
 | --- | --- | --- |
@@ -49,7 +77,7 @@ O pacote `shared/validation` reúne essas validações; `net/mail` é utilizado 
 interpretar sintaxe de e-mail. Os pacotes `shared/http` e `shared/database`
 concentram recursos técnicos utilizados nas bordas correspondentes.
 
-## 2. Contratos de persistência por operação
+## 3. Contratos de persistência por operação
 
 Os contratos de saída são definidos em `internal/application`. Suas assinaturas
 utilizam tipos de domínio ou aplicação, `context.Context` e tipos da biblioteca
@@ -99,7 +127,7 @@ Referências: [cliente](../internal/application/cliente/ports.go),
 [serviço](../internal/application/servico/ports.go) e
 [tempos de execução de OS](../internal/application/ordemservico/ports.go).
 
-## 3. Adaptadores PostgreSQL e conformidade dos contratos
+## 4. Adaptadores PostgreSQL e conformidade dos contratos
 
 Os repositórios de `internal/infrastructure` implementam as operações de
 persistência. Consultas SQL, bloqueios, auditorias e limites de transação são
@@ -121,7 +149,7 @@ Referências: [adaptador de cliente](../internal/infrastructure/cliente/contract
 [adaptador de OS](../internal/infrastructure/ordemservico/contracts.go) e
 [adaptador de orçamento](../internal/infrastructure/orcamento/contracts.go).
 
-## 4. Contratos dos handlers HTTP
+## 5. Contratos dos handlers HTTP
 
 Os 56 construtores de handlers recebem interfaces locais de casos de uso.
 O padrão abrange clientes, veículos, mecânicos, fornecedores, serviços, OS,
@@ -149,7 +177,7 @@ Referências: [login](../internal/presentation/seguranca/usecases.go),
 [orçamentos](../internal/presentation/orcamento/usecases.go) e
 [estoque](../internal/presentation/estoque/usecases.go).
 
-## 5. Serviços técnicos recebidos por contrato
+## 6. Serviços técnicos recebidos por contrato
 
 ### Geração e verificação de senha
 
@@ -192,7 +220,7 @@ Referências: [contrato de OS](../internal/application/ordemservico/notificador.
 [enfileiramento](../internal/application/notificacao/enfileirar.go) e
 [processamento da fila](../internal/application/notificacao/processar.go).
 
-## 6. Regras de execução e entrega no domínio
+## 7. Regras de execução e entrega no domínio
 
 As decisões de autorização, disponibilidade de recursos e existência de
 orçamento aprovado estão expressas em funções do domínio de OS:
@@ -213,7 +241,7 @@ Referências: [execução](../internal/domain/ordemservico/iniciar_execucao.go),
 [uso no adaptador](../internal/infrastructure/ordemservico/postgres_execucao.go)
 e [testes das regras](../internal/domain/ordemservico/politicas_execucao_test.go).
 
-## 7. Composição e fluxo de uma requisição
+## 8. Composição e fluxo de uma requisição
 
 A função `montarAplicacao`, em `routes.go`, organiza a criação das dependências.
 As funções de registro de rotas instanciam os repositórios e casos de uso de cada
@@ -237,7 +265,7 @@ Referências: [composição](../cmd/oficina-mecanica/routes.go),
 [caso de uso](../internal/application/cliente/consultar.go) e
 [repositório PostgreSQL](../internal/infrastructure/cliente/postgres_repository.go).
 
-## 8. Proteção automática da arquitetura
+## 9. Proteção automática da arquitetura
 
 A suíte de arquitetura verifica os arquivos Go de produção e os construtores HTTP:
 
@@ -259,7 +287,7 @@ proibidas e de handler concreto foram rejeitadas pelas verificações.
 Referências: [dependências entre camadas](../tests/architecture/dependencies_test.go)
 e [contratos dos handlers](../tests/architecture/handlers_test.go).
 
-## 9. Validação da implementação
+## 10. Validação da implementação
 
 A implementação foi verificada em diferentes níveis:
 
