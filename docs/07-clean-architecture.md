@@ -1,62 +1,75 @@
 ---
 documento: Clean Architecture
 dono: Hemily Nara
-versao: 1.1
+versao: 1.2
 atualizado_em: 2026-10-24
 status: implementado
 ---
 
 # Clean Architecture
 
-A aplicação utiliza Clean Architecture para separar os casos de uso e as regras
-de negócio dos detalhes de HTTP, persistência e serviços externos. A organização
-por contextos de negócio é mantida dentro das camadas do monólito.
+A aplicação organiza regras de negócio, casos de uso e adaptadores em camadas
+com dependências explícitas. O núcleo define os contratos que consome; a
+composição da aplicação fornece as implementações de HTTP, PostgreSQL,
+autenticação, senhas e notificações.
 
-## 1. Responsabilidades e dependências
+O projeto mantém a estrutura de monólito, com os contextos de negócio agrupados
+dentro das camadas: clientes, veículos, mecânicos, fornecedores, serviços,
+ordens de serviço, orçamentos, peças, insumos, estoque, segurança e notificações.
 
-| Diretório | Responsabilidade |
-| --- | --- |
-| `internal/domain` | Entidades, valores, regras e erros de negócio |
-| `internal/application` | Casos de uso e contratos de saída consumidos por eles |
-| `internal/presentation` | Adaptadores HTTP, autenticação das requisições e conversão de dados de entrada/saída |
-| `internal/infrastructure` | Adaptadores de PostgreSQL, JWT, bcrypt e envio de notificações |
-| `cmd/oficina-mecanica` | Composição das dependências, registro de rotas e inicialização do servidor |
+## 1. Organização das camadas
 
-As setas abaixo representam dependências de código, não a ordem das chamadas:
+| Diretório | Responsabilidade | Exemplos implementados |
+| --- | --- | --- |
+| `internal/domain` | Entidades, valores, validações e regras de negócio | Cadastro de cliente e veículo; condições de execução e entrega de OS |
+| `internal/application` | Casos de uso, coordenação das operações e contratos consumidos pelo núcleo | Cadastrar, consultar, atualizar, inativar, reativar, autenticar e executar OS |
+| `internal/presentation` | Adaptação HTTP e conversão entre requisições, casos de uso e respostas | Handlers, structs de entrada/saída, leitura de cabeçalhos e tratamento de erros |
+| `internal/infrastructure` | Implementação dos contratos e integração com recursos técnicos | Repositórios PostgreSQL, bcrypt, JWT e adaptadores de envio de notificações |
+| `cmd/oficina-mecanica` | Composição das dependências e inicialização | Criação de adaptadores, injeção nos casos de uso, registro de rotas e servidor |
+
+As setas representam dependências de código:
 
 ```mermaid
 flowchart LR
-    C[cmd: composição] --> P[presentation: HTTP]
-    C --> I[infrastructure: adaptadores]
-    C --> A[application: casos de uso e contratos]
+    C[Composição: cmd] --> P[Apresentação: HTTP]
+    C --> I[Infraestrutura: adaptadores]
+    C --> A[Aplicação: casos de uso e contratos]
     P --> A
-    P --> D[domain: regras e entidades]
+    P --> D[Domínio: regras e entidades]
     I --> A
     I --> D
     A --> D
 ```
 
-Os casos de uso conhecem os contratos necessários para executar suas operações.
-As implementações concretas são fornecidas pela composição em `routes.go`.
-A aplicação não importa os adaptadores para instanciá-los.
+A aplicação conhece as interfaces de persistência e serviços que utiliza.
+Os adaptadores implementam essas interfaces. O domínio contém as decisões de
+negócio e utiliza validações de valores independentes de I/O.
 
-O pacote `shared/validation` contém validações de valores independentes de
-persistência e HTTP. A interpretação de sintaxe de e-mail utiliza `net/mail`,
-sem realizar conexão ou envio. Os recursos `shared/http` e `shared/database`
-pertencem às bordas técnicas da aplicação.
+O pacote `shared/validation` reúne essas validações; `net/mail` é utilizado para
+interpretar sintaxe de e-mail. Os pacotes `shared/http` e `shared/database`
+concentram recursos técnicos utilizados nas bordas correspondentes.
 
-## 2. Contratos de persistência por caso de uso
+## 2. Contratos de persistência por operação
 
-Os casos de uso recebem contratos de persistência definidos na aplicação, com as
-operações necessárias ao seu trabalho. Esse padrão é aplicado a clientes,
-veículos, mecânicos, fornecedores, serviços, OS, orçamentos, peças, insumos,
-estoque, autenticação e notificações.
+Os contratos de saída são definidos em `internal/application`. Suas assinaturas
+utilizam tipos de domínio ou aplicação, `context.Context` e tipos da biblioteca
+padrão, mantendo conexões e tipos do driver PostgreSQL na infraestrutura.
 
-Os contratos compartilhados foram segregados para cadastro e atualização de
-mecânico; listagem, busca e alteração de situação de fornecedor; desativação e
-reativação de serviço; consulta individual e listagem de tempos de execução de OS.
-Os demais contratos específicos já existentes foram preservados. As transações,
-consultas SQL e bloqueios permanecem nos adaptadores PostgreSQL.
+A segregação dos contratos está implementada nos seguintes contextos:
+
+| Contexto | Organização dos contratos |
+| --- | --- |
+| Cliente | Cadastro, consulta, atualização, inativação e reativação |
+| Veículo | Cadastro, consulta, atualização, inativação e reativação |
+| Mecânico | Cadastro e atualização com operações próprias de persistência |
+| Fornecedor | Cadastro, listagem, busca por ID, atualização, desativação e reativação |
+| Serviço | Cadastro, consulta, atualização, desativação e reativação |
+| OS | Criação, registros, consultas, fila, execução, finalização, entrega e devolução; consulta individual e listagem de tempos separadas |
+| Orçamento | Consulta, cálculo, envio, aprovação e recusa |
+| Peça e insumo | Cadastro, consulta, desativação, compra/reserva e atualização de peça |
+| Estoque | Registro de entrada |
+| Segurança | Consulta do usuário para autenticação |
+| Notificação | Consulta de contato/enfileiramento e processamento da fila |
 
 Por exemplo, a consulta de cliente depende de uma única operação:
 
@@ -66,171 +79,220 @@ type ConsultarRepository interface {
 }
 ```
 
-O caso de uso realiza a normalização/validação do documento e chama esse contrato.
-`PostgresRepository` implementa a persistência utilizando pgx. O contrato não
-expõe conexão, transação, linhas SQL ou tipos do driver.
+O cadastro utiliza outro contrato:
 
-As declarações de conformidade nos adaptadores verificam as implementações em
-tempo de compilação:
+```go
+type CadastrarRepository interface {
+    ExisteAtivoPorDocumento(context.Context, string) (bool, error)
+    Salvar(context.Context, domain.Cliente) (domain.Cliente, error)
+}
+```
+
+A consulta normaliza e valida o documento antes de chamar a persistência.
+O cadastro constrói o cliente, verifica duplicidade e solicita sua gravação.
+Cada operação recebe o contrato correspondente pelo construtor.
+
+Referências: [cliente](../internal/application/cliente/ports.go),
+[veículo](../internal/application/veiculo/ports.go),
+[mecânico](../internal/application/mecanico/ports.go),
+[fornecedor](../internal/application/fornecedor/ports.go),
+[serviço](../internal/application/servico/ports.go) e
+[tempos de execução de OS](../internal/application/ordemservico/ports.go).
+
+## 3. Adaptadores PostgreSQL e conformidade dos contratos
+
+Os repositórios de `internal/infrastructure` implementam as operações de
+persistência. Consultas SQL, bloqueios, auditorias e limites de transação são
+mantidos nesses adaptadores. O processamento utiliza os contratos definidos
+pela aplicação para acessar essas implementações.
+
+Os 12 adaptadores PostgreSQL possuem declarações de conformidade verificadas
+pelo compilador, em seus arquivos `contracts.go`:
 
 ```go
 var _ application.ConsultarRepository = PostgresRepository{}
 ```
 
-Referências:
+A declaração verifica que o adaptador fornece os métodos e as assinaturas
+exigidos pelo contrato. A compilação da composição das rotas também verifica a
+compatibilidade entre os casos de uso e os handlers que os recebem.
 
-- [Contratos de cliente](../internal/application/cliente/ports.go).
-- [Contratos de veículo](../internal/application/veiculo/ports.go).
-- [Conformidade do adaptador de cliente](../internal/infrastructure/cliente/contracts.go).
-- [Conformidade do adaptador de veículo](../internal/infrastructure/veiculo/contracts.go).
-- [Contratos de mecânico](../internal/application/mecanico/ports.go).
-- [Contratos de fornecedor](../internal/application/fornecedor/ports.go).
-- [Contratos de serviço](../internal/application/servico/ports.go).
-- [Contratos de tempo de execução](../internal/application/ordemservico/ports.go).
+Referências: [adaptador de cliente](../internal/infrastructure/cliente/contracts.go),
+[adaptador de OS](../internal/infrastructure/ordemservico/contracts.go) e
+[adaptador de orçamento](../internal/infrastructure/orcamento/contracts.go).
 
-Todos os adaptadores PostgreSQL possuem declarações de conformidade em seus
-arquivos `contracts.go`.
+## 4. Contratos dos handlers HTTP
 
-## 3. Contratos de entrada HTTP
-
-Todos os 56 construtores de handlers recebem interfaces locais dos casos de uso.
+Os 56 construtores de handlers recebem interfaces locais de casos de uso.
 O padrão abrange clientes, veículos, mecânicos, fornecedores, serviços, OS,
-orçamentos, peças, insumos, estoque e login. Os contratos descrevem `Execute` ou
-as operações de consulta necessárias. O adaptador HTTP pode receber a
-implementação real ou um substituto de teste que cumpra o mesmo contrato.
+orçamentos, peças, insumos, estoque e login.
 
-Um teste de arquitetura inspeciona os construtores e rejeita a volta de parâmetros
-com casos de uso concretos. Essa proteção foi validada com um handler temporário
-inválido, rejeitado pelo teste e removido após a verificação.
+Exemplo do contrato de autenticação:
 
-A apresentação interpreta caminhos, cabeçalhos, parâmetros e JSON, chama o caso
-de uso e converte o resultado ou erro em uma resposta HTTP. Os nomes dos endpoints,
-as permissões, os corpos JSON e os códigos de resposta foram preservados.
+```go
+type AutenticarUseCase interface {
+    Execute(ctx context.Context, email, senha string) (string, error)
+}
+```
 
-Referências:
+O handler interpreta o JSON da requisição, chama `Execute` e traduz o resultado
+para a resposta HTTP. O caso de uso pode ser fornecido pela composição real
+ou por uma implementação de teste que atenda à mesma assinatura.
 
-- [Contratos de entrada de veículo](../internal/presentation/veiculo/usecases.go).
-- [Contratos de entrada de OS](../internal/presentation/ordemservico/usecases.go).
-- [Contratos de entrada de orçamento](../internal/presentation/orcamento/usecases.go).
-- [Verificação dos construtores HTTP](../tests/architecture/handlers_test.go).
+Caminhos, cabeçalhos, filtros, autenticação da requisição e serialização JSON
+são tratados na apresentação e nos helpers HTTP. As regras e a coordenação da
+operação permanecem nos respectivos casos de uso e no domínio.
 
-## 4. Algoritmo de senha como adaptador
+Referências: [login](../internal/presentation/seguranca/usecases.go),
+[veículos](../internal/presentation/veiculo/usecases.go),
+[OS](../internal/presentation/ordemservico/usecases.go),
+[orçamentos](../internal/presentation/orcamento/usecases.go) e
+[estoque](../internal/presentation/estoque/usecases.go).
 
-Autenticação e cadastro de mecânico dependem de contratos definidos pelos seus
-consumidores:
+## 5. Serviços técnicos recebidos por contrato
+
+### Geração e verificação de senha
+
+Autenticação e cadastro de mecânico recebem contratos próprios de senha:
 
 | Caso de uso | Contrato | Operação |
 | --- | --- | --- |
 | `Autenticar` | `VerificadorSenha` | `Verificar(hash, senha string) error` |
 | `Cadastrar` de mecânico | `GeradorHashSenha` | `Gerar(senha string) (string, error)` |
 
-O adaptador [Bcrypt](../internal/infrastructure/seguranca/bcrypt.go) implementa
-ambos. A montagem das rotas injeta esse adaptador nos casos de uso.
-O algoritmo, o custo padrão, a compatibilidade com hashes existentes e o tratamento
-de senha incorreta foram mantidos.
+O adaptador `Bcrypt` implementa os dois contratos na infraestrutura. Ele mantém
+o algoritmo, o custo padrão de geração e a compatibilidade com os hashes
+armazenados. A interpretação de credenciais inválidas permanece no caso de uso.
 
-Os casos de uso não importam `golang.org/x/crypto/bcrypt`. Seus testes unitários
-utilizam implementações substitutas dos contratos; os testes do adaptador e de
-integração verificam o bcrypt real e a autenticação com PostgreSQL.
-
-## 5. Regras de execução e entrega no domínio
-
-As decisões de autorização para iniciar a execução e de existência de orçamento
-aprovado para entrega são implementadas no domínio de OS:
-
-- `ValidarAutorizacaoParaExecucao`: exige orçamento aprovado e serviços autorizados,
-  preservando a prioridade dos erros de negócio.
-- `ValidarRecursosParaExecucao`: bloqueia recursos necessários sem reserva ativa.
-- `ValidarOrcamentosParaEntrega`: exige orçamento aprovado para o valor final.
-
-O adaptador lê os dados necessários e invoca essas regras dentro da transação
-existente, antes das gravações correspondentes. As consultas SQL, os locks,
-a auditoria e os commits permanecem na infraestrutura, com a ordem das operações
-preservada. Essas regras são testáveis sem banco ou servidor HTTP.
-
-Referências: [execução](../internal/domain/ordemservico/iniciar_execucao.go)
-e [entrega](../internal/domain/ordemservico/entregar.go).
-
-## 6. Verificação automática da arquitetura
-
-O teste [dependencies_test.go](../tests/architecture/dependencies_test.go) examina
-os imports dos arquivos Go de produção nas camadas. Ele impede:
-
-- Domínio dependente de aplicação, apresentação, infraestrutura ou drivers.
-- Casos de uso dependentes de HTTP, banco, adaptadores ou bibliotecas externas.
-- Apresentação acessando infraestrutura ou drivers de banco diretamente.
-- Infraestrutura dependente da apresentação.
-- Validações compartilhadas dependentes das camadas da aplicação.
-
-O teste não precisa inicializar banco ou servidor e roda na suíte `go test ./...`
-da pipeline. As declarações de conformidade complementam essa verificação,
-impedindo que um adaptador deixe de implementar o contrato consumido.
-
-```bash
-go test -v ./tests/architecture
-go test ./internal/domain/... ./internal/application/...
+```go
+login := segurancaApplication.NewAutenticar(
+    segurancaRepository,
+    jwt,
+    segurancaInfrastructure.NewBcrypt(),
+)
 ```
 
-Para a validação completa, utilizar PostgreSQL de testes com migrations e seed
-aplicados e `DATABASE_URL` configurada:
+O caso de uso recebe também `TokenGenerator`; a implementação JWT é fornecida
+na composição. Os testes unitários utilizam substitutos dos contratos, enquanto
+os testes de adaptador e integração verificam o bcrypt real e o PostgreSQL.
+
+Referências: [autenticação](../internal/application/seguranca/autenticar.go),
+[cadastro de mecânico](../internal/application/mecanico/cadastrar.go),
+[adaptador bcrypt](../internal/infrastructure/seguranca/bcrypt.go) e
+[adaptador JWT](../internal/infrastructure/seguranca/jwt.go).
+
+### Notificações
+
+OS, orçamento e estoque recebem o contrato `Notificador` para solicitar avisos.
+O caso de uso de enfileiramento registra a notificação; o processador da fila
+utiliza seu contrato de persistência e o contrato de envio. A composição fornece
+os adaptadores correspondentes.
+
+Referências: [contrato de OS](../internal/application/ordemservico/notificador.go),
+[enfileiramento](../internal/application/notificacao/enfileirar.go) e
+[processamento da fila](../internal/application/notificacao/processar.go).
+
+## 6. Regras de execução e entrega no domínio
+
+As decisões de autorização, disponibilidade de recursos e existência de
+orçamento aprovado estão expressas em funções do domínio de OS:
+
+| Regra | Comportamento |
+| --- | --- |
+| `ValidarAutorizacaoParaExecucao` | Exige orçamento aprovado e serviços autorizados, preservando a prioridade dos erros |
+| `ValidarRecursosParaExecucao` | Rejeita recursos necessários sem reserva ativa |
+| `ValidarOrcamentosParaEntrega` | Exige orçamento aprovado para a composição do valor final |
+
+O adaptador consulta os dados dentro da transação e chama essas funções antes
+das gravações correspondentes. As funções recebem os valores necessários à
+decisão e retornam o erro de negócio, permitindo testes diretos sem banco ou
+servidor HTTP.
+
+Referências: [execução](../internal/domain/ordemservico/iniciar_execucao.go),
+[entrega](../internal/domain/ordemservico/entregar.go),
+[uso no adaptador](../internal/infrastructure/ordemservico/postgres_execucao.go)
+e [testes das regras](../internal/domain/ordemservico/politicas_execucao_test.go).
+
+## 7. Composição e fluxo de uma requisição
+
+A função `montarAplicacao`, em `routes.go`, organiza a criação das dependências.
+As funções de registro de rotas instanciam os repositórios e casos de uso de cada
+contexto e fornecem esses objetos aos handlers.
+
+Na consulta de cliente, por exemplo:
+
+1. O roteador recebe `GET /clientes` e aplica o controle de acesso.
+2. O handler interpreta o parâmetro `documento` e chama `ConsultarUseCase`.
+3. O caso de uso normaliza e valida o documento pelo domínio.
+4. O contrato `ConsultarRepository` fornece o acesso à consulta.
+5. `PostgresRepository` executa a consulta no PostgreSQL e retorna o cliente.
+6. O handler converte o resultado ou o erro para a resposta HTTP.
+
+A chamada percorre os objetos fornecidos na composição; as dependências do código
+permanecem dirigidas aos contratos e tipos das camadas internas. A mesma montagem
+é utilizada pelos testes do roteador real.
+
+Referências: [composição](../cmd/oficina-mecanica/routes.go),
+[handler de cliente](../internal/presentation/cliente/handler.go),
+[caso de uso](../internal/application/cliente/consultar.go) e
+[repositório PostgreSQL](../internal/infrastructure/cliente/postgres_repository.go).
+
+## 8. Proteção automática da arquitetura
+
+A suíte de arquitetura verifica os arquivos Go de produção e os construtores HTTP:
+
+| Verificação | Proteção implementada |
+| --- | --- |
+| Imports do domínio | Mantém as dependências em domínio, validações de valores e biblioteca padrão permitida |
+| Imports da aplicação | Mantém os casos de uso independentes de HTTP, drivers, adaptadores e bibliotecas externas |
+| Imports da apresentação | Mantém o acesso aos casos de uso e ao domínio sem importar infraestrutura ou drivers de banco |
+| Imports da infraestrutura | Impede a dependência da apresentação |
+| Imports das validações compartilhadas | Mantém a independência dos contextos e dos recursos de I/O |
+| Construtores HTTP | Exige interfaces locais dos casos de uso nos 56 construtores verificados |
+| Conformidade dos adaptadores | Verifica em compilação a implementação dos contratos de persistência e senha |
+
+As verificações de imports e handlers utilizam a árvore sintática dos arquivos e
+executam sem inicializar banco ou servidor. Elas integram `go test ./...`, comando
+executado pelo job de testes do projeto. Provas temporárias de dependências
+proibidas e de handler concreto foram rejeitadas pelas verificações.
+
+Referências: [dependências entre camadas](../tests/architecture/dependencies_test.go)
+e [contratos dos handlers](../tests/architecture/handlers_test.go).
+
+## 9. Validação da implementação
+
+A implementação foi verificada em diferentes níveis:
+
+| Nível | Evidência |
+| --- | --- |
+| Suíte automatizada | 65 pacotes aprovados, nenhum teste pulado, detector de concorrência e 84,4% de cobertura |
+| Contratos e regras | Testes de arquitetura, conformidade em compilação e testes diretos das decisões de domínio |
+| Comparação funcional | 804 requisições HTTP e 38 verificações SQL; sucesso nas 58 rotas das duas versões |
+| Equivalência das respostas | 142 respostas sequenciais por versão, equivalentes após normalização dos valores gerados |
+| Persistência original | 53 requisições HTTP e seis verificações SQL, com limpeza dos registros exclusivos criados e preservação dos dados anteriores das 24 tabelas |
+| Kubernetes local | 58 rotas validadas com a imagem da aplicação; configuração, probes, recuperação de pod, atualização e rollback verificados |
+| Escala e carga | HPA 2 → 5 → 2 e 42.513 logins HTTP 200 |
+
+A comparação funcional utiliza cópias dos dados persistentes preparadas para os
+cenários de teste. UUIDs, horários e JWTs gerados são normalizados, e itens de
+orçamento são comparados por conteúdo. O teste direto no banco original utiliza
+registros identificados e removidos após a validação. Os cenários específicos de
+finalização e reserva manual utilizam precondições SQL explícitas nos bancos de
+teste.
+
+Para verificar os contratos e dependências:
+
+```bash
+go test -count=1 -v ./tests/architecture
+```
+
+Com `DATABASE_URL` apontando para um PostgreSQL de testes com migrations e seed
+aplicados, a suíte completa e a análise estática são executadas com:
 
 ```bash
 go test -count=1 -race ./...
 go vet ./...
 ```
 
-A verificação de dependências foi exercitada também com imports proibidos
-introduzidos temporariamente em domínio, aplicação, apresentação e infraestrutura:
-os quatro cenários foram rejeitados e os arquivos de prova removidos.
-
-
-## 7. Validação da implementação
-
-| Verificação | Resultado |
-| --- | --- |
-| Suíte completa sem cache, com detector de concorrência | 65 pacotes aprovados, nenhum teste pulado |
-| Cobertura das camadas internas | 84,4% |
-| Análise estática com `go vet` | Aprovada |
-| Construtores HTTP protegidos pelo teste de arquitetura | 56 |
-| Comparação HTTP antes/depois da extensão dos contratos | 804 requisições e 38 verificações SQL |
-| Rotas com resposta de sucesso | 58 de 58 nas duas versões |
-| Respostas sequenciais comparadas | 142 equivalentes por versão |
-| Teste direto no PostgreSQL original | 53 requisições HTTP e 6 verificações SQL |
-| Preservação dos registros anteriores no banco original | 24 tabelas conferidas por contagem e checksum |
-
-A suíte completa utiliza PostgreSQL isolado com migrations e seed aplicados. A
-comparação HTTP utiliza duas cópias dos dados persistentes, atualizadas com as
-migrations necessárias apenas nas cópias. UUIDs, horários e JWTs gerados são
-normalizados; os itens de orçamento são comparados por conteúdo, pois as consultas
-existentes os ordenam por IDs aleatórios. As demais listas mantêm sua ordem.
-
-A regressão abrange autenticação, permissões, cadastros, estoque, orçamentos e
-fluxos de OS, além de concorrência, versionamento, rollback e idempotência.
-Cenários específicos utilizam precondições preparadas por SQL nos bancos de teste.
-O envio externo de e-mail não faz parte dessa validação.
-
-No banco original, os testes criaram registros exclusivos, exercitaram consultas,
-atualizações, inativação e reativação, e removeram somente os registros criados.
-Nenhuma migration ou alteração de permissões foi aplicada ao banco original.
-As operações adicionais usaram um token exclusivo da API temporária de validação.
-
-
-### Validação integrada no Kubernetes local
-
-A imagem com os contratos foi validada em namespace isolado no Docker Desktop,
-com Deployment, Service, ConfigMap, Secret, PostgreSQL e HPA. As 58 rotas tiveram
-resposta de sucesso em 402 requisições e 19 verificações SQL. O HPA escalou
-automaticamente de duas para cinco réplicas e retornou a duas; 42.513 logins da
-carga responderam 200. Recarga de configurações, exclusão/substituição de pod,
-RollingUpdate, rollback e conclusão de uma requisição em andamento foram
-verificados.
-
-Durante uma redução controlada adicional, 2.548 consultas de cliente e 2.550
-chamadas a `/health` responderam 200. A probe `/ready` sinalizou 503 em pods em
-processo de desligamento, conforme o ciclo de vida implementado. O lote de cem
-notificações foi processado uma vez por notificação usando envio para log.
-
-As metas temporárias usadas nos controles foram restauradas. O namespace de
-testes foi removido; o namespace habitual e o banco original permaneceram
-preservados. A publicação e o deploy pela pipeline remota não fazem parte desta
-validação local.
+As práticas de legibilidade, coesão, validação e organização dos testes estão
+detalhadas em [Clean Code](06-clean-code.md).
