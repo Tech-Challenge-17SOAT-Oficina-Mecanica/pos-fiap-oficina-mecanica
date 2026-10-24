@@ -1,7 +1,7 @@
 ---
 documento: Kubernetes
 dono: Hemily Nara
-versao: 0.5
+versao: 0.6
 atualizado_em: 2026-10-23
 status: em revisao
 ---
@@ -21,6 +21,7 @@ de prontidão que verifica a conexão com o PostgreSQL.
 | `k8s/service.yaml` | Service | `oficina-api` | `oficina` |
 | `k8s/configmap.yaml` | ConfigMap | `oficina-api-config` | `oficina` |
 | `k8s/secret.yaml.example` | Secret (exemplo) | `oficina-api-secret` | `oficina` |
+| `k8s/hpa.yaml` | HorizontalPodAutoscaler | `oficina-api-hpa` | `oficina` |
 
 O label `app: oficina-api` identifica os pods e é utilizado pelos selectors do
 Deployment e do Service. O container da aplicação se chama `api`.
@@ -195,19 +196,10 @@ cp k8s/secret.yaml.example k8s/secret.yaml
 kubectl apply -f k8s/secret.yaml
 ```
 
-Na pipeline, o Secret é gerado a partir dos secrets do repositório, sem arquivo
-em disco:
+O Secret da aplicação é aplicado no cluster de destino antes do Deployment.
+O workflow de publicação da imagem não cria nem modifica esse recurso.
+Os valores utilizados em execução pertencem ao ambiente de destino.
 
-```bash
-kubectl -n oficina create secret generic oficina-api-secret \
-  --from-literal=DB_USER="$DB_USER" \
-  --from-literal=DB_PASSWORD="$DB_PASSWORD" \
-  --from-literal=JWT_SECRET="$JWT_SECRET" \
-  --from-literal=RESEND_API_KEY="$RESEND_API_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-O `--dry-run=client` com `apply` cria ou atualiza o recurso no mesmo comando.
 Base64 não é criptografia: a proteção do Secret depende das permissões do cluster.
 
 ### Atualização da configuração
@@ -228,7 +220,110 @@ com `maxUnavailable: 0`, os pods anteriores continuam atendendo.
 
 ## 5. Horizontal Pod Autoscaler (HPA)
 
-<!-- Acrescentar a documentação do recurso quando o manifesto for incorporado. -->
+O manifesto `k8s/hpa.yaml` utiliza `autoscaling/v2` e controla o Deployment
+`oficina-api` no namespace `oficina`.
+
+| Configuração | Valor |
+| --- | --- |
+| Réplicas mínimas | `2` |
+| Réplicas máximas | `5` |
+| Meta de CPU | `70%` do request |
+| Meta de memória | `80%` do request |
+| Janela de estabilização da redução | `300` segundos |
+
+Com os requests do Deployment, as metas correspondem a aproximadamente `70m`
+de CPU e `102,4Mi` de memória por pod. As metas utilizam os requests, não os limits.
+O controlador calcula a quantidade de réplicas para cada métrica e utiliza a maior.
+
+O HPA controla `spec.replicas`; esse campo é omitido no manifesto do Deployment.
+Reaplicar o Deployment preserva a quantidade administrada pelo HPA. Durante
+RollingUpdate, `maxSurge: 1` permite um pod adicional ao número desejado.
+
+### Disponibilidade das métricas
+
+O cluster precisa disponibilizar a API de métricas por meio do metrics-server.
+No ambiente de destino, verificar se esse componente já é gerenciado pelo provedor
+antes de instalar uma segunda instância.
+
+```bash
+kubectl get apiservice v1beta1.metrics.k8s.io
+kubectl top pods -n oficina
+```
+
+Na validação local, foi utilizado metrics-server `v0.9.0`:
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.9.0/components.yaml
+```
+
+No Docker Desktop utilizado nos testes, a validação do certificado do kubelet
+exigiu a configuração abaixo, exclusiva desse ambiente local:
+
+```bash
+kubectl -n kube-system patch deployment metrics-server --type=json \
+  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+kubectl -n kube-system rollout status deployment/metrics-server --timeout=120s
+```
+
+Essa opção desabilita a verificação TLS do kubelet; no ambiente de destino,
+utilizar certificados confiáveis e a configuração suportada pelo provedor.
+
+### Aplicação e acompanhamento
+
+Depois de criar o namespace, as configurações, o Deployment e o Service:
+
+```bash
+kubectl apply -f k8s/hpa.yaml
+kubectl -n oficina get hpa oficina-api-hpa
+kubectl -n oficina describe hpa oficina-api-hpa
+kubectl -n oficina top pods -l app=oficina-api
+```
+
+A primeira coleta de métricas pode levar alguns instantes. Durante inicialização
+ou substituição dos pods, valores `<unknown>` podem ser transitórios. A condição
+`ScalingActive: True` confirma que o controlador encontrou uma métrica válida.
+Em caso de ausência persistente, verificar o metrics-server, os requests e a
+prontidão dos pods.
+
+### Teste de carga
+
+Executar em ambiente de teste, com o seed aplicado, pois o login abaixo utiliza
+o usuário de desenvolvimento. O teste envia requisições reais pelo Service.
+
+Em um terminal, acompanhar a quantidade de réplicas:
+
+```bash
+kubectl -n oficina get hpa oficina-api-hpa -w
+```
+
+Em outro terminal:
+
+```bash
+kubectl -n oficina run carga-hpa --rm -i --restart=Never \
+  --image=grafana/k6:1.0.0 -- run --quiet - <<'EOF_K6'
+import http from 'k6/http';
+import { check } from 'k6';
+export const options = {
+  vus: 20,
+  duration: '120s',
+  noConnectionReuse: true,
+  thresholds: { http_req_failed: ['rate==0'], checks: ['rate==1'] },
+};
+export default function () {
+  const resposta = http.post('http://oficina-api/autenticacao/login',
+    JSON.stringify({ email: 'mecanico@oficina.local', senha: 'mecanico123' }),
+    { headers: { 'Content-Type': 'application/json' } });
+  check(resposta, { 'login 200': (r) => r.status === 200 });
+}
+EOF_K6
+```
+
+Observar a expansão com o aumento de consumo e a redução após o fim da carga.
+A redução respeita a janela de estabilização; não é imediata. O máximo de cinco
+réplicas depende da carga e dos recursos disponíveis no cluster.
+
+Referências: [HPA](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/)
+e [metrics-server v0.9.0](https://github.com/kubernetes-sigs/metrics-server/releases/tag/v0.9.0).
 
 ## 6. Execução
 
@@ -238,7 +333,8 @@ com `maxUnavailable: 0`, os pods anteriores continuam atendendo.
 - `kubectl` configurado para o cluster correto;
 - imagem acessível pelo runtime do cluster;
 - `k8s/secret.yaml` preenchido a partir do exemplo (seção 4);
-- PostgreSQL acessível, com as migrations aplicadas.
+- PostgreSQL acessível, com as migrations aplicadas;
+- API de métricas disponível para o HPA.
 
 Executar os comandos a partir da raiz do repositório.
 
@@ -268,9 +364,13 @@ kubectl -n oficina get configmap oficina-api-config
 kubectl -n oficina get secret oficina-api-secret
 kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml
 kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
+kubectl apply -f k8s/hpa.yaml
+kubectl -n oficina get hpa oficina-api-hpa
 ```
 
 A consulta ao Secret acima exibe metadados, sem imprimir os valores.
+O namespace é criado primeiro: a aplicação dos arquivos em ordem alfabética pode
+tentar criar recursos antes de seu namespace existir.
 
 ### Acesso local
 
@@ -348,3 +448,82 @@ o substituto ficar pronto.
   atendendo.
 - Nenhum valor do Secret encontrado nos logs da API, nos eventos do namespace ou
   no `describe` do Deployment.
+
+
+### Evidências da validação integrada
+
+Em 23/10/2026, Deployment, Service, ConfigMap, Secret e HPA foram executados em
+namespace isolado no Docker Desktop, com Kubernetes `v1.36.1`, metrics-server
+`v0.9.0` e PostgreSQL 16 com as 22 migrations e o seed do projeto:
+
+- Escala automática de `2 → 5 → 2` réplicas, com redução final aproximadamente
+  346 segundos após o encerramento observado da carga.
+- 48.263 logins válidos no teste com k6, sem falhas; p95 de 159,7 ms.
+- 12.939 chamadas leves durante escala, recuperação, atualização e rollback,
+  todas com HTTP `200` na amostra observada.
+- ConfigMap e Secret recarregados após rollout; pods existentes mantiveram o
+  ambiente anterior até sua substituição.
+- Recuperação de pod e preservação do tráfego diante de réplica não pronta.
+- Reaplicação do Deployment preservou as réplicas definidas pelo HPA.
+- Requisição em andamento no pod excluído concluiu com HTTP `200` em 10,94 segundos.
+- Cem notificações processadas por cinco réplicas, com uma tentativa por mensagem
+  e sem duplicidade nos logs; nenhum envio externo de e-mail.
+
+A escala por memória foi verificada separadamente em cenário controlado, com
+meta temporária de `1%` e sem a métrica de CPU; o controlador expandiu para cinco
+réplicas. As metas originais de CPU `70%` e memória `80%` foram restauradas.
+Esse cenário valida a decisão por memória e não representa carga de memória
+no limite de operação. Os resultados locais não constituem garantia geral de
+capacidade ou de disponibilidade em outro ambiente.
+
+
+## 9. Imagem no GitHub Container Registry
+
+O workflow **Build**, em `.github/workflows/build.yml`, possui uma etapa de
+publicação no GHCR. Essa etapa executa somente por acionamento manual
+(`workflow_dispatch`) a partir de `main`, após aprovação dos jobs de build,
+testes e cobertura. Pull requests e pushes comuns executam as verificações,
+sem publicar imagens.
+
+A imagem é publicada para `linux/amd64` e `linux/arm64`, com o nome:
+
+```text
+ghcr.io/tech-challenge-17soat-oficina-mecanica/oficina-api:sha-<commit-completo>
+```
+
+O SHA completo identifica a revisão utilizada na construção. A autenticação
+utiliza o `GITHUB_TOKEN` do workflow, com permissão `packages: write` no job de
+publicação. Não é necessário cadastrar um token pessoal para publicar pelo Actions.
+
+### Execução da publicação
+
+Após incorporar o workflow em `main`, abrir **Actions → Build → Run workflow**,
+selecionar `main` e executar. Ao concluir, verificar o pacote `oficina-api` no GHCR
+e a tag correspondente ao commit da execução.
+
+A publicação depende das permissões de Packages da organização. O workflow não
+altera a visibilidade do pacote. Para uma imagem privada, configurar no cluster
+um Secret de autenticação do registry, com acesso somente de leitura, e referenciá-lo
+em `imagePullSecrets` no template do Deployment. Esse Secret tem finalidade
+diferente de `oficina-api-secret`, que contém as configurações da aplicação.
+
+### Utilização no cluster de destino
+
+Com namespace, banco, ConfigMap, Secret e métricas configurados, utilizar a tag
+publicada para atualizar a API:
+
+```bash
+kubectl -n oficina set image deployment/oficina-api \
+  api=ghcr.io/tech-challenge-17soat-oficina-mecanica/oficina-api:sha-COMMIT_COMPLETO
+kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
+kubectl -n oficina get hpa oficina-api-hpa
+```
+
+Substituir `COMMIT_COMPLETO` pelo SHA da execução e manter essa referência na
+configuração declarativa do ambiente antes de reaplicar o Deployment.
+A atualização da imagem não altera a quantidade de réplicas controlada pelo HPA.
+O workflow publica a imagem; a execução desses comandos depende do acesso ao
+cluster de destino. Credenciais de cluster não fazem parte dessa publicação.
+
+Referências: [publicação pelo GitHub Actions](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
+e [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
