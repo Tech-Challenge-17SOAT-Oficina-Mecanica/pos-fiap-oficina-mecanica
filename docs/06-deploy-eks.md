@@ -6,11 +6,11 @@ ECR `oficina-mecanica`. So executa depois da publicacao das imagens na `main`.
 ## Fluxo
 
 1. O workflow `Build` valida compilacao, testes e cobertura minima de 80%.
-2. `Docker Build and Push` publica a API com a tag do commit aprovado e o Flyway
-   com a tag `<commit>-migrations`, no mesmo repositorio ECR.
-3. A publicacao registra o SHA em um artifact. `Deploy to EKS` baixa esse artifact
-   da execucao que o acionou e faz checkout do mesmo commit. Nao utiliza o SHA
-   implicito do evento `workflow_run`, que pode apontar para outra revisao.
+2. O workflow `Docker Build and Deploy` publica a API com a tag do commit aprovado
+   e o Flyway com a tag `<commit>-migrations`, no mesmo repositorio ECR.
+3. No mesmo arquivo `.github/workflows/docker-build-push.yml`, o job `deploy`
+   depende de `build-and-push` por `needs`. Ambos usam `workflow_run.head_sha`
+   do CI aprovado para checkout e imagens; nao precisam transferir artifacts.
 4. O workflow configura AWS, kubectl e Kustomize. Credenciais AWS ficam nos secrets
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN`.
 5. O script prepara ConfigMap, StorageClass e PostgreSQL e aguarda o StatefulSet.
