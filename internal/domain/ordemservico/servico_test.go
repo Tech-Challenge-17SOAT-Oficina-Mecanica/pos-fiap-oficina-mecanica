@@ -25,6 +25,7 @@ func TestTipoOrcamentoParaServico(t *testing.T) {
 		status, tipo string
 		err          error
 	}{
+		{StatusRecebida, OrcamentoPrincipal, nil},
 		{StatusEmDiagnostico, OrcamentoPrincipal, nil},
 		{StatusEmExecucao, OrcamentoComplementar, nil},
 		{"ENTREGUE", "", ErrStatusNaoPermiteServico},

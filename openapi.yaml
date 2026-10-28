@@ -107,8 +107,12 @@ paths:
         '404': { description: Cliente ou veículo do filtro não encontrado }
     post:
       tags: [Ordem de Serviço]
-      summary: Cria uma ordem de serviço
-      description: Cria a OS com status RECEBIDA para um veículo ativo vinculado ao cliente informado. Exige o escopo `os:escrever`.
+      summary: Abre uma ordem de serviço com os serviços e peças solicitados
+      description: >-
+        Cria a OS com status RECEBIDA para um veículo ativo vinculado ao cliente informado. Exige o
+        escopo `os:escrever`. `servicos` e `pecas` são opcionais: quando informados, entram no
+        orçamento PRINCIPAL da OS, criado na mesma transação. Qualquer serviço ou peça inválido
+        desfaz a abertura inteira, sem deixar OS criada.
       security:
         - bearerAuth: []
       requestBody:
@@ -122,13 +126,57 @@ paths:
               properties:
                 clienteId: { type: string, format: uuid }
                 veiculoId: { type: string, format: uuid }
+                servicos:
+                  type: array
+                  description: Serviços do catálogo solicitados na abertura. Não podem se repetir.
+                  items:
+                    type: object
+                    required: [servicoId]
+                    additionalProperties: false
+                    properties:
+                      servicoId: { type: string, format: uuid }
+                      observacao: { type: string }
+                pecas:
+                  type: array
+                  description: Peças solicitadas na abertura. Não podem se repetir; a quantidade é inteira.
+                  items:
+                    type: object
+                    required: [pecaId, quantidade]
+                    additionalProperties: false
+                    properties:
+                      pecaId: { type: string, format: uuid }
+                      quantidade: { type: number, minimum: 1 }
+            example:
+              clienteId: 20000000-0000-0000-0000-000000000001
+              veiculoId: 30000000-0000-0000-0000-000000000001
+              servicos:
+                - servicoId: 40000000-0000-0000-0000-000000000001
+                  observacao: Cliente pediu troca de óleo
+              pecas:
+                - pecaId: 50000000-0000-0000-0000-000000000001
+                  quantidade: 1
       responses:
-        '201': { description: Ordem de serviço criada }
-        '400': { description: Corpo ou identificadores inválidos }
+        '201':
+          description: Ordem de serviço aberta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ordemServicoId: { type: string, format: uuid }
+                  clienteId: { type: string, format: uuid }
+                  veiculoId: { type: string, format: uuid }
+                  status: { type: string, enum: [RECEBIDA] }
+                  criadaEm: { type: string, format: date-time }
+        '400':
+          description: Corpo, identificadores, serviço repetido, peça repetida ou quantidade inválidos
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problema' }
         '401': { description: Token ausente, inválido ou expirado }
         '403': { description: Usuário sem o escopo os:escrever }
-        '404': { description: Cliente ou veículo não encontrado }
-        '409': { description: Veículo não vinculado ao cliente informado }
+        '404': { description: Cliente, veículo, serviço ou peça não encontrado }
+        '409': { description: Veículo não vinculado ao cliente, serviço ou peça inativo, ou peça sem preço de venda }
   /ordens-servico/{osId}/problema-relatado:
     post:
       tags: [Ordem de Serviço]

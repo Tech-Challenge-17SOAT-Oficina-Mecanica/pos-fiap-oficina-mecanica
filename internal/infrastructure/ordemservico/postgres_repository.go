@@ -724,13 +724,37 @@ func (repository PostgresRepository) RegistrarProblemaRelatado(ctx context.Conte
 	return resultado, nil
 }
 
-func (repository PostgresRepository) Criar(ctx context.Context, input application.CriarInput) (ordem domain.OrdemDeServico, err error) {
+// Criar abre a OS e registra os servicos e pecas informados na mesma transacao: qualquer item
+// invalido desfaz a abertura inteira, sem deixar OS sem os itens que o cliente pediu.
+func (repository PostgresRepository) Criar(ctx context.Context, input application.CriarInput) (domain.OrdemDeServico, error) {
 	tx, err := repository.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return ordem, err
+		return domain.OrdemDeServico{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	ordem, err := criarOrdemTx(ctx, tx, input)
+	if err != nil {
+		return domain.OrdemDeServico{}, err
+	}
+	if len(input.Servicos) > 0 {
+		if _, err = registrarServicosTx(ctx, tx, ordem.ID, input.Servicos); err != nil {
+			return domain.OrdemDeServico{}, err
+		}
+	}
+	if len(input.Pecas) > 0 {
+		pecas := application.RegistrarInput{OSID: ordem.ID, Tipo: domainEstoque.TipoPeca, Itens: input.Pecas, UsuarioID: input.UsuarioID}
+		if _, err = repository.registrarItensTx(ctx, tx, pecas); err != nil {
+			return domain.OrdemDeServico{}, err
+		}
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domain.OrdemDeServico{}, err
+	}
+	return ordem, nil
+}
+
+func criarOrdemTx(ctx context.Context, tx pgx.Tx, input application.CriarInput) (ordem domain.OrdemDeServico, err error) {
 	var clienteID string
 	err = tx.QueryRow(ctx, `SELECT id FROM cliente WHERE id = $1 AND ativo FOR SHARE`, input.ClienteID).Scan(&clienteID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -756,13 +780,7 @@ func (repository PostgresRepository) Criar(ctx context.Context, input applicatio
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, cliente_id, veiculo_id, placa_veiculo, status, criada_em`, input.ClienteID, input.VeiculoID, placa, domain.StatusRecebida).
 		Scan(&ordem.ID, &ordem.ClienteID, &ordem.VeiculoID, &ordem.PlacaVeiculo, &ordem.Status, &ordem.CriadaEm)
-	if err != nil {
-		return ordem, err
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return domain.OrdemDeServico{}, err
-	}
-	return ordem, nil
+	return ordem, err
 }
 
 func (repository PostgresRepository) RegistrarItens(ctx context.Context, input application.RegistrarInput) (domainOrcamento.Resultado, error) {
@@ -772,8 +790,19 @@ func (repository PostgresRepository) RegistrarItens(ctx context.Context, input a
 	}
 	defer tx.Rollback(ctx)
 
+	result, err := repository.registrarItensTx(ctx, tx, input)
+	if err != nil {
+		return domainOrcamento.Resultado{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return domainOrcamento.Resultado{}, err
+	}
+	return result, nil
+}
+
+func (repository PostgresRepository) registrarItensTx(ctx context.Context, tx pgx.Tx, input application.RegistrarInput) (domainOrcamento.Resultado, error) {
 	var status string
-	err = tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", input.OSID).Scan(&status)
+	err := tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", input.OSID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domainOrcamento.Resultado{}, application.ErrOSNaoEncontrada
 	}
@@ -842,9 +871,6 @@ func (repository PostgresRepository) RegistrarItens(ctx context.Context, input a
 	}
 	if _, err = tx.Exec(ctx, `INSERT INTO auditoria_ordem_servico (ordem_servico_id, usuario_id, agregado, agregado_id, tipo_evento, dados, metadados, ocorrido_em) VALUES ($1, NULLIF($2, '')::uuid, 'ORCAMENTO', $3, 'ITENS_REGISTRADOS', jsonb_build_object('tipoItem', $4::text, 'quantidadeItens', $5::integer), '{}'::jsonb, CURRENT_TIMESTAMP)`, input.OSID, input.UsuarioID, budgetID, input.Tipo, len(input.Itens)); err != nil {
 		return domainOrcamento.Resultado{}, fmt.Errorf("registrar auditoria: %w", err)
-	}
-	if err = tx.Commit(ctx); err != nil {
-		return domainOrcamento.Resultado{}, err
 	}
 	return result, nil
 }
@@ -947,8 +973,19 @@ func (repository PostgresRepository) RegistrarServicos(ctx context.Context, orde
 	}
 	defer tx.Rollback(ctx)
 
+	resultado, err := registrarServicosTx(ctx, tx, ordemServicoID, cadastros)
+	if err != nil {
+		return application.ResultadoRegistroServicos{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return application.ResultadoRegistroServicos{}, err
+	}
+	return resultado, nil
+}
+
+func registrarServicosTx(ctx context.Context, tx pgx.Tx, ordemServicoID string, cadastros []domain.ServicoCadastro) (application.ResultadoRegistroServicos, error) {
 	var status string
-	err = tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&status)
+	err := tx.QueryRow(ctx, "SELECT status FROM ordem_servico WHERE id = $1 FOR UPDATE", ordemServicoID).Scan(&status)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return application.ResultadoRegistroServicos{}, application.ErrOrdemServicoNaoEncontrada
 	}
@@ -961,14 +998,20 @@ func (repository PostgresRepository) RegistrarServicos(ctx context.Context, orde
 	}
 
 	var orcamento domain.Orcamento
-	err = tx.QueryRow(ctx, `
-		SELECT id, tipo_orcamento, status
-		FROM orcamento
-		WHERE ordem_servico_id = $1 AND tipo_orcamento = $2 AND status = 'CRIADO'
-		ORDER BY criado_em DESC LIMIT 1 FOR UPDATE`, ordemServicoID, tipo,
-	).Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.Status)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return application.ResultadoRegistroServicos{}, domain.ErrOrcamentoAplicavelNaoEncontrado
+	if status == domain.StatusRecebida {
+		// Na OS recem-aberta ainda nao houve diagnostico para criar o orcamento: o primeiro
+		// servico solicitado cria o PRINCIPAL, como ja acontece com o primeiro registro de peca.
+		orcamento, err = obterOuCriarOrcamento(ctx, tx, ordemServicoID, tipo)
+	} else {
+		err = tx.QueryRow(ctx, `
+			SELECT id, tipo_orcamento, status
+			FROM orcamento
+			WHERE ordem_servico_id = $1 AND tipo_orcamento = $2 AND status = 'CRIADO'
+			ORDER BY criado_em DESC LIMIT 1 FOR UPDATE`, ordemServicoID, tipo,
+		).Scan(&orcamento.ID, &orcamento.Tipo, &orcamento.Status)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return application.ResultadoRegistroServicos{}, domain.ErrOrcamentoAplicavelNaoEncontrado
+		}
 	}
 	if err != nil {
 		return application.ResultadoRegistroServicos{}, err
@@ -1011,9 +1054,6 @@ func (repository PostgresRepository) RegistrarServicos(ctx context.Context, orde
 	if _, err = tx.Exec(ctx, `
 		UPDATE orcamento SET estimativa_entrega_dias = NULL, data_atualizacao = CURRENT_TIMESTAMP
 		WHERE id = $1`, orcamento.ID); err != nil {
-		return application.ResultadoRegistroServicos{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
 		return application.ResultadoRegistroServicos{}, err
 	}
 	return resultado, nil

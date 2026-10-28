@@ -17,12 +17,23 @@ auth:bearer {
 body:json {
   {
     "clienteId": "{{clienteId}}",
-    "veiculoId": "{{veiculoId}}"
+    "veiculoId": "{{veiculoId}}",
+    "servicos": [
+      { "servicoId": "{{servicoId}}" }
+    ],
+    "pecas": [
+      { "pecaId": "{{pecaId}}", "quantidade": 2 }
+    ]
   }
 }
 
 script:post-response {
   bru.setVar("osId", res.body.ordemServicoId);
+}
+
+docs {
+  Abre a OS ja com o servico e as pecas solicitados pelo cliente. Eles entram no orcamento
+  PRINCIPAL, criado na mesma transacao; o id do orcamento e capturado no passo 06.
 }
 
 tests {

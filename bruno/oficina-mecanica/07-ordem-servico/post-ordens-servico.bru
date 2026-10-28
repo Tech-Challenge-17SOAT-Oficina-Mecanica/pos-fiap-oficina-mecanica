@@ -17,7 +17,13 @@ auth:bearer {
 body:json {
   {
     "clienteId": "{{clienteId}}",
-    "veiculoId": "{{veiculoId}}"
+    "veiculoId": "{{veiculoId}}",
+    "servicos": [
+      { "servicoId": "{{servicoId}}", "observacao": "Solicitado pelo cliente na recepcao" }
+    ],
+    "pecas": [
+      { "pecaId": "{{pecaId}}", "quantidade": 1 }
+    ]
   }
 }
 
@@ -25,4 +31,7 @@ docs {
   Escopo exigido: os:escrever
 
   Rode 00-auth/Login antes para preencher o token.
+
+  servicos e pecas sao opcionais. Quando informados, entram no orcamento PRINCIPAL da OS,
+  criado na mesma transacao: um servico ou peca invalido desfaz a abertura inteira.
 }

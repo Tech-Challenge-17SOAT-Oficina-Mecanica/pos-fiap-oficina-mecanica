@@ -1,8 +1,8 @@
 ---
 documento: Pontos em Aberto — Contexto de Ordem de Serviço
 dono: A definir
-versao: 1.1
-atualizado_em: 2026-08-22
+versao: 1.2
+atualizado_em: 2026-10-28
 status: em construcao
 ---
 
@@ -61,6 +61,12 @@ Vieram das rodadas de Orçamento, Peças e Insumos, e chegaram aqui como consequ
 | 3   | A entrada de estoque muda o status das OS vinculadas ao pedido; a sugestão era publicar evento.                                     | **O projeto não usa mensageria nem eventos de domínio.** A entrada continua mudando o status da OS por chamada direta, na mesma transação — a alternativa por evento deixaria uma janela com a peça já recebida e a OS ainda parada.                                                               | [../pecas/registrar-entrada-de-pecas.md](../pecas/registrar-entrada-de-pecas.md), [../insumos/registrar-entrada-de-insumos.md](../insumos/registrar-entrada-de-insumos.md), D-04 e DT-35                           |
 | 4   | Como o cliente se autentica para consultar a própria OS.                                                                            | **Token de escopo reduzido**, emitido no envio do orçamento e válido apenas para aquela OS. O mesmo token serve para consultar a OS, consultar o orçamento, aprovar e recusar.                                                                                                                     | [consultar-ordem-de-servico.md](consultar-ordem-de-servico.md) e DT-30                                                                                                                                             |
 | 5   | Não existia baixa de estoque na execução do serviço.                                                                                | **Passou a existir:** `POST /estoque/saidas`, uma rota só para peça e insumo, que consome a reserva feita na aprovação, reduz o saldo físico e devolve ao saldo livre o que foi reservado e não usado. Era a maior lacuna do projeto.                                                              | [../pecas/registrar-consumo-e-saida-de-pecas.md](../pecas/registrar-consumo-e-saida-de-pecas.md), [../insumos/registrar-consumo-e-saida-de-insumos.md](../insumos/registrar-consumo-e-saida-de-insumos.md) e DT-49 |
+
+## Decisões da Fase 2
+
+| #   | Ponto | Decisão | Onde foi aplicada |
+| --- | ----- | ------- | ----------------- |
+| 1   | O enunciado da Fase 2 pede que a abertura da OS receba serviços e peças, mas a criação não gerava orçamento e serviço só entrava com a OS em `EM_DIAGNOSTICO`. | **A OS continua nascendo em `RECEBIDA`**, e os serviços e peças da abertura entram no orçamento `PRINCIPAL`, criado na mesma transação. A máquina de estados (D-18) não muda: `EM_DIAGNOSTICO` continua vindo do problema relatado. O registro de serviços passou a aceitar `RECEBIDA`, criando o `PRINCIPAL` no primeiro serviço, como o registro de peças já fazia. | [criar-ordem-de-servico.md](criar-ordem-de-servico.md), [registrar-servicos-necessarios.md](registrar-servicos-necessarios.md) e [../orcamento/00-resumo.md](../orcamento/00-resumo.md) |
 
 ## Padrões de API que alcançaram este contexto
 

@@ -21,8 +21,15 @@ body:json {
   }
 }
 
+script:post-response {
+  // O problema entra no orcamento PRINCIPAL aberto no passo 04, com o servico e as pecas.
+  if (res.body.orcamento && res.body.orcamento.id) {
+    bru.setVar("orcamentoId", res.body.orcamento.id);
+  }
+}
+
 docs {
-  Leva a OS para EM_DIAGNOSTICO.
+  Vincula o problema ao orcamento PRINCIPAL da OS, que ja esta EM_DIAGNOSTICO desde o passo 05.
 }
 
 tests {
