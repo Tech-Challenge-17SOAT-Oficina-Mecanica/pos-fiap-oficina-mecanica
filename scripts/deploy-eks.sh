@@ -28,7 +28,7 @@ job_name="oficina-migrations$suffix"
 (
   cd k8s/migrations
   kustomize edit set image "oficina-migrations=$registry:$SOURCE_SHA-migrations"
-  kustomize edit set namesuffix "$suffix"
+  kustomize edit set namesuffix -- "$suffix"
 )
 
 # Prepare the database first; the application manifests are applied only after migration.

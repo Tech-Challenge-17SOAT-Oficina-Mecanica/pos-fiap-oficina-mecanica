@@ -26,9 +26,12 @@ if [[ "$1" == wait && "$MIGRATION_FAIL" == 1 ]]; then exit 1; fi
 EOF
 cat > "$test_dir/bin/kustomize" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$1 $2 $3" == 'edit set namesuffix' ]]; then
+  [[ "$4" == -- && "$5" == -* ]] || exit 1
+fi
 exit 0
 EOF
-cp "$test_dir/bin/kustomize" "$test_dir/bin/curl"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$test_dir/bin/curl"
 chmod +x "$test_dir/bin/"*
 export PATH="$test_dir/bin:$PATH"
 
