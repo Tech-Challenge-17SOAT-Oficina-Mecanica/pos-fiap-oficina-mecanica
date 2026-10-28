@@ -1,7 +1,8 @@
 # Deploy no EKS com Kustomize e migrations
 
 O deploy usa o cluster `oficina-cluster`, na regiao `us-east-1`, e o repositorio
-ECR `oficina-mecanica`. So executa depois da publicacao das imagens na `main`.
+ECR `oficina-mecanica`. O fluxo automatico acompanha a `main`; a execucao manual
+permite testar a branch selecionada no mesmo cluster de laboratorio, antes do merge.
 
 ## Fluxo
 
@@ -23,6 +24,23 @@ Deploys sao serializados, sem cancelar migrations em andamento. Execucoes antiga
 sao ignoradas antes de aplicar recursos se a `main` ja avancou. Se a migration
 falhar, o script exibe o diagnostico e nao aplica o Deployment da API. Nao ha
 rollback automatico de schema ou de aplicacao.
+
+## Teste manual antes do merge
+
+O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
+`workflow_dispatch`, que pode ser acionado pelo CLI com a referencia da branch:
+
+```bash
+gh workflow run docker-build-push.yml \
+  --repo Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica \
+  --ref codex/eks-migrations-kustomize
+```
+
+A execucao exige um resultado de sucesso do workflow Build para o mesmo commit
+(incluindo testes e cobertura). Usa o SHA da branch selecionada para as duas
+imagens, e verifica se essa branch nao avancou antes de aplicar recursos.
+O teste manual publica imagens e altera o namespace `oficina` no EKS: nao e
+dry-run nem ambiente separado. Nao carrega seed. Nenhum merge na main e necessario.
 
 ## Recursos Kustomize
 

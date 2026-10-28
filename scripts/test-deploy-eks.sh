@@ -7,12 +7,13 @@ mkdir "$test_dir/bin"
 export DEPLOY_TEST_LOG="$test_dir/commands.log"
 export SOURCE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 export REMOTE_SHA="$SOURCE_SHA"
+export DEPLOY_REF=refs/heads/main
 export AWS_REGION=us-east-1 ECR_REPOSITORY=oficina-mecanica GITHUB_RUN_ID=123
 export MIGRATION_FAIL=0
 
 cat > "$test_dir/bin/git" <<'EOF'
 #!/usr/bin/env bash
-printf '%s\trefs/heads/main\n' "$REMOTE_SHA"
+printf '%s\t%s\n' "$REMOTE_SHA" "$3"
 EOF
 cat > "$test_dir/bin/aws" <<'EOF'
 #!/usr/bin/env bash
@@ -46,8 +47,13 @@ export MIGRATION_FAIL=0
 bash scripts/deploy-eks.sh
 grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"
 
+export DEPLOY_REF=refs/heads/codex/eks-migrations-kustomize
+: > "$DEPLOY_TEST_LOG"
+bash scripts/deploy-eks.sh
+grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"
+
 export REMOTE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 : > "$DEPLOY_TEST_LOG"
 bash scripts/deploy-eks.sh
 [[ ! -s "$DEPLOY_TEST_LOG" ]]
-echo 'PASS: failed migration blocks deploy; success releases API; stale release is skipped.'
+echo 'PASS: migration failure blocks deploy; main/manual branch deploy; stale release skipped.'

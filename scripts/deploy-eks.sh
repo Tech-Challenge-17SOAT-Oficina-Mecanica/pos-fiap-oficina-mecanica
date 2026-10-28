@@ -6,10 +6,11 @@ set -euo pipefail
 : "${ECR_REPOSITORY:?ECR repository is required}"
 : "${GITHUB_RUN_ID:?Workflow run ID is required}"
 
-# Ignore delayed releases when main has already advanced.
-current_main=$(git ls-remote origin refs/heads/main | cut -f1)
-if [[ "$SOURCE_SHA" != "$current_main" ]]; then
-  echo "Main advanced; skipping deployment of $SOURCE_SHA."
+# Automatic releases follow main; manual tests follow the explicitly selected branch.
+deploy_ref=${DEPLOY_REF:-refs/heads/main}
+current_revision=$(git ls-remote origin "$deploy_ref" | cut -f1)
+if [[ "$SOURCE_SHA" != "$current_revision" ]]; then
+  echo "$deploy_ref advanced; skipping deployment of $SOURCE_SHA."
   exit 0
 fi
 
