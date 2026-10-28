@@ -15,6 +15,13 @@ Para executar o projeto, é necessário ter instalado:
 O Go e o PostgreSQL não precisam ser instalados localmente quando o projeto é
 executado pelos containers.
 
+## Kubernetes - Fase 2
+
+Os manifestos de namespace, Deployment, Service, HPA, ConfigMap e o exemplo do Secret
+estão em `k8s/`. A implementação, as variáveis de configuração, os endpoints de
+saúde e os comandos de execução estão documentados em
+[Kubernetes](docs/05-kubernetes.md).
+
 ## 🗃️ Modelagem de dados
 
 O modelo lógico do banco de dados, com as entidades, os relacionamentos e as

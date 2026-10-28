@@ -5,22 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/database"
-
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/notificacao"
 	infrastructure "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/infrastructure/notificacao"
 )
 
 func TestPostgresRepositoryNotificacao(t *testing.T) {
 	ctx := context.Background()
-	db, err := database.OpenPool()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	if err = db.Ping(ctx); err != nil {
-		t.Fatal(err)
-	}
+	db := bancoIsolado(t)
+	var err error
 
 	const clienteID = "20000000-0000-0000-1000-000000000001"
 	const agregadoID = "70000000-0000-0000-1000-000000000001"
@@ -53,26 +45,17 @@ func TestPostgresRepositoryNotificacao(t *testing.T) {
 		t.Fatalf("aviso=%+v err=%v", aviso, err)
 	}
 
-	pendentes, err := repository.Pendentes(ctx, 10)
+	_, err = db.Exec(ctx, "UPDATE notificacao SET criada_em='2000-01-01' WHERE id=$1", aviso.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var encontrado domain.Notificacao
-	for _, atual := range pendentes {
-		if atual.ID == aviso.ID {
-			encontrado = atual
-			break
+	err = repository.ProcessarPendentes(ctx, 1, func(_ context.Context, atual domain.Notificacao) (domain.Notificacao, error) {
+		if atual.ID != aviso.ID || atual.ConteudoHTML == "" {
+			t.Errorf("notificacao inesperada: %+v", atual)
 		}
-	}
-	if encontrado.ID == "" || encontrado.ConteudoHTML == "" {
-		t.Fatalf("notificacao enfileirada nao encontrada: %+v", pendentes)
-	}
-
-	enviada, err := encontrado.MarcarEnviada(time.Now().UTC())
+		return atual.MarcarEnviada(time.Now().UTC())
+	})
 	if err != nil {
-		t.Fatal(err)
-	}
-	if err = repository.AtualizarResultado(ctx, enviada); err != nil {
 		t.Fatal(err)
 	}
 	var status string

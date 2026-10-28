@@ -30,13 +30,13 @@ func NewResendEnviador(apiKey, remetente string, logger *log.Logger) ResendEnvia
 func (enviador ResendEnviador) Enviar(ctx context.Context, aviso notificacao.Notificacao) error {
 	// Os dois corpos vao juntos quando ha HTML: o Resend entrega multipart e o cliente
 	// escolhe. Sem HTML, segue so o texto.
-	enviado, err := enviador.cliente.Emails.SendWithContext(ctx, &resend.SendEmailRequest{
+	enviado, err := enviador.cliente.Emails.SendWithOptions(ctx, &resend.SendEmailRequest{
 		From:    enviador.remetente,
 		To:      []string{aviso.Destinatario},
 		Subject: aviso.Assunto,
 		Text:    aviso.Conteudo,
 		Html:    aviso.ConteudoHTML,
-	})
+	}, &resend.SendEmailOptions{IdempotencyKey: "notificacao/" + aviso.ID})
 	if err != nil {
 		return fmt.Errorf("resend: %w", err)
 	}

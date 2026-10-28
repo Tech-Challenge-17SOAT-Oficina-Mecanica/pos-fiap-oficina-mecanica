@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-carga-video-script
+  namespace: oficina
+  labels:
+    uso: demonstracao-video
+data:
+  carga.js: |
+    import http from 'k6/http';
+    import { check } from 'k6';
+
+    export const options = {
+      vus: 20,
+      duration: '120s',
+      noConnectionReuse: true,
+      thresholds: {
+        http_req_failed: ['rate==0'],
+        checks: ['rate==1'],
+      },
+    };
+
+    export default function () {
+      const response = http.post(
+        `${__ENV.BASE_URL}/autenticacao/login`,
+        JSON.stringify({ email: 'mecanico@oficina.local', senha: 'mecanico123' }),
+        { headers: { 'Content-Type': 'application/json' } },
+      );
+      check(response, {
+        'login HTTP 200': (r) => r.status === 200,
+        'token retornado': (r) => r.status === 200 && typeof r.json('accessToken') === 'string',
+      });
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oficina-carga-video
+  namespace: oficina
+  labels:
+    uso: demonstracao-video
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 240
+  ttlSecondsAfterFinished: 900
+  template:
+    metadata:
+      labels:
+        uso: demonstracao-video
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: k6
+          image: grafana/k6:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["k6", "run", "--quiet", "/scripts/carga.js"]
+          env:
+            - name: BASE_URL
+              value: http://oficina-api
+          resources:
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: oficina-carga-video-script

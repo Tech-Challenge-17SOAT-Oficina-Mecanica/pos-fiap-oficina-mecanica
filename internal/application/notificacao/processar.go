@@ -14,10 +14,9 @@ type Enviador interface {
 }
 
 type FilaRepository interface {
-	// Pendentes devolve as notificacoes ainda nao entregues, das mais antigas primeiro.
-	Pendentes(ctx context.Context, limite int) ([]notificacao.Notificacao, error)
-	// AtualizarResultado grava o desfecho da tentativa.
-	AtualizarResultado(ctx context.Context, aviso notificacao.Notificacao) error
+	// ProcessarPendentes reserva cada mensagem ate gravar seu resultado.
+	// A funcao de tratamento executa com exclusividade entre consumidores.
+	ProcessarPendentes(context.Context, int, func(context.Context, notificacao.Notificacao) (notificacao.Notificacao, error)) error
 }
 
 // Processar consome a fila. E aqui que o envio acontece — fora da transacao de quem
@@ -41,31 +40,28 @@ type Resultado struct {
 // Execute tenta enviar ate `limite` notificacoes. Uma falha individual nao interrompe as
 // demais: a notificacao fica marcada como FALHOU e volta na proxima rodada.
 func (useCase Processar) Execute(ctx context.Context, limite int) (Resultado, error) {
-	pendentes, err := useCase.repository.Pendentes(ctx, limite)
-	if err != nil {
-		return Resultado{}, err
-	}
-
 	var resultado Resultado
-	for _, aviso := range pendentes {
-		resultado.Processadas++
-
-		if err := useCase.enviador.Enviar(ctx, aviso); err != nil {
-			if erroAoGravar := useCase.repository.AtualizarResultado(ctx, aviso.MarcarFalha(err.Error())); erroAoGravar != nil {
-				return resultado, erroAoGravar
-			}
-			resultado.Falhas++
-			continue
+	err := useCase.repository.ProcessarPendentes(ctx, limite, func(ctx context.Context, aviso notificacao.Notificacao) (notificacao.Notificacao, error) {
+		if err := ctx.Err(); err != nil {
+			return aviso, err
 		}
-
+		envioCtx, cancelar := context.WithTimeout(ctx, 10*time.Second)
+		err := useCase.enviador.Enviar(envioCtx, aviso)
+		cancelar()
+		if ctx.Err() != nil {
+			return aviso, ctx.Err()
+		}
+		resultado.Processadas++
+		if err != nil {
+			resultado.Falhas++
+			return aviso.MarcarFalha(err.Error()), nil
+		}
 		enviada, err := aviso.MarcarEnviada(useCase.agora())
 		if err != nil {
-			return resultado, err
-		}
-		if err := useCase.repository.AtualizarResultado(ctx, enviada); err != nil {
-			return resultado, err
+			return aviso, err
 		}
 		resultado.Enviadas++
-	}
-	return resultado, nil
+		return enviada, nil
+	})
+	return resultado, err
 }
