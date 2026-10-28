@@ -1,0 +1,53 @@
+name: 🔎 Validate deployment
+
+on:
+  pull_request:
+    paths:
+      - k8s/**
+      - db/migrations/**
+      - Dockerfile.migrations
+      - scripts/deploy-eks.sh
+      - scripts/test-migrations.sh
+      - scripts/test-deploy-eks.sh
+      - .github/workflows/**
+  push:
+    branches: [main]
+    paths:
+      - k8s/**
+      - db/migrations/**
+      - Dockerfile.migrations
+      - scripts/**
+      - .github/workflows/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: 🔎 Validate manifests and migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - name: ⚙️ Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.37.1
+
+      - name: 🔎 Validate workflows
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.7 -shellcheck= -pyflakes=
+
+      - name: 🔎 Render and validate manifests
+        shell: bash
+        run: |
+          bash -n scripts/deploy-eks.sh scripts/test-migrations.sh scripts/test-deploy-eks.sh
+          bash scripts/test-deploy-eks.sh
+          kubectl kustomize k8s > app-rendered.yaml
+          kubectl kustomize k8s/migrations > migrations-rendered.yaml
+          docker run --rm -v "$PWD:/repo:ro" ghcr.io/yannh/kubeconform:v0.7.0 \
+            -strict -summary /repo/app-rendered.yaml /repo/migrations-rendered.yaml
+
+      - name: 🗃️ Test migrations in disposable PostgreSQL
+        run: bash scripts/test-migrations.sh

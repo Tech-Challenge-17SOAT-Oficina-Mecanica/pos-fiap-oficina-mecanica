@@ -52,3 +52,26 @@ jobs:
           tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: 🗃️ Build and push migrations image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.migrations
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}-migrations
+          cache-from: type=gha,scope=migrations
+          cache-to: type=gha,mode=max,scope=migrations
+
+      - name: 🏷️ Record published commit
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: printf '%s\n' "$SOURCE_SHA" > published-commit.txt
+
+      - name: 📤 Upload published commit
+        uses: actions/upload-artifact@v6
+        with:
+          name: published-commit
+          path: published-commit.txt
+          if-no-files-found: error

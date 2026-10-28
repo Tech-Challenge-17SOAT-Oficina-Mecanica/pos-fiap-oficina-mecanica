@@ -1,0 +1,82 @@
+name: ☸️ Deploy to EKS
+
+on:
+  workflow_run:
+    workflows: ["🐳 Docker Build and Push"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: oficina-eks-deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER_NAME: oficina-cluster
+  ECR_REPOSITORY: oficina-mecanica
+
+jobs:
+  deploy:
+    name: 🚀 Migrate database and deploy API
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: 📥 Download published commit
+        uses: actions/download-artifact@v7
+        with:
+          name: published-commit
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: published
+
+      - name: 🏷️ Validate published commit
+        id: source
+        shell: bash
+        run: |
+          source_sha=$(cat published/published-commit.txt)
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+      - name: 📥 Checkout published source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+
+      - name: 🔑 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ⚙️ Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.37.1
+
+      - name: ⚙️ Setup Kustomize
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz \
+            -o "$RUNNER_TEMP/kustomize.tar.gz"
+          tar -xzf "$RUNNER_TEMP/kustomize.tar.gz" -C "$RUNNER_TEMP" kustomize
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: ☸️ Configure cluster access
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: 🗃️ Migrate database and deploy API
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: bash scripts/deploy-eks.sh
