@@ -30,7 +30,7 @@ func TestListarOrdensDeServico(t *testing.T) {
 
 	suffix := time.Now().UnixNano() & 0xffffffffffff
 	id := func(prefix string) string { return fmt.Sprintf(prefix+"%012x", suffix) }
-	clienteID, veiculoID, osRecebidaID, osCanceladaID := id("f1000000-0000-0000-0000-"), id("f2000000-0000-0000-0000-"), id("f3000000-0000-0000-0000-"), id("f4000000-0000-0000-0000-")
+	clienteID, veiculoID := id("f1000000-0000-0000-0000-"), id("f2000000-0000-0000-0000-")
 	documento := cpfValido(suffix % 1000000000)
 	placa := placaMercosul("LST", suffix)
 
@@ -40,10 +40,33 @@ func TestListarOrdensDeServico(t *testing.T) {
 	if _, err = db.Exec(ctx, "INSERT INTO veiculo (id,cliente_id,placa,marca,modelo,ano) VALUES ($1,$2,$3,'Fiat','Uno',2021)", veiculoID, clienteID, placa); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = db.Exec(ctx, "INSERT INTO ordem_servico (id,cliente_id,veiculo_id,placa_veiculo,status) VALUES ($1,$3,$4,$5,'RECEBIDA'),($2,$3,$4,$5,'CANCELADA')",
-		osRecebidaID, osCanceladaID, clienteID, veiculoID, placa); err != nil {
-		t.Fatal(err)
+
+	// Uma OS por status. As datas crescem na ordem de prioridade, ao contrario do que a listagem
+	// devolve: se a ordenacao fosse por data, a OS em execucao viria por ultimo.
+	base := time.Now().UTC().Truncate(time.Second).Add(-time.Hour)
+	ordens := []struct {
+		id, status string
+		criadaEm   time.Time
+	}{
+		{id("f3000000-0000-0000-0000-"), "RECEBIDA", base},
+		{id("f3100000-0000-0000-0000-"), "RECEBIDA", base.Add(time.Minute)},
+		{id("f3200000-0000-0000-0000-"), "EM_DIAGNOSTICO", base.Add(2 * time.Minute)},
+		{id("f3300000-0000-0000-0000-"), "AGUARDANDO_APROVACAO", base.Add(3 * time.Minute)},
+		{id("f3400000-0000-0000-0000-"), "AGUARDANDO_RECURSOS", base.Add(4 * time.Minute)},
+		{id("f3500000-0000-0000-0000-"), "AGUARDANDO_EXECUCAO", base.Add(5 * time.Minute)},
+		{id("f3600000-0000-0000-0000-"), "EM_EXECUCAO", base.Add(6 * time.Minute)},
+		{id("f3700000-0000-0000-0000-"), "FINALIZADA", base},
+		{id("f3800000-0000-0000-0000-"), "ENTREGUE", base},
+		{id("f3900000-0000-0000-0000-"), "CANCELADA", base},
 	}
+	for _, ordem := range ordens {
+		if _, err = db.Exec(ctx, "INSERT INTO ordem_servico (id,cliente_id,veiculo_id,placa_veiculo,status,criada_em) VALUES ($1,$2,$3,$4,$5,$6)",
+			ordem.id, clienteID, veiculoID, placa, ordem.status, ordem.criadaEm); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ordemEsperada := []string{ordens[6].id, ordens[5].id, ordens[4].id, ordens[3].id, ordens[2].id, ordens[0].id, ordens[1].id}
+
 	clientePaginacaoID, veiculoPaginacaoID := id("f5000000-0000-0000-0000-"), id("f6000000-0000-0000-0000-")
 	documentoPaginacao := cpfValido((suffix + 1) % 1000000000)
 	placaPaginacao := placaMercosul("PGN", suffix+1)
@@ -60,11 +83,9 @@ func TestListarOrdensDeServico(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE id IN ($1,$2,$3,$4)", osRecebidaID, osCanceladaID, osPagina1ID, osPagina2ID)
-		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", veiculoPaginacaoID)
-		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clientePaginacaoID)
-		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id=$1", veiculoID)
-		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id=$1", clienteID)
+		_, _ = db.Exec(ctx, "DELETE FROM ordem_servico WHERE veiculo_id IN ($1,$2)", veiculoID, veiculoPaginacaoID)
+		_, _ = db.Exec(ctx, "DELETE FROM veiculo WHERE id IN ($1,$2)", veiculoID, veiculoPaginacaoID)
+		_, _ = db.Exec(ctx, "DELETE FROM cliente WHERE id IN ($1,$2)", clienteID, clientePaginacaoID)
 	})
 
 	jwt, err := segurancaInfrastructure.NewJWT("segredo-de-teste")
@@ -93,6 +114,32 @@ func TestListarOrdensDeServico(t *testing.T) {
 		mux.ServeHTTP(writer, request)
 		return writer
 	}
+	type resposta struct {
+		Data []struct {
+			OrdemServicoID string `json:"ordemServicoId"`
+			Status         string `json:"status"`
+		} `json:"data"`
+		TotalElementos int `json:"totalElementos"`
+	}
+	listar := func(query string) resposta {
+		t.Helper()
+		writer := requisitar(query, token)
+		if writer.Code != http.StatusOK {
+			t.Fatalf("%s: status=%d body=%s", query, writer.Code, writer.Body.String())
+		}
+		var corpo resposta
+		if err := json.Unmarshal(writer.Body.Bytes(), &corpo); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+		return corpo
+	}
+	ids := func(corpo resposta) []string {
+		lista := make([]string, 0, len(corpo.Data))
+		for _, item := range corpo.Data {
+			lista = append(lista, item.OrdemServicoID)
+		}
+		return lista
+	}
 
 	if writer := requisitar("", ""); writer.Code != http.StatusUnauthorized {
 		t.Fatalf("sem token=%d", writer.Code)
@@ -100,8 +147,10 @@ func TestListarOrdensDeServico(t *testing.T) {
 	if writer := requisitar("", semEscopo); writer.Code != http.StatusForbidden {
 		t.Fatalf("sem escopo=%d", writer.Code)
 	}
-	if writer := requisitar("?status=INVALIDO", token); writer.Code != http.StatusBadRequest {
-		t.Fatalf("status invalido=%d", writer.Code)
+	for _, status := range []string{"INVALIDO", "FINALIZADA", "ENTREGUE", "CANCELADA"} {
+		if writer := requisitar("?status="+status, token); writer.Code != http.StatusBadRequest {
+			t.Fatalf("status %s=%d", status, writer.Code)
+		}
 	}
 	if writer := requisitar("?documento=52998224725", token); writer.Code != http.StatusNotFound {
 		t.Fatalf("documento inexistente=%d", writer.Code)
@@ -110,53 +159,34 @@ func TestListarOrdensDeServico(t *testing.T) {
 		t.Fatalf("placa inexistente=%d", writer.Code)
 	}
 
-	writer := requisitar("?placa="+placa, token)
-	if writer.Code != http.StatusOK {
-		t.Fatalf("filtro por placa=%d body=%s", writer.Code, writer.Body.String())
+	// Prioridade de status primeiro, mais antiga primeiro dentro do status, sem as encerradas.
+	porPlaca := listar("?placa=" + placa)
+	if porPlaca.TotalElementos != len(ordemEsperada) || fmt.Sprint(ids(porPlaca)) != fmt.Sprint(ordemEsperada) {
+		t.Fatalf("ordem da listagem:\n obtida   %v\n esperada %v", ids(porPlaca), ordemEsperada)
 	}
-	var resposta struct {
-		Data           []map[string]any `json:"data"`
-		TotalElementos int              `json:"totalElementos"`
-	}
-	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || resposta.TotalElementos != 2 {
-		t.Fatalf("resposta invalida: %s erro=%v", writer.Body.String(), err)
+	var gravadas int
+	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM ordem_servico WHERE veiculo_id = $1", veiculoID).Scan(&gravadas); err != nil || gravadas != len(ordens) {
+		t.Fatalf("as encerradas devem continuar no banco: gravadas=%d erro=%v", gravadas, err)
 	}
 
-	writer = requisitar("?placa="+placa+"&status=CANCELADA", token)
-	if writer.Code != http.StatusOK {
-		t.Fatalf("filtro combinado=%d body=%s", writer.Code, writer.Body.String())
+	if porDocumento := listar("?documento=" + documento); fmt.Sprint(ids(porDocumento)) != fmt.Sprint(ordemEsperada) {
+		t.Fatalf("filtro por documento: %v", ids(porDocumento))
 	}
-	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || resposta.TotalElementos != 1 || resposta.Data[0]["ordemServicoId"] != osCanceladaID {
-		t.Fatalf("filtro combinado invalido: %s erro=%v", writer.Body.String(), err)
-	}
-
-	writer = requisitar("?documento="+documento, token)
-	if writer.Code != http.StatusOK {
-		t.Fatalf("filtro por documento=%d body=%s", writer.Code, writer.Body.String())
-	}
-	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || resposta.TotalElementos != 2 {
-		t.Fatalf("filtro por documento invalido: %s erro=%v", writer.Body.String(), err)
+	if recebidas := listar("?placa=" + placa + "&status=RECEBIDA"); fmt.Sprint(ids(recebidas)) != fmt.Sprint([]string{ordens[0].id, ordens[1].id}) {
+		t.Fatalf("filtro combinado deveria trazer as recebidas, a mais antiga primeiro: %v", ids(recebidas))
 	}
 
-	writer = requisitar("?placa="+placaPaginacao+"&status=RECEBIDA&tamanho=1&pagina=0", token)
-	if writer.Code != http.StatusOK {
-		t.Fatalf("paginacao pagina0=%d body=%s", writer.Code, writer.Body.String())
+	// A pagina segue a mesma ordem: a segunda pagina de tamanho 3 comeca na quarta OS.
+	segundaPagina := listar("?placa=" + placa + "&tamanho=3&pagina=1")
+	if segundaPagina.TotalElementos != len(ordemEsperada) || fmt.Sprint(ids(segundaPagina)) != fmt.Sprint(ordemEsperada[3:6]) {
+		t.Fatalf("segunda pagina: %v, esperado %v", ids(segundaPagina), ordemEsperada[3:6])
 	}
-	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || len(resposta.Data) != 1 {
-		t.Fatalf("paginacao pagina0 invalida: %s erro=%v", writer.Body.String(), err)
-	}
-	primeiraID, _ := resposta.Data[0]["ordemServicoId"].(string)
 
-	writer = requisitar("?placa="+placaPaginacao+"&status=RECEBIDA&tamanho=1&pagina=1", token)
-	if writer.Code != http.StatusOK {
-		t.Fatalf("paginacao pagina1=%d body=%s", writer.Code, writer.Body.String())
-	}
-	if err = json.Unmarshal(writer.Body.Bytes(), &resposta); err != nil || len(resposta.Data) != 1 {
-		t.Fatalf("paginacao pagina1 invalida: %s erro=%v", writer.Body.String(), err)
-	}
-	segundaID, _ := resposta.Data[0]["ordemServicoId"].(string)
-	if primeiraID == "" || segundaID == "" || primeiraID == segundaID {
-		t.Fatalf("paginacao instavel: primeira=%s segunda=%s", primeiraID, segundaID)
+	// Mesmo status e mesmo instante: o id desempata e a paginacao nao repete OS.
+	primeira := listar("?placa=" + placaPaginacao + "&status=RECEBIDA&tamanho=1&pagina=0")
+	segunda := listar("?placa=" + placaPaginacao + "&status=RECEBIDA&tamanho=1&pagina=1")
+	if len(primeira.Data) != 1 || len(segunda.Data) != 1 || primeira.Data[0].OrdemServicoID == segunda.Data[0].OrdemServicoID {
+		t.Fatalf("paginacao instavel: primeira=%v segunda=%v", ids(primeira), ids(segunda))
 	}
 }
 

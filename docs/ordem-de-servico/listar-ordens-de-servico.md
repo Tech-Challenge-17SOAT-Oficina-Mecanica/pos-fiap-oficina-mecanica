@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Listar Ordens de Serviço
 dono: A definir
-versao: 0.3
-atualizado_em: 2026-08-22
+versao: 0.4
+atualizado_em: 2026-10-28
 status: rascunho
 ---
 
@@ -42,6 +42,8 @@ causadas por controle manual ou planilhas.
 | RF-OS-117 | Exibir o status atual das Ordens de Serviço. |
 | RF-OS-118 | Permitir o acompanhamento do andamento dos serviços. |
 | RF-OS-119 | Permitir a consulta administrativa das Ordens de Serviço, com filtro por status, cliente e veículo. |
+| RF-OS-139 | Ordenar por prioridade de status — `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_RECURSOS`, `AGUARDANDO_APROVACAO`, `EM_DIAGNOSTICO`, `RECEBIDA` — e, dentro do mesmo status, da mais antiga para a mais nova. |
+| RF-OS-140 | Excluir da listagem, sem apagar do banco, as OS `FINALIZADA`, `ENTREGUE` e `CANCELADA`. |
 
 **Requisitos Não Funcionais**
 
@@ -55,8 +57,8 @@ causadas por controle manual ou planilhas.
 **Fluxo Principal**
 
 1. O mecânico acessa a listagem de Ordens de Serviço.
-2. O sistema consulta as Ordens de Serviço registradas, aplicando os filtros informados.
-3. O sistema retorna a lista de Ordens de Serviço.
+2. O sistema consulta as Ordens de Serviço em andamento, aplicando os filtros informados.
+3. O sistema retorna a lista ordenada por prioridade de status e, dentro do status, pela mais antiga.
 4. O sistema exibe o status atual de cada Ordem de Serviço.
 5. O mecânico seleciona uma Ordem de Serviço para detalhamento, se necessário.
 
@@ -117,8 +119,20 @@ GET /ordens-servico
 | `placa` | string | Filtra pela placa do veículo |
 | `pagina` / `tamanho` | inteiro | Paginação; `pagina` inicia em zero e `tamanho` tem máximo de 50 |
 
-Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACAO`,
-`AGUARDANDO_EXECUCAO`, `EM_EXECUCAO`, `FINALIZADA`, `ENTREGUE`, `CANCELADA`.
+Valores válidos de `status`: `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_RECURSOS`,
+`AGUARDANDO_APROVACAO`, `EM_DIAGNOSTICO`, `RECEBIDA`. Os status encerrados — `FINALIZADA`,
+`ENTREGUE` e `CANCELADA` — retornam `400`: essas OS não fazem parte da listagem.
+
+> **Decisão de projeto (Fase 2).** O enunciado pede a ordenação Em Execução > Aguardando
+> Aprovação > Diagnóstico > Recebida, as mais antigas primeiro, e a exclusão lógica das OS
+> finalizadas e entregues. Os três status além dos seis do enunciado (D-18) foram posicionados
+> assim: `AGUARDANDO_EXECUCAO` e `AGUARDANDO_RECURSOS` ficam entre a execução e a aprovação, onde
+> estão na máquina de estados, seguindo o mesmo critério do enunciado — a OS mais adiantada no
+> fluxo vem primeiro. `CANCELADA` sai da listagem como as entregues, porque também é um estado
+> encerrado: as regras de inativação de cliente e de veículo já tratam `ENTREGUE` e `CANCELADA`
+> como as únicas OS concluídas. A exclusão é só da listagem; a OS continua no banco e segue
+> disponível em `GET /ordens-servico/{osId}`. A ordem fica definida no domínio
+> (`StatusListagemPorPrioridade`), e a consulta SQL apenas a aplica.
 
 **Validações**
 
@@ -140,9 +154,12 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 1. Receber os filtros informados e validar filtros e paginação.
 2. Quando `documento` for informado, consultar o cliente pelo CPF/CNPJ.
 3. Quando `placa` for informada, consultar o veículo pela placa.
-4. Consultar as Ordens de Serviço conforme os filtros: por status, por cliente e por veículo.
-5. Aplicar a paginação.
-6. Retornar a lista de Ordens de Serviço encontradas.
+4. Consultar as Ordens de Serviço conforme os filtros: por status, por cliente e por veículo,
+   somente entre os status em andamento.
+5. Ordenar pela prioridade do status e, dentro dele, pela data de criação crescente, com o
+   identificador como desempate.
+6. Aplicar a paginação.
+7. Retornar a lista de Ordens de Serviço encontradas.
 
 **Persistência**
 
@@ -231,6 +248,10 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 - Cliente ou veículo inexistente no filtro retorna `404`.
 - Sem token retorna `401` e perfil sem escopo retorna `403`.
 - A listagem traz o status atual de cada OS e não altera dados persistidos.
+- A ordem segue a prioridade de status, mesmo quando a OS de status mais prioritário é a mais nova.
+- Dentro do mesmo status, a mais antiga vem primeiro; a paginação respeita essa ordem.
+- OS `FINALIZADA`, `ENTREGUE` e `CANCELADA` não aparecem, mas continuam gravadas.
+- Filtro por status encerrado retorna `400`.
 
 ---
 
@@ -247,6 +268,7 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 
 - [x] Garantir que a Ordem de Serviço possua identificador único e status atual
 - [x] Garantir que a OS mantenha vínculo com `Cliente` e com `Veiculo`
+- [x] Definir a prioridade dos status listados e os status encerrados (Fase 2)
 
 **Caso de uso**
 
@@ -263,6 +285,7 @@ Valores válidos de `status`: `RECEBIDA`, `EM_DIAGNOSTICO`, `AGUARDANDO_APROVACA
 - [x] Criar a listagem por cliente
 - [x] Criar a listagem por veículo
 - [x] Implementar a paginação na consulta
+- [x] Excluir as OS encerradas e ordenar por prioridade de status e data de criação (Fase 2)
 
 **Handler HTTP**
 

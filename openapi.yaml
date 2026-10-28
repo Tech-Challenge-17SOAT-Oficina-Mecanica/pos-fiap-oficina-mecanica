@@ -66,18 +66,24 @@ paths:
   /ordens-servico:
     get:
       tags: [Ordem de Serviço]
-      summary: Lista ordens de serviço com filtros e paginação
+      summary: Lista as ordens de serviço em andamento, por prioridade de status
       description: >-
-        Exige o escopo `os:ler`. `documento` e `placa` só filtram cadastros existentes: sem
-        correspondência, retorna `404`. Sem resultado para os filtros, retorna `200` com `data: []`.
+        Exige o escopo `os:ler`. Lista só as OS em andamento: `FINALIZADA`, `ENTREGUE` e
+        `CANCELADA` ficam de fora (continuam no banco e podem ser consultadas por
+        `GET /ordens-servico/{osId}`). A ordem é por prioridade de status — `EM_EXECUCAO`,
+        `AGUARDANDO_EXECUCAO`, `AGUARDANDO_RECURSOS`, `AGUARDANDO_APROVACAO`, `EM_DIAGNOSTICO`,
+        `RECEBIDA` — e, dentro do mesmo status, da mais antiga para a mais nova.
+        `documento` e `placa` só filtram cadastros existentes: sem correspondência, retorna `404`.
+        Sem resultado para os filtros, retorna `200` com `data: []`.
       security:
         - bearerAuth: []
       parameters:
         - name: status
           in: query
+          description: Filtra por um dos status em andamento. Status encerrados retornam `400`.
           schema:
             type: string
-            enum: [RECEBIDA, EM_DIAGNOSTICO, AGUARDANDO_APROVACAO, AGUARDANDO_RECURSOS, AGUARDANDO_EXECUCAO, EM_EXECUCAO, FINALIZADA, ENTREGUE, CANCELADA]
+            enum: [EM_EXECUCAO, AGUARDANDO_EXECUCAO, AGUARDANDO_RECURSOS, AGUARDANDO_APROVACAO, EM_DIAGNOSTICO, RECEBIDA]
         - name: documento
           in: query
           schema: { type: string }

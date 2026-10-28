@@ -431,23 +431,27 @@ func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.
 		}
 	}
 
+	// $4 traz os status listaveis em ordem de prioridade, definidos no dominio: o mesmo array
+	// exclui as OS encerradas e ordena as demais, mais antigas primeiro dentro de cada status.
 	const filtro = `
 		FROM ordem_servico os
 		JOIN cliente c ON c.id = os.cliente_id
 		JOIN veiculo v ON v.id = os.veiculo_id
 		WHERE ($1 = '' OR os.status = $1)
 		  AND ($2 = '' OR c.documento = $2)
-		  AND ($3 = '' OR v.placa = $3)`
+		  AND ($3 = '' OR v.placa = $3)
+		  AND os.status = ANY($4::text[])`
 
+	prioridade := domain.StatusListagemPorPrioridade
 	var total int
-	if err := repository.db.QueryRow(ctx, "SELECT COUNT(*) "+filtro, filtros.Status, filtros.Documento, filtros.Placa).Scan(&total); err != nil {
+	if err := repository.db.QueryRow(ctx, "SELECT COUNT(*) "+filtro, filtros.Status, filtros.Documento, filtros.Placa, prioridade).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
 	rows, err := repository.db.Query(ctx, `
 		SELECT os.id, os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
-		ORDER BY os.criada_em DESC, os.id DESC
-		LIMIT $4 OFFSET $5`, filtros.Status, filtros.Documento, filtros.Placa, limite, deslocamento)
+		ORDER BY array_position($4::text[], os.status::text), os.criada_em ASC, os.id ASC
+		LIMIT $5 OFFSET $6`, filtros.Status, filtros.Documento, filtros.Placa, prioridade, limite, deslocamento)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -27,6 +27,16 @@ func TestListarRejeitaStatusInvalido(t *testing.T) {
 	}
 }
 
+func TestListarRejeitaFiltroPorStatusEncerrado(t *testing.T) {
+	for _, status := range []string{domain.StatusFinalizada, domain.StatusEntregue, "CANCELADA"} {
+		repository := &listarRepositoryFake{}
+		_, err := NewListar(repository).Execute(context.Background(), ListarInput{Status: status})
+		if err != ErrStatusInvalido || repository.recebido != (domain.FiltrosListagem{}) {
+			t.Fatalf("%s: erro=%v, repository chamado com %+v", status, err, repository.recebido)
+		}
+	}
+}
+
 func TestListarRejeitaDocumentoInvalido(t *testing.T) {
 	useCase := NewListar(&listarRepositoryFake{})
 	_, err := useCase.Execute(context.Background(), ListarInput{Documento: "123"})
