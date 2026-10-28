@@ -50,7 +50,7 @@ export MIGRATION_FAIL=0
 bash scripts/deploy-eks.sh
 grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"
 
-export DEPLOY_REF=refs/heads/codex/eks-migrations-kustomize
+export DEPLOY_REF=refs/heads/feature/consolidacao-fase2
 : > "$DEPLOY_TEST_LOG"
 bash scripts/deploy-eks.sh
 grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"

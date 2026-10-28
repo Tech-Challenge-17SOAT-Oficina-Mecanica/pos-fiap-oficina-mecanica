@@ -33,7 +33,7 @@ O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
 ```bash
 gh workflow run docker-build-push.yml \
   --repo Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica \
-  --ref codex/eks-migrations-kustomize
+  --ref feature/consolidacao-fase2
 ```
 
 A execucao exige um resultado de sucesso do workflow Build para o mesmo commit
