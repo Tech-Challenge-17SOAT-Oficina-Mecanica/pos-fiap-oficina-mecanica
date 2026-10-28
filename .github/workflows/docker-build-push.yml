@@ -1,6 +1,7 @@
-name: 🐳 Docker Build and Push
+name: 🐳 Docker Build and Deploy
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["🏗️ Build"]
     types: [completed]
@@ -8,24 +9,43 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: oficina-mecanica
+  CLUSTER_NAME: oficina-cluster
+  SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'refs/heads/main' }}
 
 jobs:
   build-and-push:
     name: 🐳 Build and Push to ECR
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
 
     steps:
+      - name: 🔎 Verify CI for selected commit
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          successful_runs=$(gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs" \
+            -f head_sha="$SOURCE_SHA" -f status=success --jq '.workflow_runs | length')
+          if [[ "$successful_runs" -eq 0 ]]; then
+            echo '::error::Wait for Build, tests and coverage to pass for this commit before retrying.'
+            exit 1
+          fi
+
       - name: 📥 Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ env.SOURCE_SHA }}
 
       - name: ⚙️ Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -49,6 +69,72 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.event.workflow_run.head_sha }}
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.SOURCE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: 🗃️ Build and push migrations image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.migrations
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ env.SOURCE_SHA }}-migrations
+          cache-from: type=gha,scope=migrations
+          cache-to: type=gha,mode=max,scope=migrations
+
+  deploy:
+    name: 🚀 Migrate database and deploy API
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: oficina-eks-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: 📥 Checkout published source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: 🔑 Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: ⚙️ Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.37.1
+
+      - name: ⚙️ Setup Kustomize
+        shell: bash
+        run: |
+          curl --fail --location --retry 3 \
+            https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz \
+            -o "$RUNNER_TEMP/kustomize.tar.gz"
+          tar -xzf "$RUNNER_TEMP/kustomize.tar.gz" -C "$RUNNER_TEMP" kustomize
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: ☸️ Configure cluster access
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: 🔎 Check cluster readiness
+        shell: bash
+        run: |
+          kubectl get nodes -o wide
+          kubectl get pods,pvc -n oficina
+          if ! kubectl get nodes -o json | jq -e \
+            'any(.items[]; any(.status.conditions[]; .type == "Ready" and .status == "True"))' > /dev/null; then
+            echo '::error::No Ready nodes in EKS. Restore the node group before deploying.'
+            exit 1
+          fi
+
+      - name: 🗃️ Migrate database and deploy API
+        shell: bash
+        run: bash scripts/deploy-eks.sh

@@ -26,7 +26,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: api
-          # Imagem local. A pipeline deve substituir pela imagem GHCR com tag sha-<commit>.
+          # O workflow substitui a imagem local pela imagem ECR do commit aprovado.
           image: oficina-api:local
           imagePullPolicy: IfNotPresent
           ports:
