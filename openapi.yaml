@@ -1894,6 +1894,10 @@ components:
                   marca: { type: string }
                   modelo: { type: string }
               status: { type: string }
+              criadaEm:
+                type: string
+                format: date-time
+                description: Abertura da OS; dentro do mesmo status, a listagem vai da mais antiga para a mais nova.
         pagina: { type: integer }
         tamanho: { type: integer }
         totalElementos: { type: integer }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
@@ -24,6 +25,7 @@ func (stub listarRepositoryStub) Listar(context.Context, domain.FiltrosListagem,
 func TestListarHandler(t *testing.T) {
 	itemExemplo := domain.ItemListagem{
 		OrdemServicoID: "70000000-0000-0000-0000-000000000001", Status: "RECEBIDA",
+		CriadaEm:  time.Date(2026, time.October, 28, 9, 30, 0, 0, time.UTC),
 		ClienteID: "cliente-1", ClienteNome: "Ana", ClienteDocumento: "39053344705",
 		VeiculoID: "veiculo-1", Placa: "ABC1D23", Marca: "Fiat", Modelo: "Uno",
 	}
@@ -44,6 +46,9 @@ func TestListarHandler(t *testing.T) {
 		}
 		if resposta.Data[0].Cliente.Documento != "39053344705" {
 			t.Fatalf("cliente=%+v", resposta.Data[0].Cliente)
+		}
+		if resposta.Data[0].CriadaEm != "2026-10-28T09:30:00Z" {
+			t.Fatalf("criadaEm=%q", resposta.Data[0].CriadaEm)
 		}
 	})
 

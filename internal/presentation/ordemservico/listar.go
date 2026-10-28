@@ -3,6 +3,7 @@ package ordemservico
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
@@ -27,6 +28,7 @@ type listagemItemResponse struct {
 	Cliente        listagemClienteResponse `json:"cliente"`
 	Veiculo        listagemVeiculoResponse `json:"veiculo"`
 	Status         string                  `json:"status"`
+	CriadaEm       string                  `json:"criadaEm"`
 }
 
 func NewListarHandler(useCase application.Listar) http.HandlerFunc {
@@ -59,6 +61,7 @@ func NewListarHandler(useCase application.Listar) http.HandlerFunc {
 				Cliente:        listagemClienteResponse{ClienteID: item.ClienteID, Nome: item.ClienteNome, Documento: item.ClienteDocumento},
 				Veiculo:        listagemVeiculoResponse{VeiculoID: item.VeiculoID, Placa: item.Placa, Marca: item.Marca, Modelo: item.Modelo},
 				Status:         item.Status,
+				CriadaEm:       item.CriadaEm.Format(time.RFC3339),
 			})
 		}
 		sharedhttp.WriteLista(writer, sharedhttp.NovaLista(itens, paginacao, resultado.TotalElementos))

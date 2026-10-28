@@ -1,6 +1,9 @@
 package ordemservico
 
-import "slices"
+import (
+	"slices"
+	"time"
+)
 
 // StatusListagemPorPrioridade e a ordem em que GET /ordens-servico apresenta as OS, da mais
 // adiantada no fluxo para a menos: o enunciado da Fase 2 pede Execucao > Aguardando Aprovacao >
@@ -28,10 +31,12 @@ type FiltrosListagem struct {
 	Placa     string
 }
 
-// ItemListagem e uma linha da listagem, com cliente e veiculo resumidos.
+// ItemListagem e uma linha da listagem, com cliente e veiculo resumidos. CriadaEm vai junto para
+// que a ordem entre OS do mesmo status, das mais antigas para as mais novas, apareca na resposta.
 type ItemListagem struct {
 	OrdemServicoID   string
 	Status           string
+	CriadaEm         time.Time
 	ClienteID        string
 	ClienteNome      string
 	ClienteDocumento string

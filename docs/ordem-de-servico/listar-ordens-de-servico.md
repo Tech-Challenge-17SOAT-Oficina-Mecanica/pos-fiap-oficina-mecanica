@@ -159,7 +159,9 @@ Valores válidos de `status`: `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_
 5. Ordenar pela prioridade do status e, dentro dele, pela data de criação crescente, com o
    identificador como desempate.
 6. Aplicar a paginação.
-7. Retornar a lista de Ordens de Serviço encontradas.
+7. Retornar a lista de Ordens de Serviço encontradas, com a data de abertura (`criadaEm`) de
+   cada uma: é ela que define a ordem entre OS do mesmo status. No exemplo abaixo, a OS em
+   diagnóstico vem antes da recebida mesmo sendo mais nova, porque o status pesa mais que a data.
 
 **Persistência**
 
@@ -171,21 +173,6 @@ Valores válidos de `status`: `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_
 ```json
 {
   "data": [
-    {
-      "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
-      "cliente": {
-        "clienteId": "c7f3a9b2-1e4d-4c8a-9f21-0b6d5e2a7c14",
-        "nome": "Nome do Cliente",
-        "documento": "00000000000"
-      },
-      "veiculo": {
-        "veiculoId": "1a2b3c44-5d6e-4f70-8a91-b2c3d4e5f607",
-        "placa": "ABC1D23",
-        "marca": "Marca do Veículo",
-        "modelo": "Modelo do Veículo"
-      },
-      "status": "RECEBIDA"
-    },
     {
       "ordemServicoId": "e21b7c46-0d95-4f83-a6b1-3c5d92e74801",
       "cliente": {
@@ -199,7 +186,24 @@ Valores válidos de `status`: `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_
         "marca": "Marca do Veículo",
         "modelo": "Modelo do Veículo"
       },
-      "status": "EM_DIAGNOSTICO"
+      "status": "EM_DIAGNOSTICO",
+      "criadaEm": "2026-10-28T12:30:00Z"
+    },
+    {
+      "ordemServicoId": "5d8f2a30-61c4-4e79-b3d2-9a7e4f10c586",
+      "cliente": {
+        "clienteId": "c7f3a9b2-1e4d-4c8a-9f21-0b6d5e2a7c14",
+        "nome": "Nome do Cliente",
+        "documento": "00000000000"
+      },
+      "veiculo": {
+        "veiculoId": "1a2b3c44-5d6e-4f70-8a91-b2c3d4e5f607",
+        "placa": "ABC1D23",
+        "marca": "Marca do Veículo",
+        "modelo": "Modelo do Veículo"
+      },
+      "status": "RECEBIDA",
+      "criadaEm": "2026-10-27T17:10:00Z"
     }
   ],
   "pagina": 0,
@@ -293,6 +297,7 @@ Valores válidos de `status`: `EM_EXECUCAO`, `AGUARDANDO_EXECUCAO`, `AGUARDANDO_
 - [x] Implementar a leitura e a validação dos query params
 - [x] Criar DTO/request de entrada para filtros e paginação
 - [x] Criar DTO/response com a lista de Ordens de Serviço
+- [x] Incluir a data de abertura (`criadaEm`) em cada item, para a ordem por data ficar visível (Fase 2)
 - [x] Implementar o envelope de resposta paginado (`sharedhttp.Lista[T]`, já usado por outros contextos)
 - [x] Aplicar autenticação JWT e autorização por escopo na rota
 - [x] Mapear erros de domínio para os códigos HTTP documentados

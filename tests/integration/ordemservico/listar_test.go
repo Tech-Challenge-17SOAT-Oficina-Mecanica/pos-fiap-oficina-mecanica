@@ -118,6 +118,7 @@ func TestListarOrdensDeServico(t *testing.T) {
 		Data []struct {
 			OrdemServicoID string `json:"ordemServicoId"`
 			Status         string `json:"status"`
+			CriadaEm       string `json:"criadaEm"`
 		} `json:"data"`
 		TotalElementos int `json:"totalElementos"`
 	}
@@ -163,6 +164,17 @@ func TestListarOrdensDeServico(t *testing.T) {
 	porPlaca := listar("?placa=" + placa)
 	if porPlaca.TotalElementos != len(ordemEsperada) || fmt.Sprint(ids(porPlaca)) != fmt.Sprint(ordemEsperada) {
 		t.Fatalf("ordem da listagem:\n obtida   %v\n esperada %v", ids(porPlaca), ordemEsperada)
+	}
+	// Cada item traz a data de abertura gravada, para a ordem por data ficar visivel na resposta.
+	criadaEmPorID := make(map[string]time.Time, len(ordens))
+	for _, ordem := range ordens {
+		criadaEmPorID[ordem.id] = ordem.criadaEm
+	}
+	for _, item := range porPlaca.Data {
+		obtida, errData := time.Parse(time.RFC3339, item.CriadaEm)
+		if esperada := criadaEmPorID[item.OrdemServicoID]; errData != nil || !obtida.Equal(esperada) {
+			t.Fatalf("criadaEm de %s: obtida %q, esperada %s", item.OrdemServicoID, item.CriadaEm, esperada.Format(time.RFC3339))
+		}
 	}
 	var gravadas int
 	if err = db.QueryRow(ctx, "SELECT COUNT(*) FROM ordem_servico WHERE veiculo_id = $1", veiculoID).Scan(&gravadas); err != nil || gravadas != len(ordens) {

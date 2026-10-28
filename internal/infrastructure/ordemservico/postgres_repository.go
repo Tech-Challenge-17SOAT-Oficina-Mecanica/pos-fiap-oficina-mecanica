@@ -449,7 +449,7 @@ func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.
 	}
 
 	rows, err := repository.db.Query(ctx, `
-		SELECT os.id, os.status, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
+		SELECT os.id, os.status, os.criada_em, c.id, c.nome, c.documento, v.id, v.placa, v.marca, v.modelo`+filtro+`
 		ORDER BY array_position($4::text[], os.status::text), os.criada_em ASC, os.id ASC
 		LIMIT $5 OFFSET $6`, filtros.Status, filtros.Documento, filtros.Placa, prioridade, limite, deslocamento)
 	if err != nil {
@@ -459,7 +459,7 @@ func (repository PostgresRepository) Listar(ctx context.Context, filtros domain.
 	itens := []domain.ItemListagem{}
 	for rows.Next() {
 		var item domain.ItemListagem
-		if err = rows.Scan(&item.OrdemServicoID, &item.Status, &item.ClienteID, &item.ClienteNome, &item.ClienteDocumento,
+		if err = rows.Scan(&item.OrdemServicoID, &item.Status, &item.CriadaEm, &item.ClienteID, &item.ClienteNome, &item.ClienteDocumento,
 			&item.VeiculoID, &item.Placa, &item.Marca, &item.Modelo); err != nil {
 			return nil, 0, err
 		}
