@@ -1,8 +1,8 @@
 ---
 documento: Kubernetes
 dono: Hemily Nara
-versao: 0.6
-atualizado_em: 2026-10-23
+versao: 0.7
+atualizado_em: 2026-10-27
 status: em revisao
 ---
 
@@ -285,42 +285,90 @@ ou substituição dos pods, valores `<unknown>` podem ser transitórios. A condi
 Em caso de ausência persistente, verificar o metrics-server, os requests e a
 prontidão dos pods.
 
-### Teste de carga
+### Teste de carga reproduzível com k6
 
-Executar em ambiente de teste, com o seed aplicado, pois o login abaixo utiliza
-o usuário de desenvolvimento. O teste envia requisições reais pelo Service.
+O arquivo [k8s/tests/carga-k6.yaml](../k8s/tests/carga-k6.yaml) cria um ConfigMap
+com o script e um Job que executa o k6 dentro do cluster. O gerador acessa a API
+pelo DNS do Service, sem depender de Bruno, port-forward ou instalação local do k6.
 
-Em um terminal, acompanhar a quantidade de réplicas:
+Executar em ambiente de teste, com a API, PostgreSQL, migrations e seed preparados.
+O manifesto utiliza o namespace `oficina`, Service `oficina-api` e o usuário de
+desenvolvimento `mecanico@oficina.local`, com senha `mecanico123`. Em outro ambiente,
+ajustar namespace, endereço do Service e credenciais de teste no manifesto.
+O HPA e a API de métricas precisam estar ativos para acompanhar a escala.
+
+| Parâmetro | Configuração |
+| --- | --- |
+| Endpoint | `POST /autenticacao/login` |
+| Usuários virtuais simultâneos | `20` |
+| Duração da carga | `120s` |
+| Verificações por requisição | HTTP `200` e presença de `accessToken` como string |
+| Critérios de aprovação | Zero falhas HTTP e 100% das verificações aprovadas |
+| Repetição automática do Job | Desativada (`backoffLimit: 0`) |
+| Remoção automática do Job concluído | Após `900s` |
+
+A carga autentica o usuário de teste repetidamente, sem criar clientes ou OS.
+Cada usuário virtual executa novas requisições enquanto o teste está ativo;
+vinte usuários virtuais não limitam o total a vinte requisições.
+O label do gerador é diferente de `app: oficina-api`, mantendo a carga fora dos
+selectors do Service da API e dos pods monitorados pelo HPA.
+
+Os comandos abaixo utilizam o contexto local `docker-desktop` e devem ser
+executados na raiz do repositório. Para outro cluster, selecionar o contexto
+correspondente antes da execução.
+
+Em um terminal, acompanhar o HPA:
 
 ```bash
-kubectl -n oficina get hpa oficina-api-hpa -w
+kubectl --context docker-desktop get hpa oficina-api-hpa -n oficina --watch
 ```
 
-Em outro terminal:
+Em outro terminal, iniciar a carga e acompanhar seu resultado:
 
 ```bash
-kubectl -n oficina run carga-hpa --rm -i --restart=Never \
-  --image=grafana/k6:1.0.0 -- run --quiet - <<'EOF_K6'
-import http from 'k6/http';
-import { check } from 'k6';
-export const options = {
-  vus: 20,
-  duration: '120s',
-  noConnectionReuse: true,
-  thresholds: { http_req_failed: ['rate==0'], checks: ['rate==1'] },
-};
-export default function () {
-  const resposta = http.post('http://oficina-api/autenticacao/login',
-    JSON.stringify({ email: 'mecanico@oficina.local', senha: 'mecanico123' }),
-    { headers: { 'Content-Type': 'application/json' } });
-  check(resposta, { 'login 200': (r) => r.status === 200 });
-}
-EOF_K6
+kubectl --context docker-desktop apply -f k8s/tests/carga-k6.yaml
+kubectl --context docker-desktop logs -f -n oficina \
+  job/oficina-carga-video --pod-running-timeout=90s
 ```
 
-Observar a expansão com o aumento de consumo e a redução após o fim da carga.
-A redução respeita a janela de estabilização; não é imediata. O máximo de cinco
-réplicas depende da carga e dos recursos disponíveis no cluster.
+A criação de novos pods também pode ser acompanhada no Docker Desktop, em
+**Kubernetes → Namespace → oficina**, ou pelo terminal:
+
+```bash
+kubectl --context docker-desktop get pods -n oficina -l app=oficina-api --watch
+kubectl --context docker-desktop top pods -n oficina
+```
+
+O comando com `--watch` permanece aberto até `Control + C`; executar `top` em
+outra aba ou após encerrar o acompanhamento. Isso não interrompe a aplicação.
+
+Observar a expansão com o aumento de consumo e a redução depois da carga.
+A janela de estabilização de `300s` considera recomendações recentes do HPA;
+a volta a duas réplicas pode levar mais de cinco minutos após o teste.
+O pico de réplicas e a quantidade de requisições dependem da carga, das métricas
+e dos recursos disponíveis no cluster.
+
+O resumo do k6 apresenta `vus` (usuários virtuais), `http_reqs` (requisições),
+`http_req_failed` (falhas), `checks` (verificações) e `http_req_duration` (latência).
+Como existem duas verificações por requisição, a contagem de checks é o dobro
+da quantidade de requisições nesse cenário.
+
+Para repetir antes da remoção automática, excluir somente o Job anterior e
+aplicar novamente:
+
+```bash
+kubectl --context docker-desktop delete job oficina-carga-video -n oficina --ignore-not-found
+kubectl --context docker-desktop apply -f k8s/tests/carga-k6.yaml
+```
+
+Depois de salvar os resultados, remover somente os recursos de carga:
+
+```bash
+kubectl --context docker-desktop delete job oficina-carga-video -n oficina --ignore-not-found
+kubectl --context docker-desktop delete configmap oficina-carga-video-script -n oficina --ignore-not-found
+```
+
+Esses comandos preservam o Deployment, o HPA, o Service e o PostgreSQL.
 
 Referências: [HPA](https://kubernetes.io/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale/)
 e [metrics-server v0.9.0](https://github.com/kubernetes-sigs/metrics-server/releases/tag/v0.9.0).
@@ -475,6 +523,44 @@ réplicas. As metas originais de CPU `70%` e memória `80%` foram restauradas.
 Esse cenário valida a decisão por memória e não representa carga de memória
 no limite de operação. Os resultados locais não constituem garantia geral de
 capacidade ou de disponibilidade em outro ambiente.
+
+
+
+### Teste de carga demonstrado em 27/10/2026
+
+A demonstração foi executada no Kubernetes local do Docker Desktop, namespace
+`oficina`, com o HPA da PR #72 e a imagem
+`oficina-api:clean-architecture-contratos-local`, validada na PR #74.
+O vídeo registrou a expansão para cinco pods; o print abaixo registra o resumo
+da carga e o histórico com a redução automática para dois.
+
+| Indicador | Resultado observado |
+| --- | --- |
+| Usuários virtuais (`vus`) | `20`, mantidos durante a carga |
+| Duração configurada | `120s` |
+| Requisições HTTP (`http_reqs`) | `46.012` |
+| Taxa média de requisições | Aproximadamente `383/s` |
+| Falhas HTTP (`http_req_failed`) | `0`, em `46.012` requisições |
+| Verificações aprovadas (`checks_succeeded`) | `92.024`, correspondentes a 100% |
+| Latência média HTTP | `52 ms` |
+| Percentil 95 da latência HTTP | `174,61 ms` |
+| Escala observada | `2 → 5 → 2` réplicas |
+
+As `92.024` verificações correspondem a `46.012 × 2`: status HTTP `200` e retorno
+de token. O total de checks não representa requisições adicionais.
+O p95 indica que 95% das requisições tiveram duração até `174,61 ms` nessa amostra.
+
+No histórico do HPA, a CPU passou de aproximadamente `1%` para `490%` do request,
+acima da meta de `70%`, e o controlador ampliou o Deployment para cinco réplicas.
+Depois da carga, a CPU retornou a aproximadamente `1%`; as cinco réplicas foram
+mantidas durante a estabilização e, em seguida, reduzidas automaticamente para
+duas. O percentual de CPU é calculado em relação ao request dos pods, não à
+capacidade total da máquina.
+
+![Demonstração local: resultado do k6 e histórico do HPA com duas, cinco e novamente duas réplicas](evidencias/kubernetes/carga-hpa-2026-10-27.png)
+
+A evidência corresponde à execução local de 27/10/2026. Esses números descrevem
+a amostra observada e não representam uma garantia de capacidade em outro ambiente.
 
 
 ## 9. Imagem no GitHub Container Registry
