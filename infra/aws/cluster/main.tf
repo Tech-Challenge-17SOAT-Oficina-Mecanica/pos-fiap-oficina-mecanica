@@ -17,8 +17,8 @@ resource "aws_eks_cluster" "oficina" {
   vpc_config {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
-    endpoint_public_access  = true
-    public_access_cidrs     = var.admin_cidrs
+    endpoint_public_access  = length(var.admin_cidrs) > 0
+    public_access_cidrs     = length(var.admin_cidrs) > 0 ? var.admin_cidrs : null
   }
   lifecycle {
     precondition {

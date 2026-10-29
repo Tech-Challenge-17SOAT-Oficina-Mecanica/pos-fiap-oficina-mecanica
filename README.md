@@ -225,6 +225,32 @@ escala horizontal extrema que justifique essa troca). A análise completa está 
 
 
 
+## 🚀 Pipeline e infraestrutura AWS
+
+| Workflow | Execução | Finalidade |
+|---|---|---|
+| **1.0 · 🏗️ Build** | Automática na PR e no push na main | Compila, testa e verifica cobertura |
+| **1.1 · 🔎 Validate deployment** | Automática na PR e no push na main | Valida Terraform, scripts, manifestos e migrations |
+| **1.2 · 📊 SonarQube** | Automática na PR e no push na main | Analisa qualidade do código |
+| **02 · 🏗️ Prepare AWS infrastructure** | Manual | Prepara o S3 e provisiona a infraestrutura com Terraform |
+| **03 · 🐳 Docker Build and Deploy** | Manual | Publica imagens, executa migrations e valida a API no EKS |
+
+Configure a **Variable `AWS_ACCOUNT_ID`** em **Settings → Secrets and variables →
+Actions → Variables**, com o ID de 12 dígitos da conta dos secrets AWS. Os secrets
+necessários são `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`,
+`AWS_DB_PASSWORD` e `AWS_JWT_SECRET`. Os testes mantêm `CI_DB_PASSWORD`, `JWT_SECRET`
+e `SONAR_TOKEN` separados das credenciais da aplicação na AWS.
+
+Em **Actions**, execute **02 → Run workflow** na revisão desejada. O campo IPv4
+administrativo `/32` é opcional: preencha para usar `kubectl` pelo computador;
+deixe vazio para manter acesso privado fora das execuções da pipeline. O clique
+em **Run workflow** inicia o provisionamento, que pode consumir créditos AWS.
+Depois das verificações e do provisionamento aprovados, execute **03 → Run
+workflow** na mesma conta e revisão. Não existe etapa separada para preparar S3.
+
+Procedimento completo, credenciais e recursos existentes:
+[guia de automação AWS](infra/aws/AUTOMACAO.md).
+
 ## 👥 Integrantes
 
 ##### João Victor — RM376616 - jhonnysket - [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)

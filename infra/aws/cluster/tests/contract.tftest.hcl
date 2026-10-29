@@ -60,6 +60,15 @@ run "reject_public_endpoint_for_everyone" {
   expect_failures = [var.admin_cidrs]
 }
 
+run "private_endpoint_without_administrator" {
+  command = plan
+  variables { admin_cidrs = [] }
+  assert {
+    condition     = !aws_eks_cluster.oficina.vpc_config[0].endpoint_public_access && aws_eks_cluster.oficina.vpc_config[0].endpoint_private_access
+    error_message = "Sem IP administrativo, somente o endpoint privado deve permanecer habilitado."
+  }
+}
+
 run "reject_single_subnet" {
   command = plan
   variables { subnet_ids = ["subnet-a"] }

@@ -25,6 +25,9 @@ sao ignoradas antes de aplicar recursos se a `main` ja avancou. Se a migration
 falhar, o script exibe o diagnostico e nao aplica o Deployment da API. Nao ha
 rollback automatico de schema ou de aplicacao.
 
+A conta e configurada na Variable AWS_ACCOUNT_ID do GitHub; ela deve corresponder
+aos Secrets AWS. O provisionamento e o deploy conferem a identidade automaticamente.
+
 ## Teste manual antes do merge
 
 O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
@@ -33,8 +36,7 @@ O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
 ```bash
 gh workflow run docker-build-push.yml \
   --repo Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica \
-  --ref main \
-  -f expected_account_id=ID_DA_CONTA
+  --ref main
 ```
 
 A execucao exige sucesso de Build e Validate deployment para o mesmo commit

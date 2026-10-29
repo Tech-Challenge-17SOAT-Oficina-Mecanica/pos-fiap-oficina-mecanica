@@ -32,10 +32,11 @@ variable "node_role_name" {
 }
 
 variable "admin_cidrs" {
-  description = "IPs autorizados no endpoint Kubernetes; exemplo: IP publico do administrador/32."
+  description = "IPs administrativos opcionais. Vazio desativa o endpoint publico fora da execucao da pipeline."
   type        = set(string)
+  default     = []
   validation {
-    condition     = length(var.admin_cidrs) > 0 && alltrue([for cidr in var.admin_cidrs : can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"])
+    condition     = alltrue([for cidr in var.admin_cidrs : can(cidrnetmask(cidr)) && cidr != "0.0.0.0/0"])
     error_message = "Informe CIDRs IPv4 restritos; nao use 0.0.0.0/0."
   }
 }

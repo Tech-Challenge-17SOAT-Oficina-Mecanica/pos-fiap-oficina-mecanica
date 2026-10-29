@@ -7,12 +7,12 @@ Merge ou PR nao cria infraestrutura nem faz deploy. Os workflows AWS sao manuais
 ## Arquitetura
 
 ```text
-03 · 🏗️ Prepare AWS infrastructure
+02 · 🏗️ Prepare AWS infrastructure
   -> Bucket S3 privado e estados separados por conta
   -> Terraform cluster: EKS, um no EC2, RDS, ECR e Metrics Server
   -> Terraform platform: namespace, Secret e ConfigMap com endpoint RDS
 
-04 · 🐳 Docker Build and Deploy
+03 · 🐳 Docker Build and Deploy
   -> exige CI aprovado no SHA selecionado
   -> publica API/Flyway no ECR da conta autenticada
   -> migrations no RDS a partir de um Job no EKS

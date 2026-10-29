@@ -1,10 +1,9 @@
 # Estado Terraform: preparacao pela pipeline
 
-O workflow **02 · 🗂️ Prepare AWS Terraform state** prepara o armazenamento compartilhado
-em us-east-1. E manual e nao roda em PR ou push. Depois de publicado no GitHub,
-abrir Actions, selecionar esse workflow e informar o ID de 12 digitos da conta
-Academy esperada. Os tres Secrets AWS precisam pertencer a essa mesma conta.
-
+O workflow **02 · 🏗️ Prepare AWS infrastructure** chama internamente o script
+scripts/prepare-aws-state.sh para preparar o armazenamento em us-east-1.
+Nao existe workflow separado para esta etapa. A conta vem da Variable AWS_ACCOUNT_ID;
+os tres Secrets AWS precisam pertencer a essa conta.
 ## O que ele faz
 
 1. Testa a logica com AWS/Terraform simulados.
@@ -40,17 +39,15 @@ pode assumir estado vazio quando ja existem recursos gerenciados localmente.
 O bootstrap guarda seu estado no proprio bucket. Cluster e platform usam chaves
 separadas: cluster/terraform.tfstate e platform/terraform.tfstate.
 Cada conta precisa de seus estados; nunca reaproveitar um tfstate de outra conta.
-O workflow 03 · 🏗️ Prepare AWS infrastructure descobre funcoes/rede na conta autenticada
+O workflow 02 · 🏗️ Prepare AWS infrastructure descobre funcoes/rede na conta autenticada
 e chama esse bootstrap automaticamente. Ver [automacao completa](../AUTOMACAO.md).
 
 ## Estados atuais do EKS e RDS
 
-Os estados de `infra/aws/cluster` e `infra/aws/platform` continuam LOCAIS.
-Depois de validar o bootstrap na mesma conta dos recursos atuais, faremos backup
-protegido e uma transferencia unica com init -migrate-state. Nao apagar estados
-locais, nao enviar por chat e nao commitar. Nao iniciar um novo apply de cluster
-na pipeline antes dessa transferencia: ela precisa reconhecer os recursos atuais.
-
+Na pipeline, cluster e platform usam os estados remotos no S3. Se houver recursos
+criados anteriormente com Terraform local, fazer backup e migrar uma unica vez
+com init -migrate-state antes de provisionar pela pipeline. Ver o guia de automacao.
+Recursos criados sem Terraform exigem importacao planejada ou remocao explicita.
 ## Testes locais sem criar recursos
 
 ```bash
@@ -65,13 +62,13 @@ Nao executar plan/apply manualmente nesta pasta sem configurar seu backend.
 A pipeline usa Terraform >= 1.10, necessario para use_lockfile.
 
 Os arquivos principais sao `scripts/prepare-aws-state.sh` e
-`.github/workflows/prepare-aws-state.yml`. O script tambem exige
+`.github/workflows/provision-aws.yml`. O script tambem exige
 EXPECTED_ACCOUNT_ID para evitar preparar armazenamento em uma conta inesperada.
 Nao executar o script localmente como substituto da transferencia dos estados.
 
 ## Remocao
 
-O bucket tem prevent_destroy e force_destroy=false. Nao remover enquanto estados
+O script nao exclui bucket nem objetos; a existencia do bucket nao e gerenciada pelo recurso generico Terraform. Nao remover enquanto estados
 ou ambientes precisarem ser administrados. Depois de encerrar os ambientes,
 arquivar/migrar os estados com seguranca e planejar explicitamente a remocao de
 objetos, versoes e bucket. Encerrar a sessao Academy nao apaga esses recursos.

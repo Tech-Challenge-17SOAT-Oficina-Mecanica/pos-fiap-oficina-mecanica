@@ -47,6 +47,11 @@ foreach ($environment in @('local', 'aws')) {
     $migrationYaml = $migrationOutput -join "`n"
     Assert ($migrationYaml -match 'kind: Job' -and $migrationYaml -match 'name: oficina-migrations') 'Preservar Job Flyway.'
     Assert ($migrationYaml -match 'secretKeyRef:' -and $migrationYaml -notmatch 'kind: Secret') 'Migrations devem consumir, nunca recriar credenciais.'
+    $urlPosition = $migrationYaml.IndexOf('name: FLYWAY_URL')
+    foreach ($dependency in @('DB_HOST', 'DB_PORT', 'DB_NAME')) {
+        $dependencyPosition = $migrationYaml.IndexOf("name: $dependency")
+        Assert ($dependencyPosition -ge 0 -and $dependencyPosition -lt $urlPosition) "$dependency deve aparecer antes de FLYWAY_URL para expansao pelo Kubernetes."
+    }
     if ($environment -eq 'aws') {
         Assert ($migrationYaml -match 'sslmode=verify-full' -and $migrationYaml -match 'sslrootcert=/flyway/certs/aws-rds-global-bundle.pem') 'Flyway na AWS deve verificar certificado e identidade do RDS.'
     } else {

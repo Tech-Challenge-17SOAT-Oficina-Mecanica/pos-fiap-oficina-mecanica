@@ -1,15 +1,10 @@
-name: 04 · 🐳 Docker Build and Deploy
+name: 03 · 🐳 Docker Build and Deploy
 
 on:
   workflow_dispatch:
-    inputs:
-      expected_account_id:
-        description: ID da conta Academy preparada para receber o deploy
-        required: true
-        type: string
 
 concurrency:
-  group: oficina-aws-${{ inputs.expected_account_id }}
+  group: oficina-aws-${{ vars.AWS_ACCOUNT_ID }}
   cancel-in-progress: false
 
 permissions:
@@ -20,7 +15,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'oficina-mecanica' }}
   CLUSTER_NAME: ${{ vars.AWS_CLUSTER_NAME || 'oficina-academy' }}
-  EXPECTED_ACCOUNT_ID: ${{ inputs.expected_account_id }}
+  EXPECTED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
   SOURCE_SHA: ${{ github.sha }}
   DEPLOY_REF: ${{ github.ref }}
 
@@ -30,6 +25,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate configured account
+        run: '[[ "$EXPECTED_ACCOUNT_ID" =~ ^[0-9]{12}$ ]] || { echo "Configure a Variable AWS_ACCOUNT_ID com 12 digitos."; exit 1; }'
       - name: 🔎 Verify CI for selected commit
         shell: bash
         env:
