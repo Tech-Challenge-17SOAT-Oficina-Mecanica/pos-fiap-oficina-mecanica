@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: oficina-postgres
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /var/local/oficina-postgres
+    type: Directory
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [oficina-control-plane]

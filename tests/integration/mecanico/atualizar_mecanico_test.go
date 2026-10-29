@@ -45,7 +45,7 @@ func TestAtualizarMecanico(t *testing.T) {
 		t.Fatal(err)
 	}
 	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
-	cadastrar := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository)))
+	cadastrar := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository, segurancaInfrastructure.NewBcrypt())))
 	atualizar := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewAtualizarHandler(mecanicoApplication.NewAtualizar(mecanicoRepository)))
 
 	createRequest := httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{"nome":"Mecânico Atualizar","email":"mecanico.atualizar@oficina.local","senha":"mecanico123456789","escopos":["clientes:ler"]}`))
@@ -98,7 +98,7 @@ func TestAtualizarMecanico(t *testing.T) {
 	if persistedHash != senhaHash {
 		t.Fatal("senha foi alterada")
 	}
-	if _, err := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt).Execute(ctx, novoEmail, "mecanico123456789"); err != nil {
+	if _, err := segurancaApplication.NewAutenticar(segurancaInfrastructure.NewPostgresRepository(db), jwt, segurancaInfrastructure.NewBcrypt()).Execute(ctx, novoEmail, "mecanico123456789"); err != nil {
 		t.Fatalf("login apos atualizar falhou: %v", err)
 	}
 	if err := db.QueryRow(ctx, `SELECT mecanico_responsavel_id::text FROM ordem_servico WHERE id = $1`, osID).Scan(&osMecanicoID); err != nil || osMecanicoID != created.ID {

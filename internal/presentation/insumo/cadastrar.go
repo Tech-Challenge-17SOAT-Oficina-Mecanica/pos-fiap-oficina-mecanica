@@ -40,7 +40,7 @@ type insumoResponse struct {
 	DataCriacao    *time.Time   `json:"dataCriacao,omitempty"`
 }
 
-func NewCadastrarInsumoHandler(useCase insumo.CadastrarInsumo) http.HandlerFunc {
+func NewCadastrarInsumoHandler(useCase CadastrarInsumoUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var corpo cadastroRequest
 		if err := json.NewDecoder(request.Body).Decode(&corpo); err != nil {

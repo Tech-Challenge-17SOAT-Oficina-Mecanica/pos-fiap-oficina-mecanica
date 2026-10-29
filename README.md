@@ -3,6 +3,9 @@
 Backend do Tech Challenge da FIAP para gestão de uma oficina mecânica,
 organizado em arquitetura em camadas e DDD.
 
+Infraestrutura AWS Academy (EKS + RDS): [proposta, preparacao e limites](infra/aws/README.md).
+A configuracao AWS esta em preparacao; ainda nao foi provisionada nem integrada ao deploy.
+
 ## 🛠️ Skills necessárias
 
 Para executar o projeto, é necessário ter instalado:
@@ -17,10 +20,27 @@ executado pelos containers.
 
 ## Kubernetes - Fase 2
 
+O [guia de infraestrutura local](infra/local/README.md) descreve Terraform para Kind,
+PostgreSQL persistente, instalacao do Metrics Server e validacao do HPA.
+
+No Windows, prepare armazenamento, cluster e PostgreSQL automaticamente, da raiz:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/provisionar-infra.ps1
+```
+
+O comando reutiliza a configuracao existente e as credenciais locais. A preparacao
+das tabelas e o deploy da API/HPA seguem no guia.
+
 Os manifestos de namespace, Deployment, Service, HPA, ConfigMap e o exemplo do Secret
-estão em `k8s/`. A implementação, as variáveis de configuração, os endpoints de
+estão em `k8s/`, separados em [base, local e AWS](k8s/README.md). A implementação, as variáveis de configuração, os endpoints de
 saúde e os comandos de execução estão documentados em
 [Kubernetes](docs/05-kubernetes.md).
+
+## Clean Code
+
+As práticas de legibilidade e organização implementadas estão documentadas em
+[Clean Code](docs/06-clean-code.md).
 
 ## 🗃️ Modelagem de dados
 
@@ -86,24 +106,21 @@ make db-down
 
 ## 🏗️ Arquitetura
 
-O projeto segue uma **arquitetura em camadas**, alinhada aos princípios de **Domain-Driven
-Design (DDD)**, com o código organizado por contexto de negócio (`cliente`, `veiculo`,
-`servico`, `estoque`, `orcamento`, `ordemservico`) repetido em cada camada:
+O projeto utiliza **Clean Architecture**, mantendo a organização por contextos de
+negócio e os princípios de Domain-Driven Design (DDD).
 
-- **`presentation`** — camada de entrada da aplicação: handlers HTTP, rotas e conversão
-  entre o corpo das requisições/respostas e os modelos internos.
-- **`application`** — casos de uso: orquestra as regras de negócio, coordenando chamadas ao
-  domínio e à infraestrutura.
-- **`domain`** — o núcleo do sistema: entidades, regras de negócio e contratos (interfaces)
-  independentes de framework ou de banco de dados.
-- **`infrastructure`** — implementações concretas dos contratos do domínio, como repositórios
-  que acessam o PostgreSQL e integrações externas.
-- **`shared`** — recursos técnicos compartilhados entre os contextos: conexão/configuração do
-  banco de dados (`database`), respostas/erros/middlewares HTTP comuns (`http`) e configuração
-  da aplicação (`config`).
+- **`domain`**: entidades, valores e regras de negócio.
+- **`application`**: casos de uso e interfaces de persistência e serviços externos.
+- **`presentation`**: entrada HTTP e conversão de requisições/respostas.
+- **`infrastructure`**: implementações de PostgreSQL, JWT, bcrypt e notificações.
+- **`cmd/oficina-mecanica`**: composição das dependências e inicialização da API.
+- **`shared`**: validações de valores e recursos técnicos compartilhados, respeitando
+  as dependências permitidas por camada.
 
-Essa separação mantém as regras de negócio isoladas de detalhes técnicos (HTTP, banco de
-dados), facilitando testes e a evolução independente de cada camada.
+Os casos de uso dependem de contratos e recebem os adaptadores na inicialização.
+Os testes em `tests/architecture` verificam automaticamente a direção das
+dependências. O desenho e os exemplos implementados estão em
+[Clean Architecture](docs/07-clean-architecture.md).
 
 ## 📁 Estrutura de pastas
 

@@ -24,7 +24,7 @@ type atualizacaoRequest struct {
 	Ativo *bool `json:"ativo"`
 }
 
-func NewAtualizarPecaHandler(useCase peca.AtualizarPeca) http.HandlerFunc {
+func NewAtualizarPecaHandler(useCase AtualizarPecaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		version, err := sharedhttp.LerIfMatch(request.Header.Get("If-Match"))
 		if err != nil {

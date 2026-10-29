@@ -35,16 +35,11 @@ type ResultadoConsulta struct {
 	TotalPaginas   int
 }
 
-type ConsultaRepository interface {
-	Listar(context.Context, FiltrosConsulta) ([]domain.Fornecedor, int, error)
-	BuscarPorID(context.Context, string) (domain.Fornecedor, error)
-}
-
 type ConsultarFornecedores struct {
-	repository ConsultaRepository
+	repository ListarRepository
 }
 
-func NewConsultarFornecedores(repository ConsultaRepository) ConsultarFornecedores {
+func NewConsultarFornecedores(repository ListarRepository) ConsultarFornecedores {
 	return ConsultarFornecedores{repository: repository}
 }
 
@@ -67,10 +62,10 @@ func (useCase ConsultarFornecedores) Execute(ctx context.Context, filtros Filtro
 }
 
 type ConsultarFornecedorPorID struct {
-	repository ConsultaRepository
+	repository BuscarPorIDRepository
 }
 
-func NewConsultarFornecedorPorID(repository ConsultaRepository) ConsultarFornecedorPorID {
+func NewConsultarFornecedorPorID(repository BuscarPorIDRepository) ConsultarFornecedorPorID {
 	return ConsultarFornecedorPorID{repository: repository}
 }
 

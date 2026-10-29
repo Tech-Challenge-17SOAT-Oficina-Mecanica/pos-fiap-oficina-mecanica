@@ -30,3 +30,11 @@ type ResultadoEntrega struct {
 	DataEntrega          time.Time
 	Observacoes          string
 }
+
+// ValidarOrcamentosParaEntrega exige uma base aprovada para o valor final da OS.
+func ValidarOrcamentosParaEntrega(quantidadeOrcamentosAprovados int) error {
+	if quantidadeOrcamentosAprovados == 0 {
+		return ErrValorFinalIndisponivel
+	}
+	return nil
+}

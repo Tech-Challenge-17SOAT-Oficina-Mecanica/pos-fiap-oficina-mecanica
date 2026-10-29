@@ -77,7 +77,7 @@ func requisitarVeiculo(handler http.Handler, method, path, body string) *httptes
 func TestCadastrarVeiculoHandler(t *testing.T) {
 	mux := http.NewServeMux()
 	stub := &repositoryStub{veiculo: domain.Veiculo{ID: veiculoIDTeste, Cadastro: domain.Cadastro{Placa: "ABC1D23"}}}
-	mux.Handle("POST /clientes/{clienteId}/veiculos", NewHandler(application.NewCadastrar(stub)))
+	mux.Handle("POST /clientes/{clienteId}/veiculos", NewCadastrarHandler(application.NewCadastrar(stub)))
 
 	for _, test := range []struct {
 		name string

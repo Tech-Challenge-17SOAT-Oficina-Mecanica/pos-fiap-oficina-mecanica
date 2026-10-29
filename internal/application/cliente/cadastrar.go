@@ -17,19 +17,6 @@ var (
 	ErrClienteJaAtivo       = errors.New("cliente já está ativo")
 )
 
-type Repository interface {
-	ExisteAtivoPorDocumento(context.Context, string) (bool, error)
-	ExisteAtivoPorDocumentoExcetoID(context.Context, string, string) (bool, error)
-	BuscarPorID(context.Context, string) (cliente.Cliente, error)
-	BuscarPorIDIncluindoInativo(context.Context, string) (cliente.Cliente, error)
-	BuscarPorDocumento(context.Context, string) (cliente.Cliente, error)
-	BuscarOSAbertas(context.Context, string) ([]OrdemServicoAberta, error)
-	Salvar(context.Context, cliente.Cliente) (cliente.Cliente, error)
-	Atualizar(context.Context, cliente.Cliente, int) (cliente.Cliente, error)
-	Inativar(context.Context, InativarRepositoryInput) (Inativacao, error)
-	Reativar(context.Context, ReativarRepositoryInput) (Reativacao, error)
-}
-
 type OrdemServicoAberta struct {
 	ID     string `json:"ordemServicoId"`
 	Status string `json:"status"`
@@ -67,10 +54,10 @@ type Reativacao struct {
 }
 
 type Cadastrar struct {
-	repository Repository
+	repository CadastrarRepository
 }
 
-func NewCadastrar(repository Repository) Cadastrar {
+func NewCadastrar(repository CadastrarRepository) Cadastrar {
 	return Cadastrar{repository: repository}
 }
 

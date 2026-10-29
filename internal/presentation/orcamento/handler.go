@@ -26,7 +26,7 @@ type aprovacaoResponse struct {
 	Version             int    `json:"version"`
 }
 
-func NewAprovarHandler(useCase application.Aprovar) http.HandlerFunc {
+func NewAprovarHandler(useCase AprovarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		claims := seguranca.Claims(request.Context())
 		usuarioID := ""
@@ -79,7 +79,7 @@ func responderErroAprovacao(writer http.ResponseWriter, err error) {
 	}
 }
 
-func NewConsultarHandler(useCase application.Consultar) http.HandlerFunc {
+func NewConsultarHandler(useCase ConsultarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")
 		if !validation.IsUUID(ordemServicoID) {
@@ -185,7 +185,7 @@ type recusarResponse struct {
 	Motivo              string `json:"motivo,omitempty"`
 }
 
-func NewRecusarHandler(useCase application.Recusar) http.HandlerFunc {
+func NewRecusarHandler(useCase RecusarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		orcamentoID := request.PathValue("orcamentoId")
 		if !validation.IsUUID(orcamentoID) {

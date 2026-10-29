@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base/migrations
+patches:
+  - target:
+      kind: Job
+      name: oficina-migrations
+    patch: |-
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: oficina-migrations
+      spec:
+        template:
+          spec:
+            containers:
+              - name: flyway
+                env:
+                  - name: FLYWAY_URL
+                    value: jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=verify-full&sslrootcert=/flyway/certs/aws-rds-global-bundle.pem

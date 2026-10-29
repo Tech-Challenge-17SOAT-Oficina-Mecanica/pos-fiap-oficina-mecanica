@@ -22,7 +22,7 @@ type filaItemResponse struct {
 	DataEntradaFila       time.Time           `json:"dataEntradaFila"`
 }
 
-func NewConsultarFilaHandler(useCase application.ConsultarFila) http.HandlerFunc {
+func NewConsultarFilaHandler(useCase ConsultarFilaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		paginacao, err := sharedhttp.LerPaginacao(request.URL.Query())
 		if err != nil {

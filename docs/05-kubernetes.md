@@ -12,16 +12,23 @@ A API possui manifestos Kubernetes para criação do namespace, gerenciamento do
 pods e acesso interno pelo Service. A aplicação também disponibiliza um endpoint
 de prontidão que verifica a conexão com o PostgreSQL.
 
+Os arquivos agora estao separados por ambiente; veja [a organizacao Kubernetes](../k8s/README.md).
+A base compartilha API e configuracoes. `k8s/local` inclui a configuracao local;
+`k8s/aws` reutiliza a API com imagem ECR, sem instalar PostgreSQL no cluster nem
+sobrescrever o ConfigMap do RDS. Namespace e Secret sao gerenciados pelo Terraform
+nos dois ambientes; o banco local tambem. Os exemplos manuais de namespace e
+Secret abaixo sao uma alternativa sem Terraform, nao uma etapa adicional.
+
 ## 1. Recursos implementados
 
 | Arquivo | Recurso | Nome | Namespace |
 | --- | --- | --- | --- |
-| `k8s/namespace.yaml` | Namespace | `oficina` | — |
-| `k8s/deployment.yaml` | Deployment | `oficina-api` | `oficina` |
-| `k8s/service.yaml` | Service | `oficina-api` | `oficina` |
-| `k8s/configmap.yaml` | ConfigMap | `oficina-api-config` | `oficina` |
-| `k8s/secret.yaml.example` | Secret (exemplo) | `oficina-api-secret` | `oficina` |
-| `k8s/hpa.yaml` | HorizontalPodAutoscaler | `oficina-api-hpa` | `oficina` |
+| `k8s/local/namespace.yaml` | Namespace | `oficina` | — |
+| `k8s/base/api/deployment.yaml` | Deployment | `oficina-api` | `oficina` |
+| `k8s/base/api/service.yaml` | Service | `oficina-api` | `oficina` |
+| `k8s/base/config/configmap.yaml` | ConfigMap | `oficina-api-config` | `oficina` |
+| `k8s/local/secret.yaml.example` | Secret (exemplo) | `oficina-api-secret` | `oficina` |
+| `k8s/base/api/hpa.yaml` | HorizontalPodAutoscaler | `oficina-api-hpa` | `oficina` |
 
 O label `app: oficina-api` identifica os pods e é utilizado pelos selectors do
 Deployment e do Service. O container da aplicação se chama `api`.
@@ -139,7 +146,7 @@ Não repetir a mesma chave nos dois recursos.
 
 ### ConfigMap `oficina-api-config`
 
-Versionado em `k8s/configmap.yaml`. Todos os valores são strings.
+Versionado em `k8s/base/config/configmap.yaml`. Todos os valores são strings.
 
 | Variável | Finalidade | Valor versionado |
 | --- | --- | --- |
@@ -164,9 +171,9 @@ configurável; por isso essas configurações não fazem parte do ConfigMap.
 
 ### Secret `oficina-api-secret`
 
-Somente o exemplo `k8s/secret.yaml.example` é versionado, com marcadores no lugar
+Somente o exemplo `k8s/local/secret.yaml.example` é versionado, com marcadores no lugar
 das credenciais. A extensão `.example` impede que `kubectl apply -f k8s/` aplique
-os marcadores sobre o Secret real. O arquivo preenchido `k8s/secret.yaml` está
+os marcadores sobre o Secret real. O arquivo preenchido `k8s/local/secret.yaml` está
 no `.gitignore` e no `.dockerignore`.
 
 | Variável | Obrigatória | Finalidade |
@@ -178,10 +185,11 @@ no `.gitignore` e no `.dockerignore`.
 | `RESEND_API_KEY` | Não | Token do Resend; quando preenchido, tem prioridade sobre o SMTP |
 | `DATABASE_URL` | Não | Conexão completa; quando preenchida, substitui as variáveis `DB_*` |
 
-A URL de conexão é montada com `DB_*` sem codificação e com `sslmode=disable`.
-Para senha com caracteres reservados de URL (`@ : / ? #`) ou banco que exige TLS,
-utilizar `DATABASE_URL` com a senha codificada. Uma URL com senha não deve ficar
-no ConfigMap. `SONAR_TOKEN` não é usado pela API e não entra no Secret.
+A URL de conexao montada com `DB_*` codifica caracteres reservados. Sem DB_SSLMODE,
+o comportamento local continua sslmode=disable. Na AWS, Terraform configura
+DB_SSLMODE=verify-full e DB_SSLROOTCERT para verificar o certificado do RDS.
+DATABASE_URL, quando definida, prevalece e deve incluir sua propria configuracao
+TLS. Uma URL com senha nao deve ficar no ConfigMap. SONAR_TOKEN nao e usado pela API.
 
 O canal de notificação segue esta ordem: `RESEND_API_KEY` preenchida usa o
 Resend; sem ela, `SMTP_HOST` preenchido usa SMTP; sem os dois, as notificações
@@ -189,11 +197,12 @@ vão apenas para o log.
 
 ### Criação do Secret
 
-Em ambiente local, copiar o exemplo, preencher os marcadores e aplicar:
+Somente na alternativa local sem Terraform, copiar o exemplo, preencher os marcadores
+e aplicar (com Terraform, usar o Secret que ele ja provisionou):
 
 ```bash
-cp k8s/secret.yaml.example k8s/secret.yaml
-kubectl apply -f k8s/secret.yaml
+cp k8s/local/secret.yaml.example k8s/local/secret.yaml
+kubectl --context kind-oficina apply -f k8s/local/secret.yaml
 ```
 
 O Secret da aplicação é aplicado no cluster de destino antes do Deployment.
@@ -204,12 +213,13 @@ Base64 não é criptografia: a proteção do Secret depende das permissões do c
 
 ### Atualização da configuração
 
-As variáveis são injetadas por `envFrom` na criação do container. Pods em execução
+Na alternativa manual local, as variáveis são injetadas por `envFrom` na criação do container. Pods em execução
 não recebem novos valores; depois de alterar o ConfigMap ou o Secret, recriar os pods:
 
 ```bash
-kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml
-kubectl -n oficina rollout restart deployment/oficina-api
+kubectl --context kind-oficina apply -k k8s/local
+kubectl --context kind-oficina apply -f k8s/local/secret.yaml
+kubectl --context kind-oficina -n oficina rollout restart deployment/oficina-api
 kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
 ```
 
@@ -220,7 +230,12 @@ com `maxUnavailable: 0`, os pods anteriores continuam atendendo.
 
 ## 5. Horizontal Pod Autoscaler (HPA)
 
-O manifesto `k8s/hpa.yaml` utiliza `autoscaling/v2` e controla o Deployment
+Para o ambiente Kind provisionado com Terraform, siga o
+[guia de infraestrutura local](../infra/README.md), com Metrics Server fixado e
+armazenamento persistente. Nesse fluxo, namespace, Secret e banco sao geridos
+somente pelo Terraform; nao reaplique esses recursos pelos comandos deste documento.
+
+O manifesto `k8s/base/api/hpa.yaml` utiliza `autoscaling/v2` e controla o Deployment
 `oficina-api` no namespace `oficina`.
 
 | Configuração | Valor |
@@ -273,7 +288,7 @@ utilizar certificados confiáveis e a configuração suportada pelo provedor.
 Depois de criar o namespace, as configurações, o Deployment e o Service:
 
 ```bash
-kubectl apply -f k8s/hpa.yaml
+kubectl apply -f k8s/base/api/hpa.yaml
 kubectl -n oficina get hpa oficina-api-hpa
 kubectl -n oficina describe hpa oficina-api-hpa
 kubectl -n oficina top pods -l app=oficina-api
@@ -380,7 +395,7 @@ e [metrics-server v0.9.0](https://github.com/kubernetes-sigs/metrics-server/rele
 - Docker e cluster Kubernetes disponíveis;
 - `kubectl` configurado para o cluster correto;
 - imagem acessível pelo runtime do cluster;
-- `k8s/secret.yaml` preenchido a partir do exemplo (seção 4);
+- namespace, Secret e banco provisionados pelo Terraform do ambiente (ou alternativa manual da secao 4);
 - PostgreSQL acessível, com as migrations aplicadas;
 - API de métricas disponível para o HPA.
 
@@ -406,19 +421,17 @@ Executar somente o comando correspondente ao ambiente utilizado.
 
 ```bash
 kubectl config current-context
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml
-kubectl -n oficina get configmap oficina-api-config
-kubectl -n oficina get secret oficina-api-secret
-kubectl apply -f k8s/deployment.yaml -f k8s/service.yaml
-kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
-kubectl apply -f k8s/hpa.yaml
-kubectl -n oficina get hpa oficina-api-hpa
+kubectl kustomize k8s/local
+kubectl --context kind-oficina apply -k k8s/local
+kubectl --context kind-oficina -n oficina get configmap oficina-api-config
+kubectl --context kind-oficina -n oficina get secret oficina-api-secret
+kubectl --context kind-oficina -n oficina rollout status deployment/oficina-api --timeout=300s
+kubectl --context kind-oficina -n oficina get hpa oficina-api-hpa
 ```
 
-A consulta ao Secret acima exibe metadados, sem imprimir os valores.
-O namespace é criado primeiro: a aplicação dos arquivos em ordem alfabética pode
-tentar criar recursos antes de seu namespace existir.
+A consulta ao Secret acima exibe metadados, sem imprimir os valores. Namespace,
+Secret e banco devem existir antes desse deploy. Para AWS, usar o overlay k8s/aws
+depois de selecionar a imagem ECR; nao aplicar o overlay local no EKS.
 
 ### Acesso local
 
@@ -563,53 +576,37 @@ A evidência corresponde à execução local de 27/10/2026. Esses números descr
 a amostra observada e não representam uma garantia de capacidade em outro ambiente.
 
 
-## 9. Imagem no GitHub Container Registry
+## 9. Imagem no Amazon ECR
 
-O workflow **Build**, em `.github/workflows/build.yml`, possui uma etapa de
-publicação no GHCR. Essa etapa executa somente por acionamento manual
-(`workflow_dispatch`) a partir de `main`, após aprovação dos jobs de build,
-testes e cobertura. Pull requests e pushes comuns executam as verificações,
-sem publicar imagens.
+O workflow `.github/workflows/docker-build-push.yml` e acionado manualmente e publica
+no ECR `oficina-mecanica`, em `us-east-1`, depois de conferir sucesso de Build e
+Validate deployment no SHA selecionado. PRs, push e acionamentos de Build nao publicam.
 
-A imagem é publicada para `linux/amd64` e `linux/arm64`, com o nome:
+O checkout e a tag utilizam o mesmo SHA completo aprovado pelo CI:
 
 ```text
-ghcr.io/tech-challenge-17soat-oficina-mecanica/oficina-api:sha-<commit-completo>
+CONTA.dkr.ecr.us-east-1.amazonaws.com/oficina-mecanica:COMMIT_COMPLETO
 ```
 
-O SHA completo identifica a revisão utilizada na construção. A autenticação
-utiliza o `GITHUB_TOKEN` do workflow, com permissão `packages: write` no job de
-publicação. Não é necessário cadastrar um token pessoal para publicar pelo Actions.
+O repositorio ECR deve existir. Os Secrets do GitHub `AWS_ACCESS_KEY_ID`,
+`AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` precisam conter as credenciais
+validas da sessao Academy. A publicacao real ainda precisa ser validada.
 
-### Execução da publicação
+O workflow publica API e Flyway e executa migrations e deploy no EKS depois da
+publicacao, usando o mesmo SHA, somente por acionamento manual com CI aprovado.
+Ver [guia de deploy](06-deploy-eks.md). As maquinas EKS ja
+possuem permissao de leitura ECR; acesso do runner ao EKS, credenciais e execucao
+real ainda precisam ser validados antes de considerar o deploy comprovado.
 
-Após incorporar o workflow em `main`, abrir **Actions → Build → Run workflow**,
-selecionar `main` e executar. Ao concluir, verificar o pacote `oficina-api` no GHCR
-e a tag correspondente ao commit da execução.
-
-A publicação depende das permissões de Packages da organização. O workflow não
-altera a visibilidade do pacote. Para uma imagem privada, configurar no cluster
-um Secret de autenticação do registry, com acesso somente de leitura, e referenciá-lo
-em `imagePullSecrets` no template do Deployment. Esse Secret tem finalidade
-diferente de `oficina-api-secret`, que contém as configurações da aplicação.
-
-### Utilização no cluster de destino
-
-Com namespace, banco, ConfigMap, Secret e métricas configurados, utilizar a tag
-publicada para atualizar a API:
+Depois que a API estiver instalada no EKS, uma atualizacao da imagem seria:
 
 ```bash
-kubectl -n oficina set image deployment/oficina-api \
-  api=ghcr.io/tech-challenge-17soat-oficina-mecanica/oficina-api:sha-COMMIT_COMPLETO
-kubectl -n oficina rollout status deployment/oficina-api --timeout=300s
-kubectl -n oficina get hpa oficina-api-hpa
+kubectl --context oficina-aws -n oficina set image deployment/oficina-api \
+  api=CONTA.dkr.ecr.us-east-1.amazonaws.com/oficina-mecanica:COMMIT_COMPLETO
+kubectl --context oficina-aws -n oficina rollout status deployment/oficina-api --timeout=300s
 ```
 
-Substituir `COMMIT_COMPLETO` pelo SHA da execução e manter essa referência na
-configuração declarativa do ambiente antes de reaplicar o Deployment.
-A atualização da imagem não altera a quantidade de réplicas controlada pelo HPA.
-O workflow publica a imagem; a execução desses comandos depende do acesso ao
-cluster de destino. Credenciais de cluster não fazem parte dessa publicação.
-
-Referências: [publicação pelo GitHub Actions](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images)
-e [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+Substituir CONTA e COMMIT_COMPLETO pelos valores da publicacao. A configuracao
+declarativa do deploy tambem precisa usar essa imagem, para nao voltar a tag local
+quando os manifestos forem reaplicados. Terraform, migrations e HPA continuam
+necessarios; trocar o registry nao muda suas responsabilidades.
