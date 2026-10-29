@@ -47,11 +47,8 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 	).Scan(&possuiOrcamentoAprovado, &possuiServicosAutorizados); err != nil {
 		return domain.ResultadoInicioExecucao{}, err
 	}
-	if !possuiOrcamentoAprovado {
-		return domain.ResultadoInicioExecucao{}, domain.ErrOrcamentoNaoAprovado
-	}
-	if !possuiServicosAutorizados {
-		return domain.ResultadoInicioExecucao{}, domain.ErrServicosNaoAutorizados
+	if err = domain.ValidarAutorizacaoParaExecucao(possuiOrcamentoAprovado, possuiServicosAutorizados); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
 	}
 
 	var possuiRecursoSemReserva bool
@@ -68,8 +65,8 @@ func (repository PostgresRepository) IniciarExecucao(ctx context.Context, input 
 	).Scan(&possuiRecursoSemReserva); err != nil {
 		return domain.ResultadoInicioExecucao{}, err
 	}
-	if possuiRecursoSemReserva {
-		return domain.ResultadoInicioExecucao{}, domain.ErrRecursosIndisponiveis
+	if err = domain.ValidarRecursosParaExecucao(possuiRecursoSemReserva); err != nil {
+		return domain.ResultadoInicioExecucao{}, err
 	}
 
 	var mecanicoAutenticadoID string
@@ -262,8 +259,8 @@ func (repository PostgresRepository) Entregar(ctx context.Context, input applica
 	).Scan(&quantidadeOrcamentos, &valorFinal); err != nil {
 		return domain.ResultadoEntrega{}, err
 	}
-	if quantidadeOrcamentos == 0 {
-		return domain.ResultadoEntrega{}, domain.ErrValorFinalIndisponivel
+	if err = domain.ValidarOrcamentosParaEntrega(quantidadeOrcamentos); err != nil {
+		return domain.ResultadoEntrega{}, err
 	}
 
 	var dataEntrega time.Time

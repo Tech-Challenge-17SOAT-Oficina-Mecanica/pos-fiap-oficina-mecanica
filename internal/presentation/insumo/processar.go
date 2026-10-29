@@ -18,7 +18,7 @@ type processamentoRequest struct {
 	Itens          []insumo.ItemProcessamento `json:"itens"`
 }
 
-func NewSolicitarCompraEReservarInsumosHandler(useCase insumo.SolicitarCompraEReservarInsumos) http.HandlerFunc {
+func NewSolicitarCompraEReservarInsumosHandler(useCase SolicitarCompraEReservarInsumosUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		corpo, err := io.ReadAll(request.Body)
 		if err != nil {

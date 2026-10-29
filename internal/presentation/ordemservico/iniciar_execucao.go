@@ -34,7 +34,7 @@ type itemBaixadoInicioExecucaoDTO struct {
 	CustoTotal          float64 `json:"custoTotal"`
 }
 
-func NewIniciarExecucaoHandler(useCase application.IniciarExecucao) http.HandlerFunc {
+func NewIniciarExecucaoHandler(useCase IniciarExecucaoUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {

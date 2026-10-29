@@ -20,15 +20,15 @@ type registrarRequest struct {
 	Itens []application.ItemInput `json:"itens"`
 }
 
-func NewRegistrarPecasHandler(useCase application.RegistrarItens) http.Handler {
+func NewRegistrarPecasHandler(useCase RegistrarItensUseCase) http.Handler {
 	return newRegistrarHandler(useCase, "PECA")
 }
 
-func NewRegistrarInsumosHandler(useCase application.RegistrarItens) http.Handler {
+func NewRegistrarInsumosHandler(useCase RegistrarItensUseCase) http.Handler {
 	return newRegistrarHandler(useCase, "INSUMO")
 }
 
-func newRegistrarHandler(useCase application.RegistrarItens, tipo string) http.Handler {
+func newRegistrarHandler(useCase RegistrarItensUseCase, tipo string) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {
@@ -112,7 +112,7 @@ type registrarProblemaResponse struct {
 	} `json:"orcamento"`
 }
 
-func NewRegistrarProblemaHandler(useCase application.RegistrarProblema) http.HandlerFunc {
+func NewRegistrarProblemaHandler(useCase RegistrarProblemaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")
 		if !validation.IsUUID(ordemServicoID) {
@@ -154,7 +154,7 @@ func NewRegistrarProblemaHandler(useCase application.RegistrarProblema) http.Han
 	}
 }
 
-func NewRegistrarServicosHandler(useCase application.RegistrarServicos) http.HandlerFunc {
+func NewRegistrarServicosHandler(useCase RegistrarServicosUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")
 		if !validation.IsUUID(ordemServicoID) {

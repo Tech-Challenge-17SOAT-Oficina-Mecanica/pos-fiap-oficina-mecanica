@@ -63,14 +63,14 @@ func montarAplicacao(db *pgxpool.Pool, jwt segurancaInfrastructure.JWT, life *se
 
 func registrarRotasSeguranca(mux *http.ServeMux, db *pgxpool.Pool, jwt segurancaInfrastructure.JWT) {
 	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
-	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt)
+	login := segurancaApplication.NewAutenticar(segurancaRepository, jwt, segurancaInfrastructure.NewBcrypt())
 
 	mux.Handle("POST /autenticacao/login", segurancaPresentation.NewLoginHandler(login))
 }
 
 func registrarRotasMecanicos(mux *http.ServeMux, db *pgxpool.Pool, jwt segurancaInfrastructure.JWT) {
 	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
-	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository)
+	cadastrarMecanico := mecanicoApplication.NewCadastrar(mecanicoRepository, segurancaInfrastructure.NewBcrypt())
 	atualizarMecanico := mecanicoApplication.NewAtualizar(mecanicoRepository)
 
 	mux.Handle("POST /mecanicos", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoMecanicosEscrever, mecanicoPresentation.NewCadastrarHandler(cadastrarMecanico)))

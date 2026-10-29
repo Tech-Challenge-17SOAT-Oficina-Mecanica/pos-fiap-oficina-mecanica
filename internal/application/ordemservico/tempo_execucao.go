@@ -14,11 +14,6 @@ var (
 	ErrPeriodoInvalido    = errors.New("dataInicio nao pode ser posterior a dataFim")
 )
 
-type ConsultarTempoExecucaoRepository interface {
-	ConsultarTempoExecucao(context.Context, string) (domain.TempoExecucao, error)
-	ListarTemposExecucao(context.Context, *time.Time, *time.Time, int, int) ([]domain.TempoExecucao, int, int64, error)
-}
-
 type ConsultarTempoExecucaoDaOS struct {
 	repository ConsultarTempoExecucaoRepository
 }
@@ -32,7 +27,7 @@ func (useCase ConsultarTempoExecucaoDaOS) Execute(ctx context.Context, ordemServ
 }
 
 type ConsultarTempoMedioExecucao struct {
-	repository ConsultarTempoExecucaoRepository
+	repository ListarTemposExecucaoRepository
 }
 
 type ConsultarTempoMedioExecucaoInput struct {
@@ -48,7 +43,7 @@ type ResultadoTempoMedioExecucao struct {
 	TempoMedioExecucaoMinutos int
 }
 
-func NewConsultarTempoMedioExecucao(repository ConsultarTempoExecucaoRepository) ConsultarTempoMedioExecucao {
+func NewConsultarTempoMedioExecucao(repository ListarTemposExecucaoRepository) ConsultarTempoMedioExecucao {
 	return ConsultarTempoMedioExecucao{repository: repository}
 }
 

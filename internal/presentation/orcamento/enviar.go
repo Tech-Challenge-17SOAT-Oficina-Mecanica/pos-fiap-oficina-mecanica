@@ -21,7 +21,7 @@ type envioResponse struct {
 
 // NewEnviarHandler coloca o orcamento sob decisao do cliente, movendo a OS para
 // AGUARDANDO_APROVACAO — a transicao entre calcular e aprovar.
-func NewEnviarHandler(useCase orcamento.Enviar) http.HandlerFunc {
+func NewEnviarHandler(useCase EnviarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		resultado, err := useCase.Execute(request.Context(),
 			request.PathValue("orcamentoId"),

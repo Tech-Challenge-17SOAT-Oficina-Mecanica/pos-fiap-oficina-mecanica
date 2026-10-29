@@ -73,7 +73,7 @@ type consultaResponse struct {
 	Eventos            []eventoConsultaResponse    `json:"eventos"`
 }
 
-func NewConsultarHandler(useCase application.Consultar) http.HandlerFunc {
+func NewConsultarHandler(useCase ConsultarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {

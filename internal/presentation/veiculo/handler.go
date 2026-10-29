@@ -14,7 +14,7 @@ import (
 	"github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/shared/validation"
 )
 
-func NewInativarHandler(useCase application.Inativar) http.HandlerFunc {
+func NewInativarHandler(useCase InativarUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("veiculoId")
 		if !validation.IsUUID(id) {
@@ -43,7 +43,7 @@ func NewInativarHandler(useCase application.Inativar) http.HandlerFunc {
 	}
 }
 
-func NewReativarHandler(useCase application.Reativar) http.HandlerFunc {
+func NewReativarHandler(useCase ReativarUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("veiculoId")
 		if !validation.IsUUID(id) {
@@ -74,7 +74,7 @@ type request struct {
 	Ano    int    `json:"ano"`
 }
 
-func NewAtualizarHandler(useCase application.Atualizar) http.HandlerFunc {
+func NewAtualizarHandler(useCase AtualizarUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("veiculoId")
 		if !validation.IsUUID(id) {
@@ -123,7 +123,7 @@ func NewAtualizarHandler(useCase application.Atualizar) http.HandlerFunc {
 	}
 }
 
-func NewConsultaHandler(useCase application.Consultar) http.HandlerFunc {
+func NewConsultaHandler(useCase ConsultarUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		placa, err := domain.NormalizarPlaca(r.URL.Query().Get("placa"))
 		if err != nil {
@@ -149,7 +149,7 @@ func NewConsultaHandler(useCase application.Consultar) http.HandlerFunc {
 	}
 }
 
-func NewCadastrarHandler(useCase application.Cadastrar) http.HandlerFunc {
+func NewCadastrarHandler(useCase CadastrarUseCase) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		clienteID := r.PathValue("clienteId")
 		if !validation.IsUUID(clienteID) {

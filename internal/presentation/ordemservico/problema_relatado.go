@@ -22,7 +22,7 @@ type problemaRelatadoResponse struct {
 	Observacoes string `json:"observacoes,omitempty"`
 }
 
-func NewRegistrarProblemaRelatadoHandler(useCase application.RegistrarProblemaRelatado) http.HandlerFunc {
+func NewRegistrarProblemaRelatadoHandler(useCase RegistrarProblemaRelatadoUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		ordemServicoID := request.PathValue("osId")
 		if !validation.IsUUID(ordemServicoID) {

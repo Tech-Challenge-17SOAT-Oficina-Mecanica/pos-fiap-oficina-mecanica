@@ -14,10 +14,10 @@ type AtualizarInput struct {
 }
 
 type Atualizar struct {
-	repository Repository
+	repository AtualizarRepository
 }
 
-func NewAtualizar(repository Repository) Atualizar {
+func NewAtualizar(repository AtualizarRepository) Atualizar {
 	return Atualizar{repository: repository}
 }
 
