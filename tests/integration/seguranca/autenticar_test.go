@@ -56,7 +56,7 @@ func TestAutenticarMecanico(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := presentation.NewLoginHandler(application.NewAutenticar(infrastructure.NewPostgresRepository(db), jwt))
+	handler := presentation.NewLoginHandler(application.NewAutenticar(infrastructure.NewPostgresRepository(db), jwt, infrastructure.NewBcrypt()))
 	for _, test := range []struct {
 		body   string
 		status int

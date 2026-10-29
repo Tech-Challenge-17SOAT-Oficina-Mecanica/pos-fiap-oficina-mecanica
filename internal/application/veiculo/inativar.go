@@ -6,9 +6,9 @@ import (
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/veiculo"
 )
 
-type Inativar struct{ repository Repository }
+type Inativar struct{ repository InativarRepository }
 
-func NewInativar(repository Repository) Inativar { return Inativar{repository} }
+func NewInativar(repository InativarRepository) Inativar { return Inativar{repository} }
 
 func (useCase Inativar) Execute(ctx context.Context, veiculoID, usuarioID, motivo string) (Inativacao, error) {
 	motivo, err := domain.MotivoParaInativacao(motivo)
@@ -32,9 +32,9 @@ func (useCase Inativar) Execute(ctx context.Context, veiculoID, usuarioID, motiv
 	return useCase.repository.Inativar(ctx, InativarRepositoryInput{VeiculoID: veiculoID, InativadoPor: usuarioID, Motivo: motivo})
 }
 
-type Reativar struct{ repository Repository }
+type Reativar struct{ repository ReativarRepository }
 
-func NewReativar(repository Repository) Reativar { return Reativar{repository} }
+func NewReativar(repository ReativarRepository) Reativar { return Reativar{repository} }
 
 func (useCase Reativar) Execute(ctx context.Context, veiculoID, usuarioID string) (Reativacao, error) {
 	veiculo, err := useCase.repository.BuscarPorIDIncluindoInativo(ctx, veiculoID)

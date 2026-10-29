@@ -20,7 +20,7 @@ type desativacaoResponse struct {
 	UsuarioDesativacao *string    `json:"usuarioDesativacao"`
 }
 
-func NewDesativarPecaHandler(useCase peca.DesativarPeca) http.HandlerFunc {
+func NewDesativarPecaHandler(useCase DesativarPecaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		usuarioID := segurancaPresentation.UsuarioID(request.Context())
 

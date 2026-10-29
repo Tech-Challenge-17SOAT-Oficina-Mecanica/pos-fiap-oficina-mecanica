@@ -19,7 +19,7 @@ type loginResponse struct {
 	ExpiresIn   int    `json:"expiresIn"`
 }
 
-func NewLoginHandler(useCase seguranca.Autenticar) http.HandlerFunc {
+func NewLoginHandler(useCase AutenticarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var input loginRequest
 		if json.NewDecoder(request.Body).Decode(&input) != nil {

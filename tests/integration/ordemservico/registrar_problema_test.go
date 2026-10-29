@@ -28,7 +28,7 @@ func TestRegistrarProblemaEncontrado(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(db.Close)
 
 	suffix := time.Now().UnixNano() & 0xffffffffffff
 	clienteID := fmt.Sprintf("81000000-0000-0000-0000-%012x", suffix)

@@ -28,7 +28,7 @@ type entregarResponse struct {
 	Observacoes          string  `json:"observacoes,omitempty"`
 }
 
-func NewEntregarHandler(useCase application.Entregar) http.HandlerFunc {
+func NewEntregarHandler(useCase EntregarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {

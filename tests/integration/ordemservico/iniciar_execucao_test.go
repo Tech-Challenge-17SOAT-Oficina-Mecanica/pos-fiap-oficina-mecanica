@@ -24,7 +24,7 @@ func TestIniciarExecucao(t *testing.T) {
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
-	defer db.Close()
+	t.Cleanup(db.Close)
 	if err = db.Ping(ctx); err != nil {
 		t.Skip("banco indisponível")
 	}

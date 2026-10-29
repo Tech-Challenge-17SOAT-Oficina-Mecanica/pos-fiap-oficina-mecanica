@@ -19,7 +19,7 @@ type cadastroRequest struct {
 	EstoqueMinimo *int64       `json:"estoqueMinimo"`
 }
 
-func NewCadastrarPecaHandler(useCase peca.CadastrarPeca) http.HandlerFunc {
+func NewCadastrarPecaHandler(useCase CadastrarPecaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var corpo cadastroRequest
 		if err := json.NewDecoder(request.Body).Decode(&corpo); err != nil {

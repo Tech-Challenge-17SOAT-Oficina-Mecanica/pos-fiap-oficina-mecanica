@@ -22,7 +22,7 @@ type insumoDesativadoResponse struct {
 	UsuarioDesativacao string `json:"usuarioDesativacao"`
 }
 
-func NewDesativarHandler(useCase application.DesativarInsumo) http.HandlerFunc {
+func NewDesativarHandler(useCase DesativarInsumoUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		insumoID := request.PathValue("insumoId")
 		if !validation.IsUUID(insumoID) {
