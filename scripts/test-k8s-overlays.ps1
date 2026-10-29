@@ -32,10 +32,13 @@ foreach ($environment in @('local', 'aws')) {
     Assert ($yaml -match 'name: cpu' -and $yaml -match 'name: memory') 'Preservar as duas metricas do HPA.'
     Assert ($yaml -notmatch 'kubelet-insecure-tls') 'Nao misturar instalacao do Metrics Server com deploy da API.'
     if ($environment -eq 'local') {
+        Assert ($yaml -notmatch 'type: LoadBalancer') 'Local deve manter acesso interno.'
         Assert ($kinds.Count -eq 4 -and $kinds -contains 'ConfigMap') 'Local precisa das configuracoes compartilhadas.'
         Assert ($yaml -match 'image: oficina-api:local') 'Local deve usar a imagem carregada no Kind.'
         Assert ($yaml -match 'DB_HOST: postgres') 'Local deve usar o Service PostgreSQL.'
     } else {
+        Assert ($yaml -match 'type: LoadBalancer' -and $yaml -match 'aws-load-balancer-type: nlb') 'AWS deve expor a API com NLB.'
+        Assert ($yaml -match 'aws-load-balancer-internal: "false"') 'NLB deve ser publico.'
         Assert ($kinds.Count -eq 3 -and $kinds -notcontains 'ConfigMap') 'AWS deve preservar o ConfigMap do RDS gerenciado pelo Terraform.'
         Assert ($yaml -match 'image: example\.invalid/oficina-mecanica:') 'AWS deve ter um marcador sem conta fixa, substituido pelo deploy.'
         Assert ($yaml -notmatch 'image: oficina-api:local') 'AWS nao pode usar imagem exclusiva do Kind.'
