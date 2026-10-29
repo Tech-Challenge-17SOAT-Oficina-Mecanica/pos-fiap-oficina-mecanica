@@ -34,7 +34,7 @@ type consultaResponse struct {
 	Version              int          `json:"version"`
 }
 
-func NewConsultarInsumosHandler(useCase insumo.ConsultarInsumos) http.HandlerFunc {
+func NewConsultarInsumosHandler(useCase ConsultarInsumosUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		query := request.URL.Query()
 
@@ -82,7 +82,7 @@ func NewConsultarInsumosHandler(useCase insumo.ConsultarInsumos) http.HandlerFun
 	}
 }
 
-func NewConsultarInsumoPorIDHandler(useCase insumo.ConsultarInsumos) http.HandlerFunc {
+func NewConsultarInsumoPorIDHandler(useCase ConsultarInsumosUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		quantidade, err := lerQuantidade(request.URL.Query().Get("quantidadeDesejada"))
 		if err != nil {

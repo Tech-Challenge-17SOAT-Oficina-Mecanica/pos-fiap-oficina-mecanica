@@ -1,8 +1,8 @@
 ---
 documento: Refinamento de Requisitos — Registrar Serviços Necessários
 dono: A definir
-versao: 0.2
-atualizado_em: 2026-08-22
+versao: 0.3
+atualizado_em: 2026-10-28
 status: rascunho
 ---
 
@@ -31,8 +31,9 @@ necessários para realizar o reparo e compor o orçamento que será apresentado 
 **Pré-condições**
 
 - A Ordem de Serviço deve existir.
-- A OS deve estar `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
-- Deve existir um orçamento com status `CRIADO` correspondente à etapa atual da OS.
+- A OS deve estar `RECEBIDA`, `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
+- Deve existir um orçamento com status `CRIADO` correspondente à etapa atual da OS; em `RECEBIDA`,
+  o `PRINCIPAL` é criado no primeiro serviço, se ainda não existir.
 - Os serviços devem estar previamente cadastrados e ativos.
 
 **Requisitos Funcionais**
@@ -43,7 +44,7 @@ necessários para realizar o reparo e compor o orçamento que será apresentado 
 | RF-OS-30 | Permitir informar uma observação para cada serviço. |
 | RF-OS-31 | Vincular os serviços diretamente ao orçamento correspondente. |
 | RF-OS-32 | Identificar automaticamente o orçamento a partir da Ordem de Serviço. |
-| RF-OS-33 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `EM_DIAGNOSTICO`. |
+| RF-OS-33 | Utilizar o orçamento `PRINCIPAL` quando a OS estiver `RECEBIDA` ou `EM_DIAGNOSTICO`. |
 | RF-OS-34 | Utilizar o orçamento `COMPLEMENTAR` com status `CRIADO` quando a OS estiver `EM_EXECUCAO`. |
 | RF-OS-35 | Utilizar o valor cadastrado do serviço na composição do orçamento. |
 | RF-OS-36 | Atualizar o valor total do orçamento após o registro. |
@@ -64,8 +65,8 @@ necessários para realizar o reparo e compor o orçamento que será apresentado 
 1. O mecânico seleciona a Ordem de Serviço.
 2. O mecânico informa os serviços necessários.
 3. O sistema identifica o status atual da OS.
-4. O sistema identifica o orçamento correspondente: `EM_DIAGNOSTICO` leva ao `PRINCIPAL` com
-   status `CRIADO`; `EM_EXECUCAO` leva ao `COMPLEMENTAR` com status `CRIADO`.
+4. O sistema identifica o orçamento correspondente: `RECEBIDA` e `EM_DIAGNOSTICO` levam ao
+   `PRINCIPAL` com status `CRIADO`; `EM_EXECUCAO` leva ao `COMPLEMENTAR` com status `CRIADO`.
 5. O sistema valida os serviços informados.
 6. O sistema adiciona os serviços ao orçamento.
 7. O sistema atualiza o valor total do orçamento.
@@ -145,8 +146,8 @@ POST /ordens-servico/{osId}/servicos
 
 *Negócio*
 
-- A OS deve existir e estar `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
-- Deve existir orçamento aplicável com status `CRIADO`.
+- A OS deve existir e estar `RECEBIDA`, `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
+- Deve existir orçamento aplicável com status `CRIADO`, exceto em `RECEBIDA`, onde ele é criado.
 - O serviço deve existir e estar ativo.
 - Não é permitido duplicar o mesmo serviço no mesmo orçamento.
 - Orçamentos `APROVADO` ou `RECUSADO` não podem ser alterados.
@@ -154,19 +155,24 @@ POST /ordens-servico/{osId}/servicos
 **Regra de domínio**
 
 ```
+OS RECEBIDA       → orçamento PRINCIPAL / CRIADO (criado se ainda não existir)
 OS EM_DIAGNOSTICO → orçamento PRINCIPAL / CRIADO
 OS EM_EXECUCAO    → orçamento COMPLEMENTAR / CRIADO
 ```
 
-Não existindo o orçamento aplicável, a operação retorna conflito. A criação do orçamento acontece
-antes, no registro do problema encontrado.
+Em `EM_DIAGNOSTICO` e `EM_EXECUCAO`, não existindo o orçamento aplicável, a operação retorna
+conflito: a criação acontece antes, no registro do problema encontrado. Em `RECEBIDA`, os serviços
+são os solicitados na abertura da OS (Fase 2), ainda sem diagnóstico, e o primeiro deles cria o
+`PRINCIPAL`, como já acontece no registro de peças. Ver a decisão em
+[Criar Ordem de Serviço](criar-ordem-de-servico.md).
 
 **Processamento**
 
 1. Buscar a OS pelo identificador e validar sua existência.
-2. Validar se está `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
+2. Validar se está `RECEBIDA`, `EM_DIAGNOSTICO` ou `EM_EXECUCAO`.
 3. Determinar o tipo de orçamento pelo status da OS.
-4. Buscar o orçamento correspondente com status `CRIADO` e validar sua existência.
+4. Buscar o orçamento correspondente com status `CRIADO` e validar sua existência; em `RECEBIDA`,
+   criar o `PRINCIPAL` quando não existir.
 5. Para cada serviço recebido: buscar o serviço, validar existência e situação ativa, validar que
    ainda não está registrado no orçamento, recuperar o valor atual e registrar no orçamento.
 6. Recalcular o valor total do orçamento.
@@ -261,6 +267,7 @@ Durante a execução, o mesmo contrato responde com o orçamento complementar:
 *Integração*
 
 - Registro em orçamento `PRINCIPAL` com a OS `EM_DIAGNOSTICO`.
+- Registro com a OS `RECEBIDA`, criando o orçamento `PRINCIPAL`.
 - Registro em orçamento `COMPLEMENTAR` com a OS `EM_EXECUCAO`.
 - Vários serviços na mesma requisição.
 - OS inexistente retorna `404` e serviço inexistente retorna `404`.
@@ -280,12 +287,13 @@ Durante a execução, o mesmo contrato responde com o orçamento complementar:
 - [ ] Recalcular o valor total do orçamento
 - [ ] Impedir serviço duplicado no mesmo orçamento
 - [ ] Impedir alteração de orçamento `APROVADO` ou `RECUSADO`
-- [ ] Garantir que esta tarefa não crie um novo orçamento
+- [ ] Garantir que esta tarefa só crie orçamento com a OS em `RECEBIDA`
 
 **Caso de uso**
 
 - [ ] Implementar `RegistrarServicosNecessarios`
-- [ ] Validar que a OS exista e esteja `EM_DIAGNOSTICO` ou `EM_EXECUCAO`
+- [ ] Validar que a OS exista e esteja `RECEBIDA`, `EM_DIAGNOSTICO` ou `EM_EXECUCAO`
+- [ ] Buscar ou criar `PRINCIPAL` / `CRIADO` quando a OS estiver `RECEBIDA`
 - [ ] Buscar `PRINCIPAL` / `CRIADO` quando a OS estiver `EM_DIAGNOSTICO`
 - [ ] Buscar `COMPLEMENTAR` / `CRIADO` quando a OS estiver `EM_EXECUCAO`
 - [ ] Validar que o orçamento correspondente exista

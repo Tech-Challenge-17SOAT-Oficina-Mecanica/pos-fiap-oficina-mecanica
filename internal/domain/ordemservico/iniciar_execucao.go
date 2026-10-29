@@ -44,3 +44,21 @@ func (ordem *OrdemDeServico) IniciarExecucao(dataInicio time.Time) error {
 	ordem.DataInicioExecucao = &dataInicio
 	return nil
 }
+
+// ValidarAutorizacaoParaExecucao aplica as pre-condicoes de negocio antes da baixa.
+func ValidarAutorizacaoParaExecucao(orcamentoAprovado, servicosAutorizados bool) error {
+	if !orcamentoAprovado {
+		return ErrOrcamentoNaoAprovado
+	}
+	if !servicosAutorizados {
+		return ErrServicosNaoAutorizados
+	}
+	return nil
+}
+
+func ValidarRecursosParaExecucao(possuiRecursoSemReserva bool) error {
+	if possuiRecursoSemReserva {
+		return ErrRecursosIndisponiveis
+	}
+	return nil
+}

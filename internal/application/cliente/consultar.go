@@ -7,10 +7,10 @@ import (
 )
 
 type Consultar struct {
-	repository Repository
+	repository ConsultarRepository
 }
 
-func NewConsultar(repository Repository) Consultar {
+func NewConsultar(repository ConsultarRepository) Consultar {
 	return Consultar{repository: repository}
 }
 

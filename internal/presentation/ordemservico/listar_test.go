@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	application "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/ordemservico"
 	domain "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/domain/ordemservico"
@@ -24,6 +25,7 @@ func (stub listarRepositoryStub) Listar(context.Context, domain.FiltrosListagem,
 func TestListarHandler(t *testing.T) {
 	itemExemplo := domain.ItemListagem{
 		OrdemServicoID: "70000000-0000-0000-0000-000000000001", Status: "RECEBIDA",
+		CriadaEm:  time.Date(2026, time.October, 28, 9, 30, 0, 0, time.UTC),
 		ClienteID: "cliente-1", ClienteNome: "Ana", ClienteDocumento: "39053344705",
 		VeiculoID: "veiculo-1", Placa: "ABC1D23", Marca: "Fiat", Modelo: "Uno",
 	}
@@ -45,14 +47,28 @@ func TestListarHandler(t *testing.T) {
 		if resposta.Data[0].Cliente.Documento != "39053344705" {
 			t.Fatalf("cliente=%+v", resposta.Data[0].Cliente)
 		}
+		if resposta.Data[0].CriadaEm != "2026-10-28T09:30:00Z" {
+			t.Fatalf("criadaEm=%q", resposta.Data[0].CriadaEm)
+		}
 	})
 
 	t.Run("sem resultado retorna lista vazia, nao 404", func(t *testing.T) {
 		handler := NewListarHandler(application.NewListar(listarRepositoryStub{itens: []domain.ItemListagem{}, total: 0}))
 		writer := httptest.NewRecorder()
-		handler(writer, httptest.NewRequest(http.MethodGet, "/ordens-servico?status=CANCELADA", nil))
+		handler(writer, httptest.NewRequest(http.MethodGet, "/ordens-servico?status=EM_EXECUCAO", nil))
 		if writer.Code != http.StatusOK {
 			t.Fatalf("status=%d body=%s", writer.Code, writer.Body.String())
+		}
+	})
+
+	t.Run("status encerrado nao e filtro valido", func(t *testing.T) {
+		for _, status := range []string{"FINALIZADA", "ENTREGUE", "CANCELADA"} {
+			handler := NewListarHandler(application.NewListar(listarRepositoryStub{}))
+			writer := httptest.NewRecorder()
+			handler(writer, httptest.NewRequest(http.MethodGet, "/ordens-servico?status="+status, nil))
+			if writer.Code != http.StatusBadRequest {
+				t.Fatalf("%s: status=%d body=%s", status, writer.Code, writer.Body.String())
+			}
 		}
 	})
 

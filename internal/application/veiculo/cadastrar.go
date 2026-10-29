@@ -16,18 +16,6 @@ var (
 	ErrClienteProprietarioInativo = errors.New("cliente proprietário está inativo")
 )
 
-type Repository interface {
-	CadastrarParaCliente(context.Context, string, domain.Cadastro) (domain.Veiculo, error)
-	ConsultarPorPlaca(context.Context, string, bool) (domain.Veiculo, error)
-	Atualizar(context.Context, string, int, domain.Cadastro) (domain.Veiculo, error)
-	BuscarPorIDIncluindoInativo(context.Context, string) (domain.Veiculo, error)
-	BuscarOSAbertas(context.Context, string) ([]OrdemServicoAberta, error)
-	Inativar(context.Context, InativarRepositoryInput) (Inativacao, error)
-	ExisteAtivoPorPlacaExcetoID(context.Context, string, string) (bool, error)
-	ClienteAtivo(context.Context, string) (bool, error)
-	Reativar(context.Context, string, string) (Reativacao, error)
-}
-
 type OrdemServicoAberta struct {
 	OrdemServicoID string `json:"ordemServicoId"`
 	Status         string `json:"status"`
@@ -52,9 +40,9 @@ type Reativacao struct {
 	ReativadoEm  time.Time
 	ReativadoPor string
 }
-type Cadastrar struct{ repository Repository }
+type Cadastrar struct{ repository CadastrarRepository }
 
-func NewCadastrar(repository Repository) Cadastrar { return Cadastrar{repository} }
+func NewCadastrar(repository CadastrarRepository) Cadastrar { return Cadastrar{repository} }
 func (useCase Cadastrar) Execute(ctx context.Context, clienteID string, cadastro domain.Cadastro) (domain.Veiculo, error) {
 	return useCase.repository.CadastrarParaCliente(ctx, clienteID, cadastro)
 }

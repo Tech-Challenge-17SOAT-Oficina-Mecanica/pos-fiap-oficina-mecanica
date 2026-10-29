@@ -19,10 +19,10 @@ type ReativarInput struct {
 }
 
 type Inativar struct {
-	repository Repository
+	repository InativarRepository
 }
 
-func NewInativar(repository Repository) Inativar {
+func NewInativar(repository InativarRepository) Inativar {
 	return Inativar{repository: repository}
 }
 
@@ -53,10 +53,10 @@ func (useCase Inativar) Execute(ctx context.Context, input InativarInput) (Inati
 }
 
 type Reativar struct {
-	repository Repository
+	repository ReativarRepository
 }
 
-func NewReativar(repository Repository) Reativar {
+func NewReativar(repository ReativarRepository) Reativar {
 	return Reativar{repository: repository}
 }
 

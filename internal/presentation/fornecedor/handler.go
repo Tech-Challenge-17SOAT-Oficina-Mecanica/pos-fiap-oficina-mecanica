@@ -90,7 +90,7 @@ type fornecedoresResponse struct {
 	TotalPaginas   int                        `json:"totalPaginas"`
 }
 
-func NewCadastrarHandler(useCase application.Cadastrar) http.HandlerFunc {
+func NewCadastrarHandler(useCase CadastrarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		var input cadastrarRequest
 		decoder := json.NewDecoder(request.Body)
@@ -130,7 +130,7 @@ func NewCadastrarHandler(useCase application.Cadastrar) http.HandlerFunc {
 	}
 }
 
-func NewListarHandler(useCase application.ConsultarFornecedores) http.HandlerFunc {
+func NewListarHandler(useCase ConsultarFornecedoresUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		pagina, err := intQuery(request, "pagina", 0)
 		if err != nil {
@@ -175,7 +175,7 @@ func NewListarHandler(useCase application.ConsultarFornecedores) http.HandlerFun
 	}
 }
 
-func NewBuscarPorIDHandler(useCase application.ConsultarFornecedorPorID) http.HandlerFunc {
+func NewBuscarPorIDHandler(useCase ConsultarFornecedorPorIDUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
 		if !validation.IsUUID(fornecedorID) {
@@ -197,7 +197,7 @@ func NewBuscarPorIDHandler(useCase application.ConsultarFornecedorPorID) http.Ha
 	}
 }
 
-func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFunc {
+func NewAtualizarHandler(useCase AtualizarFornecedorUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
 		if !validation.IsUUID(fornecedorID) {
@@ -251,7 +251,7 @@ func NewAtualizarHandler(useCase application.AtualizarFornecedor) http.HandlerFu
 	}
 }
 
-func NewDesativarHandler(useCase application.DesativarFornecedor) http.HandlerFunc {
+func NewDesativarHandler(useCase DesativarFornecedorUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
 		if !validation.IsUUID(fornecedorID) {
@@ -268,7 +268,7 @@ func NewDesativarHandler(useCase application.DesativarFornecedor) http.HandlerFu
 	}
 }
 
-func NewReativarHandler(useCase application.ReativarFornecedor) http.HandlerFunc {
+func NewReativarHandler(useCase ReativarFornecedorUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		fornecedorID := request.PathValue("fornecedorId")
 		if !validation.IsUUID(fornecedorID) {

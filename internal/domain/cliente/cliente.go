@@ -2,7 +2,6 @@ package cliente
 
 import (
 	"errors"
-	"net/mail"
 	"strings"
 	"time"
 
@@ -156,6 +155,5 @@ func somenteDigitos(value string) bool {
 }
 
 func emailValido(value string) bool {
-	address, err := mail.ParseAddress(value)
-	return err == nil && address.Address == value
+	return validation.IsEmail(value)
 }

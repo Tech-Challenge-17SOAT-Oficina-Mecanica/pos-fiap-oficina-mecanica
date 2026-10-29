@@ -16,16 +16,11 @@ var (
 	ErrSituacaoInvalida          = errors.New("situacao do fornecedor invalida")
 )
 
-type SituacaoRepository interface {
-	Desativar(context.Context, string, string) (domain.Fornecedor, error)
-	Reativar(context.Context, string, string) (domain.Fornecedor, error)
-}
-
 type DesativarFornecedor struct {
-	repository SituacaoRepository
+	repository DesativarRepository
 }
 
-func NewDesativarFornecedor(repository SituacaoRepository) DesativarFornecedor {
+func NewDesativarFornecedor(repository DesativarRepository) DesativarFornecedor {
 	return DesativarFornecedor{repository: repository}
 }
 
@@ -39,10 +34,10 @@ func (useCase DesativarFornecedor) Execute(ctx context.Context, fornecedorID, us
 }
 
 type ReativarFornecedor struct {
-	repository SituacaoRepository
+	repository ReativarRepository
 }
 
-func NewReativarFornecedor(repository SituacaoRepository) ReativarFornecedor {
+func NewReativarFornecedor(repository ReativarRepository) ReativarFornecedor {
 	return ReativarFornecedor{repository: repository}
 }
 
