@@ -437,12 +437,10 @@ pos-fiap-oficina-mecanica/
 
 ## 👥 Integrantes
 
-##### João Victor — RM376616 - jhonnysket - [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
-
-##### José Lázaro — RM371406 - joselzro - [LinkedIn](https://www.linkedin.com/in/lazaro-contato/)
-
-##### Hemily Nara — RM373944 - hemilyynara - [LinkedIn](https://www.linkedin.com/in/hemilynara/)
-
-##### Carlos Henrique — RM376201 - caohz_55485 - [LinkedIn](https://www.linkedin.com/in/carlos1br/)
-
-##### Helena Miranda — RM376202 - helenamiranda6974 - [LinkedIn](https://www.linkedin.com/in/hmirandas/)
+| Integrante | RM | Usuário | LinkedIn |
+| --- | --- | --- | --- |
+| João Victor | RM376616 | jhonnysket | [Perfil](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/) |
+| José Lázaro | RM371406 | joselzro | [Perfil](https://www.linkedin.com/in/lazaro-contato/) |
+| Hemily Nara | RM373944 | hemilyynara | [Perfil](https://www.linkedin.com/in/hemilynara/) |
+| Carlos Henrique | RM376201 | caohz_55485 | [Perfil](https://www.linkedin.com/in/carlos1br/) |
+| Helena Miranda | RM376202 | helenamiranda6974 | [Perfil](https://www.linkedin.com/in/hmirandas/) |
