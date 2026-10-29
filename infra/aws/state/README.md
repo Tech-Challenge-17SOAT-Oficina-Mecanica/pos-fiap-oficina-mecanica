@@ -16,8 +16,14 @@ Academy esperada. Os tres Secrets AWS precisam pertencer a essa mesma conta.
    propriedade BucketOwnerEnforced antes de gravar qualquer estado.
 6. Inicializa o backend S3 do Terraform state, com chave
    `bootstrap/terraform.tfstate`, criptografia e lock S3 nativo.
-7. Importa os cinco recursos S3 ainda ausentes do estado e executa plan/apply,
-   passando a administrar o bucket pelo Terraform.
+7. Importa as quatro configuracoes S3 ainda ausentes do estado e executa plan/apply.
+   A existencia do bucket fica sob responsabilidade do script; suas protecoes
+   continuam administradas pelo Terraform.
+
+O recurso generico `aws_s3_bucket` consulta Object Lock, uma operacao bloqueada
+pela politica do Academy. Por isso ele nao e importado. Se estiver em um estado
+anterior, o bloco `removed` o desvincula sem apagar o bucket nem os objetos.
+O script nao executa exclusao de bucket ou objetos.
 
 Reexecucoes reconhecem o bucket e os recursos importados. Erro 403 interrompe o
 fluxo: nao e interpretado como bucket inexistente. O backend e a identidade sao

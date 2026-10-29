@@ -39,9 +39,10 @@ export GITHUB_OUTPUT="$test_dir/outputs"
 
 bash scripts/prepare-aws-state.sh > /dev/null
 grep -q 's3api create-bucket' "$BOOTSTRAP_TEST_LOG"
-[[ $(grep -c ' import ' "$BOOTSTRAP_TEST_LOG") -eq 5 ]]
+[[ $(grep -c ' import ' "$BOOTSTRAP_TEST_LOG") -eq 4 ]]
+! grep -q 'import -input=false aws_s3_bucket.terraform ' "$BOOTSTRAP_TEST_LOG"
 grep -q 'use_lockfile=true' "$BOOTSTRAP_TEST_LOG"
-echo 'PASS: bucket novo protegido e cinco recursos importados no estado remoto.'
+echo 'PASS: bucket novo protegido e quatro configuracoes importadas sem consultar Object Lock.'
 
 export BUCKET_MODE=exists STATE_MODE=existing
 : > "$BOOTSTRAP_TEST_LOG"

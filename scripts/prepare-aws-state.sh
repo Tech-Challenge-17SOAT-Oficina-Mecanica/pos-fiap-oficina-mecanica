@@ -49,7 +49,7 @@ if ! existing_state=$(terraform -chdir=infra/aws/state state list 2>&1); then
     exit 1
   fi
 fi
-for type in aws_s3_bucket aws_s3_bucket_public_access_block aws_s3_bucket_versioning \
+for type in aws_s3_bucket_public_access_block aws_s3_bucket_versioning \
   aws_s3_bucket_server_side_encryption_configuration aws_s3_bucket_ownership_controls; do
   address="$type.terraform"
   if ! grep -Fxq "$address" <<< "$existing_state"; then
