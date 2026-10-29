@@ -42,9 +42,11 @@ func NovosServicosCadastro(servicos []ServicoCadastro) ([]ServicoCadastro, error
 	return result, nil
 }
 
+// TipoOrcamentoParaServico aceita RECEBIDA porque a abertura da OS ja registra os servicos
+// solicitados pelo cliente; eles entram no orcamento PRINCIPAL, o mesmo do diagnostico.
 func TipoOrcamentoParaServico(status string) (string, error) {
 	switch status {
-	case StatusEmDiagnostico:
+	case StatusRecebida, StatusEmDiagnostico:
 		return OrcamentoPrincipal, nil
 	case StatusEmExecucao:
 		return OrcamentoComplementar, nil

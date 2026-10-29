@@ -1,20 +1,27 @@
 package ordemservico
 
-// StatusValidosListagem sao os status aceitos no filtro de GET /ordens-servico. Inclui
-// AGUARDANDO_RECURSOS, que o refinamento original nao listou mas que e um status real do
-// sistema (introduzido pelo fluxo de estoque).
-var StatusValidosListagem = []string{
-	"RECEBIDA", "EM_DIAGNOSTICO", "AGUARDANDO_APROVACAO", "AGUARDANDO_RECURSOS",
-	"AGUARDANDO_EXECUCAO", "EM_EXECUCAO", "FINALIZADA", "ENTREGUE", "CANCELADA",
+import (
+	"slices"
+	"time"
+)
+
+// StatusListagemPorPrioridade e a ordem em que GET /ordens-servico apresenta as OS, da mais
+// adiantada no fluxo para a menos: o enunciado da Fase 2 pede Execucao > Aguardando Aprovacao >
+// Diagnostico > Recebida. AGUARDANDO_EXECUCAO e AGUARDANDO_RECURSOS ficam onde estao na maquina
+// de estados, entre a aprovacao e a execucao. FINALIZADA, ENTREGUE e CANCELADA nao aparecem: a
+// OS continua no banco, so sai da listagem. Esta lista tambem define os valores aceitos no
+// filtro por status.
+var StatusListagemPorPrioridade = []string{
+	StatusEmExecucao,
+	StatusAguardandoExecucao,
+	"AGUARDANDO_RECURSOS",
+	"AGUARDANDO_APROVACAO",
+	StatusEmDiagnostico,
+	StatusRecebida,
 }
 
 func StatusListagemValido(status string) bool {
-	for _, valido := range StatusValidosListagem {
-		if valido == status {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(StatusListagemPorPrioridade, status)
 }
 
 // FiltrosListagem sao os filtros opcionais de GET /ordens-servico; vazio significa "sem filtro".
@@ -24,10 +31,12 @@ type FiltrosListagem struct {
 	Placa     string
 }
 
-// ItemListagem e uma linha da listagem, com cliente e veiculo resumidos.
+// ItemListagem e uma linha da listagem, com cliente e veiculo resumidos. CriadaEm vai junto para
+// que a ordem entre OS do mesmo status, das mais antigas para as mais novas, apareca na resposta.
 type ItemListagem struct {
 	OrdemServicoID   string
 	Status           string
+	CriadaEm         time.Time
 	ClienteID        string
 	ClienteNome      string
 	ClienteDocumento string

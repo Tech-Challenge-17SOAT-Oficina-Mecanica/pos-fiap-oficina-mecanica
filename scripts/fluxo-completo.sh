@@ -37,15 +37,17 @@ print(L()+L()+L()+N()+L()+N()+N())")
 EMAIL=${EMAIL_CLIENTE:-c$CPF@example.com}
 CLI=$(api POST /clientes "{\"nome\":\"Cliente $CPF\",\"documento\":\"$CPF\",\"tipoDocumento\":\"CPF\",\"telefone\":\"11988887777\",\"email\":\"$EMAIL\"}" | campo id)
 VEI=$(api POST "/clientes/$CLI/veiculos" "{\"placa\":\"$PLACA\",\"marca\":\"VW\",\"modelo\":\"Gol\",\"ano\":2020}" | campo id)
-OS=$(api POST /ordens-servico "{\"clienteId\":\"$CLI\",\"veiculoId\":\"$VEI\"}" | campo ordemServicoId)
+# A abertura ja leva o servico e as pecas solicitados: eles entram no orcamento PRINCIPAL.
+OS=$(api POST /ordens-servico "{\"clienteId\":\"$CLI\",\"veiculoId\":\"$VEI\",\
+\"servicos\":[{\"servicoId\":\"40000000-0000-0000-0000-000000000001\"}],\
+\"pecas\":[{\"pecaId\":\"50000000-0000-0000-0000-000000000001\",\"quantidade\":2}]}" | campo ordemServicoId)
 echo "  cliente=$CLI ($EMAIL)"
 echo "  veiculo=$VEI"
 echo "  os=$OS"
 
 api POST "/ordens-servico/$OS/problema-relatado" '{"descricao":"Barulho na suspensao"}' >/dev/null
-api POST "/ordens-servico/$OS/problemas" '{"descricao":"Amortecedor gasto","observacoes":"Troca"}' >/dev/null
-api POST "/ordens-servico/$OS/servicos" '{"servicos":[{"servicoId":"40000000-0000-0000-0000-000000000001"}]}' >/dev/null
-ORC=$(api POST "/ordens-servico/$OS/pecas" '{"itens":[{"itemId":"50000000-0000-0000-0000-000000000001","quantidade":2}]}' | campo orcamentoId)
+ORC=$(api POST "/ordens-servico/$OS/problemas" '{"descricao":"Amortecedor gasto","observacoes":"Troca"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin).get('orcamento',{}).get('id',''))" 2>/dev/null)
 echo "  orcamento=$ORC"
 
 api POST "/orcamentos/$ORC/calcular" >/dev/null

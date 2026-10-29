@@ -8,9 +8,9 @@ import (
 
 // O net/http entra em panico ao registrar a mesma rota duas vezes, e isso so acontece
 // quando a aplicacao sobe — build e vet passam normalmente. Este teste pega a duplicata
-// antes, lendo o proprio main.go.
+// antes, lendo o arquivo de registro de rotas.
 func TestNenhumaRotaRegistradaDuasVezes(t *testing.T) {
-	fonte, err := os.ReadFile("main.go")
+	fonte, err := os.ReadFile("routes.go")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestNenhumaRotaRegistradaDuasVezes(t *testing.T) {
 	}
 
 	if len(vistas) == 0 {
-		t.Fatal("nenhuma rota encontrada; o teste precisa ser ajustado ao formato do main.go")
+		t.Fatal("nenhuma rota encontrada; o teste precisa ser ajustado ao formato do routes.go")
 	}
 	for rota, quantidade := range vistas {
 		if quantidade > 1 {

@@ -40,7 +40,7 @@ func TestCadastrarMecanico(t *testing.T) {
 		t.Fatal(err)
 	}
 	mecanicoRepository := mecanicoInfrastructure.NewPostgresRepository(db)
-	handler := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository)))
+	handler := segurancaPresentation.RequireScope(jwt, "mecanicos:escrever", presentation.NewCadastrarHandler(mecanicoApplication.NewCadastrar(mecanicoRepository, segurancaInfrastructure.NewBcrypt())))
 
 	request := httptest.NewRequest(http.MethodPost, "/mecanicos", strings.NewReader(`{"nome":"Mecânico Integração","email":"mecanico.integracao@oficina.local","senha":"mecanico123456789","escopos":["clientes:ler"]}`))
 	request.Header.Set("Authorization", "Bearer "+token)
@@ -50,7 +50,7 @@ func TestCadastrarMecanico(t *testing.T) {
 		t.Fatalf("status %d: %s", response.Code, response.Body.String())
 	}
 	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
-	if _, err := segurancaApplication.NewAutenticar(segurancaRepository, jwt).Execute(ctx, email, "mecanico123456789"); err != nil {
+	if _, err := segurancaApplication.NewAutenticar(segurancaRepository, jwt, segurancaInfrastructure.NewBcrypt()).Execute(ctx, email, "mecanico123456789"); err != nil {
 		t.Fatalf("novo login falhou: %v", err)
 	}
 

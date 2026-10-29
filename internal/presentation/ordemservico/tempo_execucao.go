@@ -28,7 +28,7 @@ type temposExecucaoResponse struct {
 	TotalPaginas              int                     `json:"totalPaginas"`
 }
 
-func NewConsultarTempoExecucaoHandler(useCase application.ConsultarTempoExecucaoDaOS) http.HandlerFunc {
+func NewConsultarTempoExecucaoHandler(useCase ConsultarTempoExecucaoDaOSUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {
@@ -45,7 +45,7 @@ func NewConsultarTempoExecucaoHandler(useCase application.ConsultarTempoExecucao
 	}
 }
 
-func NewListarTemposExecucaoHandler(useCase application.ConsultarTempoMedioExecucao) http.HandlerFunc {
+func NewListarTemposExecucaoHandler(useCase ConsultarTempoMedioExecucaoUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		paginacao, err := sharedhttp.LerPaginacao(request.URL.Query())
 		if err != nil {

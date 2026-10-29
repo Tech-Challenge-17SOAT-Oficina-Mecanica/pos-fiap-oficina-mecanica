@@ -31,7 +31,7 @@ func (fake token) Gerar(string, []string) (string, error) { return fake.value, f
 
 func TestLoginHandler(t *testing.T) {
 	hash, _ := bcrypt.GenerateFromPassword([]byte("senha"), bcrypt.MinCost)
-	useCase := application.NewAutenticar(repo{usuario: domain.Usuario{ID: "id", SenhaHash: string(hash), Ativo: true}}, token{value: "jwt"})
+	useCase := application.NewAutenticar(repo{usuario: domain.Usuario{ID: "id", SenhaHash: string(hash), Ativo: true}}, token{value: "jwt"}, verificadorSenhaTeste{})
 	handler := NewLoginHandler(useCase)
 	for _, test := range []struct {
 		body   string
@@ -44,10 +44,16 @@ func TestLoginHandler(t *testing.T) {
 			t.Fatalf("status %d", response.Code)
 		}
 	}
-	failing := NewLoginHandler(application.NewAutenticar(repo{usuario: domain.Usuario{ID: "id", SenhaHash: string(hash), Ativo: true}}, token{err: errors.New("falha")}))
+	failing := NewLoginHandler(application.NewAutenticar(repo{usuario: domain.Usuario{ID: "id", SenhaHash: string(hash), Ativo: true}}, token{err: errors.New("falha")}, verificadorSenhaTeste{}))
 	response := httptest.NewRecorder()
 	failing(response, httptest.NewRequest(http.MethodPost, "/autenticacao/login", strings.NewReader(`{"email":"a@b.com","senha":"senha"}`)))
 	if response.Code != 500 {
 		t.Fatalf("status %d", response.Code)
 	}
+}
+
+type verificadorSenhaTeste struct{}
+
+func (verificadorSenhaTeste) Verificar(hash, senha string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(senha))
 }

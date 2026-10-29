@@ -31,7 +31,7 @@ type itemPendenteResponse struct {
 	Quantidade float64 `json:"quantidade"`
 }
 
-func NewFinalizarHandler(useCase application.Finalizar) http.HandlerFunc {
+func NewFinalizarHandler(useCase FinalizarUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		osID := request.PathValue("osId")
 		if !validation.IsUUID(osID) {

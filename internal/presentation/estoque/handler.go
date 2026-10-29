@@ -26,7 +26,7 @@ type registrarEntradaRequest struct {
 	Itens                []itemEntradaRequest `json:"itens"`
 }
 
-func NewRegistrarEntradaHandler(useCase application.RegistrarEntrada) http.HandlerFunc {
+func NewRegistrarEntradaHandler(useCase RegistrarEntradaUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		idempotencyKey := request.Header.Get("Idempotency-Key")
 

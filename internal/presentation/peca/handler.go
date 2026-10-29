@@ -42,7 +42,7 @@ type pecaResponse struct {
 	AtualizadoPor *string    `json:"atualizadoPor,omitempty"`
 }
 
-func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
+func NewConsultarPecasHandler(useCase ConsultarPecasUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		query := request.URL.Query()
 
@@ -94,7 +94,7 @@ func NewConsultarPecasHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
 	}
 }
 
-func NewConsultarPecaPorIDHandler(useCase peca.ConsultarPecas) http.HandlerFunc {
+func NewConsultarPecaPorIDHandler(useCase ConsultarPecasUseCase) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		quantidade, err := lerQuantidade(request.URL.Query().Get("quantidadeDesejada"))
 		if err != nil {

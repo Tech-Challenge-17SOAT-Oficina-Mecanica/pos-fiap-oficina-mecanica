@@ -48,18 +48,25 @@ func (useCase RegistrarItens) Execute(ctx context.Context, input RegistrarInput)
 	if len(input.Itens) == 0 {
 		return domainOrcamento.Resultado{}, errors.New("itens e obrigatorio")
 	}
-	seen := make(map[string]struct{}, len(input.Itens))
-	for _, item := range input.Itens {
-		if !validation.IsUUID(item.ItemID) {
-			return domainOrcamento.Resultado{}, ErrItemIDInvalido
-		}
-		if _, exists := seen[item.ItemID]; exists {
-			return domainOrcamento.Resultado{}, ErrItemRepetido
-		}
-		seen[item.ItemID] = struct{}{}
-		if err := domainEstoque.QuantidadeValida(input.Tipo, item.Quantidade); err != nil {
-			return domainOrcamento.Resultado{}, err
-		}
+	if err := validarItens(input.Tipo, input.Itens); err != nil {
+		return domainOrcamento.Resultado{}, err
 	}
 	return useCase.repository.RegistrarItens(ctx, input)
+}
+
+func validarItens(tipo string, itens []ItemInput) error {
+	seen := make(map[string]struct{}, len(itens))
+	for _, item := range itens {
+		if !validation.IsUUID(item.ItemID) {
+			return ErrItemIDInvalido
+		}
+		if _, exists := seen[item.ItemID]; exists {
+			return ErrItemRepetido
+		}
+		seen[item.ItemID] = struct{}{}
+		if err := domainEstoque.QuantidadeValida(tipo, item.Quantidade); err != nil {
+			return err
+		}
+	}
+	return nil
 }

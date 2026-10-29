@@ -1,8 +1,8 @@
 ---
 documento: Resumo do Contexto — Orçamento
 dono: A definir
-versao: 0.3
-atualizado_em: 2026-08-22
+versao: 0.4
+atualizado_em: 2026-10-28
 status: em construcao
 ---
 
@@ -19,8 +19,9 @@ tipos e enums do contexto e as convenções que valem aqui. O que ainda não est
 O orçamento da Ordem de Serviço: o cálculo dos valores, a apresentação ao cliente e a decisão dele
 — aprovar ou recusar. É o ponto do fluxo em que o cliente autoriza, ou não, a execução.
 
-O orçamento **não** é criado aqui: ele nasce no contexto de Ordem de Serviço, no registro do
-problema encontrado. Este contexto cuida do que acontece depois.
+O orçamento **não** é criado aqui: ele nasce no contexto de Ordem de Serviço, no primeiro item
+que a OS recebe — os serviços e as peças solicitados na abertura ou, sem eles, o problema
+encontrado no diagnóstico. Este contexto cuida do que acontece depois.
 
 ## Tarefas documentadas
 
