@@ -1,0 +1,2 @@
+# Crie este diretorio antes do apply. Prefira disco local fora do OneDrive.
+data_path = "C:/oficina-data/postgres"

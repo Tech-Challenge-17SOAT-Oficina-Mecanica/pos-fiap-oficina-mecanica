@@ -1,4 +1,4 @@
-name: SonarQube
+name: 1.2 · 📊 SonarQube
 
 on:
   pull_request:

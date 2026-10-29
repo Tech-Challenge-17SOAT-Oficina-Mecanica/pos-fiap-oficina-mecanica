@@ -1,0 +1,25 @@
+FROM alpine:3.21 AS sql
+
+RUN apk add --no-cache ca-certificates \
+    && mkdir /certs \
+    && wget -O /certs/aws-rds-global-bundle.pem \
+       https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+
+COPY db/migrations/ /sql/
+
+# Flyway owns the transaction; retain the source wrappers for existing psql workflows.
+RUN for file in /sql/*.sql; do \
+      sed -i '1{/^BEGIN;[[:space:]]*$/d;}; ${/^COMMIT;[[:space:]]*$/d;}' "$file"; \
+    done
+
+FROM flyway/flyway:11.20.0
+
+COPY --from=sql /sql/ /flyway/migrations/
+COPY --from=sql /certs/ /flyway/certs/
+
+ENV FLYWAY_CLEAN_DISABLED=true \
+    FLYWAY_LOCATIONS=filesystem:/flyway/migrations \
+    FLYWAY_VALIDATE_MIGRATION_NAMING=true \
+    FLYWAY_CONNECT_RETRIES=30
+
+CMD ["migrate"]

@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+# Namespace, Secret e ConfigMap com RDS sao provisionados pelo Terraform AWS.
+# O diagnostico verificar-rds.yaml e executado separadamente, quando necessario.
+resources:
+  - ../base/api
+images:
+  - name: oficina-api
+    # O deploy preenche o URI descoberto na conta autenticada; nunca aplicar este marcador.
+    newName: example.invalid/oficina-mecanica
+    newTag: DEFINIR_SHA_DO_COMMIT

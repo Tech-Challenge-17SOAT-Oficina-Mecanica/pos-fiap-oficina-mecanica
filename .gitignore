@@ -5,4 +5,12 @@ coverage
 .gocache/
 .scannerwork/
 reports/
-k8s/secret.yaml
+k8s/local/secret.yaml
+**/.terraform/
+**/terraform.tfstate*
+**/*.tfplan
+**/terraform.tfvars
+infra/local/cluster/kubeconfig
+infra/local/.local/
+infra/aws/.local/
+**/terraform.tfvars.json

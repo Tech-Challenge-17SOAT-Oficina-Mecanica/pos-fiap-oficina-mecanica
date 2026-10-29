@@ -15,7 +15,10 @@ FROM alpine:3.21
 
 WORKDIR /app
 
-RUN addgroup -S oficina && adduser -S -G oficina oficina
+RUN apk add --no-cache ca-certificates \
+    && wget -O /etc/ssl/certs/aws-rds-global-bundle.pem \
+       https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && addgroup -S oficina && adduser -S -G oficina oficina
 
 COPY --from=build --chown=oficina:oficina /app/oficina-mecanica .
 
