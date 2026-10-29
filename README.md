@@ -224,6 +224,69 @@ Pré-requisitos da conta, variáveis opcionais e instruções completas:
 
 ## ⚙️ CI/CD e workflows
 
+![Fluxo da pipeline: verificações automáticas, provisionamento com Terraform e deploy, com os recursos AWS utilizados](docs/imagens/pipeline-aws.png)
+
+### Por que precisamos do bucket S3?
+
+Um **bucket** é um espaço de armazenamento do Amazon S3. No nosso fluxo, ele
+guarda o **estado do Terraform**: o registro que relaciona os arquivos de
+infraestrutura aos recursos criados na AWS, como o cluster EKS e o banco RDS.
+
+Cada execução do GitHub Actions usa uma máquina temporária. O bucket permite que
+a próxima execução consulte esse registro e saiba quais recursos já administra,
+o que precisa criar e o que precisa atualizar. Sem o estado correspondente, o
+Terraform não adota automaticamente um cluster ou banco existente; nossa
+automação bloqueia esse caso para evitar conflitos.
+
+O provisionamento prepara o bucket automaticamente, antes dos demais recursos.
+Cada conta usa seu próprio bucket, com registros separados para armazenamento
+(`bootstrap/terraform.tfstate`), infraestrutura (`cluster/terraform.tfstate`) e
+configurações Kubernetes (`platform/terraform.tfstate`). O versionamento preserva
+versões anteriores; o bloqueio de estado evita alterações concorrentes no mesmo
+registro. O armazenamento tem criptografia e bloqueio de acesso público.
+
+**O bucket guarda o registro da infraestrutura; os dados da oficina ficam no RDS
+e as imagens ficam no ECR.** O estado pode conter credenciais, por isso não deve
+ser público nem versionado no Git. Preserve o bucket enquanto houver recursos
+administrados por esses estados.
+
+### Papel dos recursos e serviços AWS
+
+| Recurso ou serviço | Papel no nosso fluxo |
+| --- | --- |
+| **S3** | Mantém os estados Terraform entre execuções da pipeline, com versionamento e bloqueio para alterações concorrentes. |
+| **ECR** | Guarda as imagens Docker da API e do Flyway com tags do commit. O EKS baixa essas imagens para executá-las; publicar no ECR não inicia a aplicação. |
+| **EKS** | Fornece o Kubernetes gerenciado, que administra os pods, Services, Jobs e a atualização da API. |
+| **EC2** | Fornece a máquina do grupo de nós do EKS, onde executam os containers da API, das migrations e dos componentes Kubernetes. Nosso laboratório usa um nó. |
+| **RDS PostgreSQL** | Executa o banco privado e mantém os dados independentemente dos pods. O Job Flyway prepara as tabelas antes da atualização da API; a API acessa o banco usando TLS. |
+| **VPC e sub-redes** | Definem a rede usada por EKS e RDS. O Terraform reutiliza a VPC e sub-redes existentes descobertas na conta Academy. |
+| **Internet Gateway e rotas** | Oferecem o caminho de saída das sub-redes públicas usadas pelos nós para baixar imagens e acessar serviços. A pipeline verifica essa rota existente. |
+| **Security Groups** | Controlam as conexões de rede. O grupo do banco permite PostgreSQL na porta 5432 somente a partir do grupo de segurança do EKS. |
+| **IAM e acesso EKS** | Definem quais identidades podem provisionar recursos, publicar imagens e administrar o Kubernetes. O acesso de rede ao cluster é verificado separadamente. |
+
+**GitHub Actions e Terraform** executam a automação; a aplicação permanece no
+EKS após o término do workflow. **Metrics Server e HPA** são componentes do
+Kubernetes: medem CPU/memória e ajustam a API entre 2 e 5 pods. Eles não aumentam
+automaticamente o número de máquinas EC2.
+
+### Funções IAM usadas no laboratório
+
+Uma função IAM (*role*) é uma identidade com permissões. Ela tem um papel
+diferente de um serviço de execução, como EKS ou RDS:
+
+| Função | Quem a utiliza e para quê |
+| --- | --- |
+| **Função da sessão Academy**, como `voclabs` | A pipeline usa suas credenciais temporárias para executar Terraform e comandos AWS. Para operar dentro do Kubernetes, essa identidade também precisa de acesso autorizado no EKS. |
+| **`LabEksClusterRole`** | O serviço EKS assume essa função para administrar os recursos AWS necessários ao cluster. |
+| **`LabEksNodeRole`** | As máquinas EC2 do grupo de nós assumem essa função para participar do EKS, usar a rede Kubernetes e baixar imagens do ECR. |
+
+Os nomes completos podem ter prefixos e sufixos próprios de cada conta. A
+automação descobre as funções de cluster e nós já fornecidas pelo Academy, sem
+criar novas funções IAM. Os Secrets do GitHub guardam as credenciais temporárias;
+a Variable `AWS_ACCOUNT_ID` permite conferir se elas pertencem à conta esperada.
+
+### Ordem de execução
+
 Os gatilhos são definidos pelo campo `on:` nos arquivos de `.github/workflows/`.
 Os números dos nomes servem para orientar a execução.
 
