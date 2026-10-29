@@ -151,7 +151,7 @@ paths:
                     additionalProperties: false
                     properties:
                       pecaId: { type: string, format: uuid }
-                      quantidade: { type: number, minimum: 1 }
+                      quantidade: { type: integer, minimum: 1 }
             example:
               clienteId: 20000000-0000-0000-0000-000000000001
               veiculoId: 30000000-0000-0000-0000-000000000001
