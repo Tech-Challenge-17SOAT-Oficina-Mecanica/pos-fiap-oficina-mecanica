@@ -1,6 +1,6 @@
 # Deploy no EKS com Kustomize e migrations
 
-O deploy usa o cluster `oficina-cluster`, na regiao `us-east-1`, e o repositorio
+O deploy usa o cluster `oficina-academy`, na regiao `us-east-1`, e o repositorio
 ECR `oficina-mecanica`. O fluxo automatico acompanha a `main`; a execucao manual
 permite testar a branch selecionada no mesmo cluster de laboratorio, antes do merge.
 
@@ -14,9 +14,9 @@ permite testar a branch selecionada no mesmo cluster de laboratorio, antes do me
    do CI aprovado para checkout e imagens; nao precisam transferir artifacts.
 4. O workflow configura AWS, kubectl e Kustomize. Credenciais AWS ficam nos secrets
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN`.
-5. O script prepara ConfigMap, StorageClass e PostgreSQL e aguarda o StatefulSet.
-6. Um Job Kubernetes executa Flyway dentro do cluster, com acesso ao Service
-   `postgres`. O banco nao precisa ser exposto ao runner do GitHub.
+5. Terraform prepara EKS, RDS, namespace, Secret e ConfigMap. O script verifica os recursos existentes, sem sobrescrever as configuracoes do RDS.
+6. Um Job Kubernetes executa Flyway dentro do cluster, com acesso privado ao RDS.
+   O JDBC usa verify-full e o certificado RDS incluido na imagem. O banco nao e exposto ao runner.
 7. Somente depois do Job concluir, aplica a API com Kustomize, aguarda o rollout
    e consulta `/health` e `/ready` por um port-forward temporario.
 
@@ -33,7 +33,7 @@ O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
 ```bash
 gh workflow run docker-build-push.yml \
   --repo Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica \
-  --ref feature/consolidacao-fase2
+  --ref feature/k8s-deployment-service
 ```
 
 A execucao exige um resultado de sucesso do workflow Build para o mesmo commit
@@ -44,9 +44,9 @@ dry-run nem ambiente separado. Nao carrega seed. Nenhum merge na main e necessar
 
 ## Recursos Kustomize
 
-- `k8s/kustomization.yaml`: namespace, ConfigMap, banco, armazenamento, Service,
-  Deployment da API e HPA. Nao inclui Secret local, exemplo de Secret ou teste k6.
-- `k8s/migrations/kustomization.yaml`: Job Flyway, executado separadamente antes
+- `k8s/aws/kustomization.yaml`: Service, Deployment da API e HPA compartilhados.
+  Nao inclui banco, namespace, ConfigMap, Secret ou teste k6; Terraform gerencia esses recursos de infraestrutura.
+- `k8s/aws/migrations/kustomization.yaml`: Job Flyway, executado separadamente antes
   da aplicacao. Nome e imagem sao ajustados no workspace do runner.
 - As imagens locais sao substituidas por referencias ECR com tags por commit;
   essas alteracoes nao sao commitadas de volta ao repositorio.
@@ -54,18 +54,18 @@ dry-run nem ambiente separado. Nao carrega seed. Nenhum merge na main e necessar
 Para somente visualizar os manifests, sem acessar o cluster:
 
 ```bash
-kubectl kustomize k8s
-kubectl kustomize k8s/migrations
+kubectl kustomize k8s/aws
+kubectl kustomize k8s/aws/migrations
 ```
 
 Os renders locais ainda utilizam imagens locais. O workflow preenche as imagens
-ECR antes da aplicacao; `kubectl apply -k k8s` sozinho nao executa as migrations.
+ECR antes da aplicacao; `kubectl apply -k k8s/aws` sozinho nao executa as migrations.
 
 ## Pre-requisitos no ambiente
 
-- Node EKS pronto, acesso ao ECR e capacidade para PostgreSQL, Flyway, API e
+- Node EKS pronto, acesso ao ECR e capacidade para Flyway, API e
   componentes do Kubernetes; o rollout da API pode precisar de um Pod adicional.
-- Driver EBS CSI com permissoes para provisionar e conectar volumes.
+- RDS disponivel e acessivel pela porta 5432 a partir do grupo das maquinas EKS; nao requer driver EBS no Kubernetes.
 - Namespace `oficina` e Secret `oficina-api-secret`, com `DB_USER`, `DB_PASSWORD`
   e `JWT_SECRET`. O workflow verifica a existencia e nao imprime nem sobrescreve
   o Secret. Se a API usa `DATABASE_URL`, ela deve apontar para o mesmo banco que
@@ -103,7 +103,7 @@ apos um dia. Logs devem ser consultados antes da remocao:
 ```bash
 kubectl get jobs -n oficina
 kubectl logs job/NOME_DO_JOB -n oficina
-kubectl get pods,pvc -n oficina
+kubectl get pods -n oficina
 ```
 
 ## Validacao automatizada
@@ -119,5 +119,8 @@ Para repetir localmente com Docker ativo:
 bash scripts/test-migrations.sh
 ```
 
-Esse teste nao acessa o EKS. Backup e recuperacao do banco do cluster continuam
-sendo responsabilidades separadas; manter o EBS com `Retain` nao substitui backup.
+Esse teste nao acessa o EKS. Backup e recuperacao do banco do cluster continuam sendo responsabilidades separadas; conferir backups e snapshot final do RDS.
+
+O endpoint EKS atual aceita somente os IPs administrativos configurados no Terraform.
+O runner GitHub precisa de acesso de rede autorizado e da identidade correta no EKS.
+Esses pontos e o deploy real ainda precisam ser validados; testes simulados nao os comprovam.

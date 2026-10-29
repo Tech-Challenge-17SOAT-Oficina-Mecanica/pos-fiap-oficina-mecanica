@@ -2,6 +2,9 @@
 set -euo pipefail
 
 test_dir=$(mktemp -d)
+test_dir=$(cd "$test_dir" && pwd -P)
+test_temp_root=$(cd "${TMPDIR:-/tmp}" && pwd -P)
+[[ "$test_dir" == "$test_temp_root/"* ]] || { echo 'Unexpected temporary directory' >&2; exit 1; }
 trap 'rm -rf "$test_dir"' EXIT
 mkdir "$test_dir/bin"
 export DEPLOY_TEST_LOG="$test_dir/commands.log"
@@ -40,7 +43,7 @@ if bash scripts/deploy-eks.sh; then
   echo 'ERROR: deploy accepted a failed migration' >&2
   exit 1
 fi
-if grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"; then
+if grep -Fxq 'kubectl apply -k k8s/aws' "$DEPLOY_TEST_LOG"; then
   echo 'ERROR: application applied after migration failure' >&2
   exit 1
 fi
@@ -48,12 +51,16 @@ fi
 export MIGRATION_FAIL=0
 : > "$DEPLOY_TEST_LOG"
 bash scripts/deploy-eks.sh
-grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"
+grep -Fxq 'kubectl apply -k k8s/aws' "$DEPLOY_TEST_LOG"
+if grep -Eq 'statefulset|postgres.yaml|postgres-storageclass.yaml|apply -f' "$DEPLOY_TEST_LOG"; then
+  echo 'ERROR: AWS deployment must preserve Terraform configuration and RDS' >&2
+  exit 1
+fi
 
 export DEPLOY_REF=refs/heads/feature/consolidacao-fase2
 : > "$DEPLOY_TEST_LOG"
 bash scripts/deploy-eks.sh
-grep -Fxq 'kubectl apply -k k8s' "$DEPLOY_TEST_LOG"
+grep -Fxq 'kubectl apply -k k8s/aws' "$DEPLOY_TEST_LOG"
 
 export REMOTE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 : > "$DEPLOY_TEST_LOG"

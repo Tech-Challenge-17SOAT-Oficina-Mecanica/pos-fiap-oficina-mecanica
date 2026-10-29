@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: oficina
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: oficina-postgres
+  resources:
+    requests:
+      storage: 2Gi

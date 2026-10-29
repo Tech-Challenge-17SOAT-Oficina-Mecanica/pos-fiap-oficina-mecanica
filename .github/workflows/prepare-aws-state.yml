@@ -1,0 +1,54 @@
+name: Prepare AWS Terraform state
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_account_id:
+        description: ID de 12 digitos da conta Academy que recebera o armazenamento
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oficina-terraform-state
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Test bootstrap without AWS
+        run: bash scripts/test-prepare-aws-state.sh
+
+      - name: Configure Academy credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      - name: Prepare private state storage
+        id: state
+        env:
+          EXPECTED_ACCOUNT_ID: ${{ inputs.expected_account_id }}
+        run: bash scripts/prepare-aws-state.sh
+
+      - name: Explain next step
+        env:
+          STATE_BUCKET: ${{ steps.state.outputs.bucket }}
+        run: |
+          echo "Bucket preparado: $STATE_BUCKET" >> "$GITHUB_STEP_SUMMARY"
+          echo 'EKS/RDS nao foram alterados. Estados locais existentes ainda precisam ser migrados antes do provisionamento pela pipeline.' >> "$GITHUB_STEP_SUMMARY"

@@ -3,16 +3,22 @@ name: 🔎 Validate deployment
 on:
   pull_request:
     paths:
+      - infra/**
       - k8s/**
       - db/migrations/**
       - Dockerfile.migrations
       - scripts/deploy-eks.sh
       - scripts/test-migrations.sh
       - scripts/test-deploy-eks.sh
+      - scripts/prepare-aws-state.sh
+      - scripts/test-prepare-aws-state.sh
+      - scripts/*infra.ps1
+      - scripts/test-k8s-overlays.ps1
       - .github/workflows/**
   push:
     branches: [main]
     paths:
+      - infra/**
       - k8s/**
       - db/migrations/**
       - Dockerfile.migrations
@@ -34,7 +40,7 @@ jobs:
       - name: ⚙️ Setup kubectl
         uses: azure/setup-kubectl@v4
         with:
-          version: v1.37.1
+          version: v1.35.0
 
       - name: 🔎 Validate workflows
         run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.7 -shellcheck= -pyflakes=
@@ -42,12 +48,44 @@ jobs:
       - name: 🔎 Render and validate manifests
         shell: bash
         run: |
-          bash -n scripts/deploy-eks.sh scripts/test-migrations.sh scripts/test-deploy-eks.sh
+          bash -n scripts/deploy-eks.sh scripts/test-migrations.sh scripts/test-deploy-eks.sh scripts/prepare-aws-state.sh scripts/test-prepare-aws-state.sh
           bash scripts/test-deploy-eks.sh
-          kubectl kustomize k8s > app-rendered.yaml
-          kubectl kustomize k8s/migrations > migrations-rendered.yaml
+          bash scripts/test-prepare-aws-state.sh
+          kubectl kustomize k8s/local > local-rendered.yaml
+          kubectl kustomize k8s/aws > app-rendered.yaml
+          kubectl kustomize k8s/local/migrations > local-migrations-rendered.yaml
+          kubectl kustomize k8s/aws/migrations > migrations-rendered.yaml
           docker run --rm -v "$PWD:/repo:ro" ghcr.io/yannh/kubeconform:v0.7.0 \
-            -strict -summary /repo/app-rendered.yaml /repo/migrations-rendered.yaml
+            -strict -summary /repo/local-rendered.yaml /repo/app-rendered.yaml /repo/local-migrations-rendered.yaml /repo/migrations-rendered.yaml
 
       - name: 🗃️ Test migrations in disposable PostgreSQL
         run: bash scripts/test-migrations.sh
+
+  terraform:
+    name: Terraform (${{ matrix.directory }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        directory:
+          - infra/local/cluster
+          - infra/local/platform
+          - infra/aws/cluster
+          - infra/aws/platform
+          - infra/aws/state
+    defaults:
+      run:
+        working-directory: ${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+      - name: Initialize without remote state
+        run: terraform init -backend=false -input=false
+      - name: Validate configuration
+        run: terraform validate
+      - name: Run contracts without provisioning
+        run: terraform test
