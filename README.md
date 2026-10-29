@@ -1,108 +1,38 @@
 # 🔧 POS FIAP — Oficina Mecânica
 
-Backend do Tech Challenge da FIAP para gestão de uma oficina mecânica,
-organizado em arquitetura em camadas e DDD.
+Backend do Tech Challenge da FIAP para gestão de clientes, veículos, estoque,
+orçamentos e ordens de serviço de uma oficina mecânica. Desenvolvido em Go, com
+PostgreSQL, Clean Architecture e princípios de Domain-Driven Design (DDD).
 
-Infraestrutura AWS Academy (EKS + RDS): [proposta, preparacao e limites](infra/aws/README.md).
-A configuracao AWS esta em preparacao; ainda nao foi provisionada nem integrada ao deploy.
+A aplicação pode ser executada de três formas, com bancos e dados independentes:
 
-## 🛠️ Skills necessárias
+| Ambiente | Uso | Como executar |
+| --- | --- | --- |
+| Docker Compose | Desenvolvimento no computador | `make setup` |
+| Kubernetes local | Execução e testes de infraestrutura com Kind | [Guia local](infra/local/README.md) |
+| AWS Academy | Provisionamento com Terraform e deploy no EKS | [Automação AWS](infra/aws/AUTOMACAO.md) |
 
-Para executar o projeto, é necessário ter instalado:
+Para usar Kubernetes, não é necessário iniciar antes a aplicação pelo Compose.
+No ambiente local, Kind utiliza Docker como base para executar o cluster.
 
-- Git;
-- Docker Desktop ou Docker Engine;
-- Docker Compose;
-- GNU Make (necessário para executar comandos `make`).
+## 📑 Conteúdo
 
-O Go e o PostgreSQL não precisam ser instalados localmente quando o projeto é
-executado pelos containers.
+- [Arquitetura](#arquitetura)
+- [Modelagem de dados](#modelagem-de-dados)
+- [Por que PostgreSQL](#por-que-postgresql)
+- [Pré-requisitos e execução local](#execucao-local)
+- [Kubernetes local](#kubernetes-local)
+- [Infraestrutura AWS e Terraform](#infraestrutura-aws)
+- [CI/CD e workflows](#cicd)
+- [APIs e testes](#apis-e-testes)
+- [Persistência e HPA](#persistencia-e-hpa)
+- [Encerramento](#encerramento)
+- [Estrutura de pastas](#estrutura)
+- [Segurança](#seguranca)
+- [Documentação complementar](#documentacao)
+- [Integrantes](#integrantes)
 
-## Kubernetes - Fase 2
-
-O [guia de infraestrutura local](infra/local/README.md) descreve Terraform para Kind,
-PostgreSQL persistente, instalacao do Metrics Server e validacao do HPA.
-
-No Windows, prepare armazenamento, cluster e PostgreSQL automaticamente, da raiz:
-
-```bash
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/provisionar-infra.ps1
-```
-
-O comando reutiliza a configuracao existente e as credenciais locais. A preparacao
-das tabelas e o deploy da API/HPA seguem no guia.
-
-Os manifestos de namespace, Deployment, Service, HPA, ConfigMap e o exemplo do Secret
-estão em `k8s/`, separados em [base, local e AWS](k8s/README.md). A implementação, as variáveis de configuração, os endpoints de
-saúde e os comandos de execução estão documentados em
-[Kubernetes](docs/05-kubernetes.md).
-
-## Clean Code
-
-As práticas de legibilidade e organização implementadas estão documentadas em
-[Clean Code](docs/06-clean-code.md).
-
-## 🗃️ Modelagem de dados
-
-O modelo lógico do banco de dados, com as entidades, os relacionamentos e as
-decisões de modelagem, está disponível no documento
-[Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md).
-
-A estrutura do banco é criada pelas migrations localizadas em `db/migrations`,
-e os dados iniciais são carregados pelos scripts de seed em `db/seeds`.
-
-## 🔗 URLs importantes
-
-| Recurso | URL |
-| --- | --- |
-| 💚 Health check | <http://localhost:8080/health> |
-| 📖 Swagger UI | <http://localhost:8081> |
-
-## 🚀 Primeiros passos
-
-1. 📥 Clone o repositório e acesse a pasta do projeto:
-
-   ```bash
-   git clone https://github.com/lazaro-contato/pos-fiap-oficina-mecanica.git
-   cd pos-fiap-oficina-mecanica
-   ```
-
-2. 🏗️ Na primeira execução, prepare o banco e suba toda a aplicação:
-
-   ```bash
-   make setup
-   ```
-
-   Esse comando inicia o banco de dados, aplica as migrations, executa o seed e
-   constrói e inicia todos os containers do projeto.
-
-3. ✅ Confirme que a aplicação está disponível:
-
-   ```bash
-   curl http://localhost:8080/health
-   ```
-
-4. ▶️ Nas próximas execuções, quando o banco já estiver preparado, suba somente
-   os containers:
-
-   ```bash
-   make up
-   ```
-
-5. ♻️ Após alterar arquivos Go, reconstrua e reinicie a API:
-
-   ```bash
-   make restart
-   ```
-
-   O Go gera um binário durante a imagem Docker; por isso apenas reiniciar o
-   container não incorpora mudanças no código-fonte.
-
-🛑 Para encerrar os containers sem apagar os dados persistidos:
-
-```bash
-make db-down
-```
+<a id="arquitetura"></a>
 
 ## 🏗️ Arquitetura
 
@@ -122,68 +52,22 @@ Os testes em `tests/architecture` verificam automaticamente a direção das
 dependências. O desenho e os exemplos implementados estão em
 [Clean Architecture](docs/07-clean-architecture.md).
 
-## 📁 Estrutura de pastas
+<a id="modelagem-de-dados"></a>
 
-```text
-pos-fiap-oficina-mecanica/
-│
-├── cmd/
-│   └── oficina-mecanica/
-│       └── main.go               # Ponto de entrada da aplicação
-│
-├── internal/
-│   │
-│   ├── presentation/              # Handlers HTTP e rotas
-│   │   ├── cliente/
-│   │   ├── veiculo/
-│   │   ├── servico/
-│   │   ├── estoque/
-│   │   ├── orcamento/
-│   │   └── ordemservico/
-│   │
-│   ├── application/                # Casos de uso
-│   │   ├── cliente/
-│   │   ├── veiculo/
-│   │   ├── servico/
-│   │   ├── estoque/
-│   │   ├── orcamento/
-│   │   └── ordemservico/
-│   │
-│   ├── domain/                     # Entidades e regras de negócio
-│   │   ├── cliente/
-│   │   ├── veiculo/
-│   │   ├── servico/
-│   │   ├── estoque/
-│   │   ├── orcamento/
-│   │   └── ordemservico/
-│   │
-│   ├── infrastructure/              # Repositórios e integrações externas
-│   │   ├── cliente/
-│   │   ├── veiculo/
-│   │   ├── servico/
-│   │   ├── estoque/
-│   │   ├── orcamento/
-│   │   ├── ordemservico/
-│   │   └── seguranca/
-│   │
-│   └── shared/                      # Recursos técnicos compartilhados
-│       ├── database/                # Conexão/configuração do PostgreSQL
-│       ├── http/                    # Respostas, erros e middlewares comuns
-│       └── config/                  # Configurações da aplicação
-│
-├── migrations/                       # Scripts de evolução do banco
-│
-├── tests/
-│   └── integration/                  # Testes de integração (unitários ficam junto ao código)
-│
-├── docs/                              # Documentação do projeto
-│
-├── Dockerfile
-├── docker-compose.yml
-├── go.mod                             # Definição do módulo/dependências Go
-├── go.sum                             # Checksums das dependências
-└── README.md
-```
+## 🗃️ Modelagem de dados
+
+O [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md)
+apresenta as entidades, os relacionamentos e as decisões de modelagem.
+
+- `db/migrations/`: scripts SQL de criação e evolução do schema.
+- `db/seeds/`: dados iniciais para desenvolvimento e demonstração local.
+- `Dockerfile.migrations`: imagem Flyway usada pelo deploy AWS para aplicar
+  migrations pendentes e registrar versões e checksums.
+
+Terraform cria a infraestrutura do banco; as migrations criam e atualizam as
+tabelas. O deploy AWS não carrega o seed automaticamente.
+
+<a id="por-que-postgresql"></a>
 
 ## 🗄️ Por que PostgreSQL
 
@@ -219,22 +103,344 @@ escala horizontal extrema que justifique essa troca). A análise completa está 
 [docs/02-decisoes-arquiteturais.md](docs/02-decisoes-arquiteturais.md) e no
 [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md).
 
-## 👽 Vulnerabilidades
+<a id="execucao-local"></a>
+
+## 🛠️ Pré-requisitos e execução com Docker Compose
+
+Instale Git, Docker Desktop (containers Linux) ou Docker Engine, Docker Compose
+e GNU Make. No Windows, execute os comandos `make` pelo Git Bash.
+Go e PostgreSQL não precisam estar instalados no computador para esse fluxo.
+
+Da pasta em que deseja clonar o projeto:
+
+```bash
+git clone https://github.com/Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica.git
+cd pos-fiap-oficina-mecanica
+cp .env.example .env
+```
+
+Ajuste o `.env` para seu ambiente; os valores de exemplo são destinados ao uso
+local. Não versione credenciais reais. O arquivo `.env` é ignorado pelo Git.
+
+Na primeira execução, prepare o banco e inicie os containers:
+
+```bash
+make setup
+curl --fail http://localhost:8080/health
+curl --fail http://localhost:8080/ready
+```
+
+`make setup` inicia o PostgreSQL, aplica os SQLs, carrega o seed e constrói os
+containers. Use-o para a preparação inicial de um banco vazio; as migrations desse
+caminho usam `psql`, sem o histórico do Flyway utilizado na AWS.
+
+| Situação | Comando |
+| --- | --- |
+| Iniciar novamente um ambiente já preparado | `make up` |
+| Incorporar mudanças no código Go à API | `docker compose up -d --build app` |
+| Conferir os containers | `docker compose ps` |
+| Acompanhar os logs da API | `docker compose logs -f app` |
+| Conferir os dados iniciais | `make db-verify` |
+| Listar os comandos disponíveis | `make help` |
+
+<a id="kubernetes-local"></a>
+
+## ☸️ Kubernetes local
+
+Instale também Terraform, kubectl e a CLI Kind, com Docker Desktop iniciado.
+No Windows, execute da raiz do repositório:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/provisionar-infra.ps1
+```
+
+O script prepara o armazenamento persistente, cria ou reutiliza o cluster Kind e
+provisiona o PostgreSQL. As credenciais e os estados locais não são versionados.
+
+Depois, prepare o schema, instale Metrics Server, carregue a imagem da API no Kind
+e aplique API e HPA seguindo o [guia local completo](infra/local/README.md).
+**O script acima prepara a infraestrutura; ele não faz sozinho o deploy da API.**
+
+Os manifestos são separados em `k8s/base`, `k8s/local` e `k8s/aws`.
+Consulte a [organização Kubernetes](k8s/README.md) antes de aplicar arquivos:
+namespace, credenciais e banco têm recursos gerenciados pelo Terraform.
+
+<a id="infraestrutura-aws"></a>
+
+## ☁️ Infraestrutura AWS e Terraform
+
+A infraestrutura usa a região `us-east-1` e os seguintes componentes:
+
+| Componente | Responsabilidade |
+| --- | --- |
+| EKS e um nó EC2 | Executar o Kubernetes e os pods da aplicação |
+| RDS PostgreSQL 16 | Banco privado, separado do cluster, com armazenamento persistente |
+| ECR | Armazenar as imagens da API e das migrations |
+| S3 | Guardar estados Terraform separados por conta e módulo |
+| Metrics Server e HPA | Medir consumo e ajustar a quantidade de cópias da API |
+
+O RDS aceita conexões do grupo de segurança do EKS. A API usa TLS para acessar o
+banco. Um único nó e um banco Single-AZ são escolhas de laboratório e não oferecem
+alta disponibilidade. O ambiente AWS consome os créditos da conta Academy.
+
+O Terraform está dividido em:
+
+- `infra/aws/state`: configuração do armazenamento dos estados.
+- `infra/aws/cluster`: EKS, nó, RDS, regras de acesso, ECR e Metrics Server.
+- `infra/aws/platform`: namespace, ConfigMap e Secret no Kubernetes existente.
+
+Em `Settings → Secrets and variables → Actions`, configure:
+
+| Secret | Finalidade |
+| --- | --- |
+| `AWS_ACCESS_KEY_ID` | Chave de acesso temporária do Academy |
+| `AWS_SECRET_ACCESS_KEY` | Chave secreta da mesma sessão |
+| `AWS_SESSION_TOKEN` | Token da mesma sessão |
+| `AWS_DB_PASSWORD` | Senha estável do RDS: 16+ caracteres, letras, números, `_` ou `-` |
+| `AWS_JWT_SECRET` | Chave estável da API na AWS, com pelo menos 32 caracteres |
+| `CI_DB_PASSWORD` | Senha do banco temporário dos testes |
+| `JWT_SECRET` | Chave de autenticação dos testes |
+| `SONAR_TOKEN` | Token para análise de qualidade |
+
+As credenciais temporárias devem pertencer à conta escolhida e estar válidas.
+Renovar a sessão não exige mudar a senha do banco nem a chave JWT da aplicação.
+`AWS_REGION` e `ECR_URI` não são necessários como secrets nos workflows atuais.
+
+Para uma conta nova, execute o provisionamento e depois o deploy conforme a próxima
+seção. Se já houver EKS/RDS com os mesmos nomes, mas sem estado remoto, o fluxo
+bloqueia: é necessário planejar a importação ou migrar o estado local existente.
+Não execute uma recriação para contornar essa situação sem avaliar os dados.
+
+Pré-requisitos da conta, variáveis opcionais e instruções completas:
+[infraestrutura AWS](infra/aws/README.md) e [automação](infra/aws/AUTOMACAO.md).
+
+<a id="cicd"></a>
+
+## ⚙️ CI/CD e workflows
+
+Os gatilhos são definidos pelo campo `on:` nos arquivos de `.github/workflows/`.
+Os números dos nomes servem para orientar a execução.
+
+| Workflow | Quando executa | O que faz |
+| --- | --- | --- |
+| **1.0 · 🏗️ Build** | PR, push na `main` ou acionamento manual | Compila, executa testes e verifica cobertura mínima de 80% |
+| **1.1 · 🔎 Validate deployment** | PR e push na `main` | Valida workflows, Terraform, manifestos, scripts e migrations |
+| **1.2 · 📊 SonarQube** | Abertura/atualização/reabertura de PR e push na `main` | Analisa qualidade de código |
+| **02 · 🗂️ Prepare AWS Terraform state** | Manual | Prepara somente o S3 para estados; também é chamado pelo provisionamento |
+| **03 · 🏗️ Prepare AWS infrastructure** | Manual | Prepara o S3 e cria ou atualiza a infraestrutura com Terraform |
+| **04 · 🐳 Docker Build and Deploy** | Manual | Publica imagens, executa migrations, atualiza a API e valida `/health` e `/ready` |
+
+As verificações `1.0`, `1.1` e `1.2` podem executar em paralelo.
+**PR ou merge não dispara provisionamento nem deploy AWS.**
+
+Para instalar em uma conta nova:
+
+1. Aguarde as verificações do commit passarem.
+2. Acesse `Actions → 03 · Prepare AWS infrastructure → Run workflow`.
+3. Selecione a revisão, informe `expected_account_id`, seu IPv4 público com `/32`
+   em `admin_cidr` e marque a autorização de provisionamento.
+4. Aguarde o término com sucesso. O cluster e o RDS estarão preparados, ainda sem a API.
+5. Execute `04 · Docker Build and Deploy` na mesma conta e revisão aprovada.
+6. Confira a conclusão das migrations, do rollout e das verificações HTTP nos logs.
+
+A etapa `02` é auxiliar: não precisa ser executada separadamente no fluxo normal.
+O deploy exige Build e Validate deployment aprovados para o mesmo commit.
+Ele publica imagens no ECR com tags do commit e aplica migrations antes de atualizar
+os pods da API. Publicar uma imagem no ECR, sozinho, não coloca a API em execução.
+
+O IP administrativo permite usar `kubectl` no seu computador. A pipeline libera e
+remove temporariamente o IP do seu executor. Acesso, parâmetros e proteções estão
+no [guia de automação](infra/aws/AUTOMACAO.md); detalhes do deploy no
+[guia EKS](docs/06-deploy-eks.md).
+
+<a id="apis-e-testes"></a>
+
+## 🔗 Acesso às APIs e testes
+
+No Docker Compose:
+
+| Recurso | Endereço |
+| --- | --- |
+| Health check da API | <http://localhost:8080/health> |
+| Readiness da API | <http://localhost:8080/ready> |
+| Swagger UI | <http://localhost:8081> |
+| Mailpit: mensagens de e-mail locais | <http://localhost:8025> |
+
+No Kubernetes, o Service é interno. Após o deploy, com kubeconfig e acesso
+configurados, encaminhe uma porta para usar a API no seu computador:
+
+```bash
+# AWS; para Kind, troque oficina-aws por kind-oficina.
+kubectl --context oficina-aws -n oficina port-forward service/oficina-api 8080:80
+```
+
+Mantenha esse terminal aberto e, em outro terminal, consulte os endpoints:
+
+```bash
+curl --fail http://localhost:8080/health
+curl --fail http://localhost:8080/ready
+```
+
+Esse encaminhamento não publica uma URL na internet. Swagger UI e Mailpit são
+serviços do Compose e não são instalados pelo deploy AWS.
+
+Para chamadas de negócio, abra a [coleção Bruno](bruno/oficina-mecanica), ajuste a
+URL base e execute o fluxo de autenticação antes das rotas protegidas. Use o token
+retornado como `Authorization: Bearer <token>`. O banco AWS não recebe os usuários
+do seed local; prepare um usuário conforme o fluxo de cadastro do projeto.
+
+Consulte também o [catálogo de endpoints](docs/03-endpoints.md) e a
+[especificação OpenAPI](openapi.yaml).
+
+Testes locais em containers:
+
+```bash
+make test
+make coverage
+```
+
+`make coverage` gera `coverage.out`. Saúde e readiness não substituem um teste
+funcional: valide também uma operação autenticada que grave e consulte o banco.
+
+<a id="persistencia-e-hpa"></a>
+
+## 📈 Validação de persistência e HPA
+
+### Persistência
+
+- **Compose:** o PostgreSQL usa o volume nomeado `postgres_data`.
+- **Kind:** PV/PVC ligam o PostgreSQL ao diretório persistente preparado no computador.
+- **AWS:** o banco fica no RDS, independente dos pods da API.
+
+Cadastre e consulte um registro pela API. No Kind, recrie somente o pod do banco e
+consulte o mesmo registro novamente; na AWS, recrie um pod da API e repita a consulta.
+Isso verifica a continuidade dos dados nesse cenário, sem substituir testes de
+backup e recuperação. Procedimento local: [persistência](infra/local/README.md).
+
+### Escala automática
+
+O HPA está configurado para manter **2 a 5 réplicas** da API, com metas de
+**70% de CPU e 80% de memória**, calculadas em relação aos recursos solicitados
+pelos containers. Precisa de Metrics Server funcionando.
+
+```bash
+# Para Kind, troque oficina-aws por kind-oficina.
+kubectl --context oficina-aws -n oficina top pods
+kubectl --context oficina-aws -n oficina get hpa
+kubectl --context oficina-aws -n oficina get deployment oficina-api
+kubectl --context oficina-aws -n oficina describe hpa oficina-api-hpa
+```
+
+Confira as duas métricas disponíveis e acompanhe as réplicas antes, durante e após
+uma carga de requisições. O HPA aumenta pods, não o número de máquinas. A capacidade
+do nó limita a escala, e a redução de réplicas tem estabilização de 300 segundos.
+
+Roteiros de carga e observação: [Kubernetes](docs/05-kubernetes.md) e
+[guia local](infra/local/README.md). YAML configurado não comprova escala real;
+registre métricas e réplicas durante o teste.
+
+<a id="encerramento"></a>
+
+## 🛑 Encerramento e remoção dos recursos
+
+**Docker Compose:** para encerrar sem remover os dados persistidos:
+
+```bash
+make db-down
+```
+
+`make db-reset` e `make recreate` removem o volume local e reinicializam o banco.
+Use-os apenas quando quiser descartar esses dados.
+
+**Kubernetes local:** remova a aplicação e Metrics Server, depois destrua
+`infra/local/platform` e `infra/local/cluster`, nessa ordem. O diretório persistente
+continua no computador. Veja os [comandos de remoção local](infra/local/README.md).
+
+**AWS:** faça backup e remova aplicação, platform e cluster, nessa ordem, usando os
+backends da conta correta. O RDS tem proteção de exclusão; a remoção exige desativá-la
+explicitamente. O snapshot final precisa de nome único, e ECR com imagens não é
+apagado à força. Consulte [custos e remoção](infra/aws/README.md#custos-e-remocao).
+
+Encerrar a sessão Academy não remove toda a infraestrutura. Snapshots e o bucket
+S3 podem permanecer após a remoção do ambiente. Preserve os estados enquanto
+existirem recursos sob gerenciamento do Terraform.
+
+<a id="estrutura"></a>
+
+## 📁 Estrutura de pastas
+
+```text
+pos-fiap-oficina-mecanica/
+├── cmd/oficina-mecanica/         # Entrada da API
+├── internal/
+│   ├── presentation/            # Handlers HTTP e rotas
+│   ├── application/             # Casos de uso e contratos de persistência/serviços
+│   ├── domain/                  # Entidades e regras de negócio
+│   ├── infrastructure/          # Repositórios e integrações
+│   └── shared/                  # Configuração, banco e HTTP compartilhados
+├── db/
+│   ├── migrations/              # Evolução do schema
+│   └── seeds/                   # Dados de desenvolvimento local
+├── tests/
+│   ├── integration/             # Testes de integração
+│   └── architecture/            # Direção das dependências e limites das camadas
+├── bruno/oficina-mecanica/      # Coleção de requisições
+├── docs/                       # Arquitetura e documentação funcional
+├── infra/
+│   ├── local/{cluster,platform}/
+│   └── aws/{state,cluster,platform}/
+├── k8s/{base,local,aws,tests}/   # Manifestos e teste de carga
+├── scripts/                    # Provisionamento, deploy e validações
+├── .github/workflows/          # GitHub Actions
+├── .env.example                # Exemplo de configuração local
+├── Dockerfile                  # Imagem da API
+├── Dockerfile.migrations       # Imagem Flyway
+├── docker-compose.yml          # Ambiente de desenvolvimento
+├── Makefile                    # Comandos de execução e testes
+├── openapi.yaml                # Contrato da API
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+<a id="seguranca"></a>
+
+## 🔐 Segurança e vulnerabilidades corrigidas
+
 |Problema| O docker-compose.yml possuía credenciais fixas do PostgreSQL versionadas no repositório. Isso é considerado risco porque expõe segredo diretamente no código e facilita reutilização indevida em ambientes diferentes.|A imagem final baseada em Alpine executava a aplicação com o usuário padrão root. Isso aumenta o impacto de uma eventual exploração dentro do container.|
 |--------|------------------------------------------------------------------|------------------------------------------------------------------------------------|
 |Correção Aplicada|As credenciais fixas foram removidas e substituídas por variáveis de ambiente obrigatórias.|Foi criado um usuário não-root específico para a aplicação e o container passou a executar com esse usuário.|
 |Relatório|<img width="500" height="538" alt="_Tech Challenge - 17SOAT - Pos Tech  Software Arquiteture - Fase 1" src="https://github.com/user-attachments/assets/d1897d2e-8ed0-4638-a87c-b92cffd7b7ef" />|<img width="583" height="540" alt="_Tech Challenge - 17SOAT - Pos Tech  Software Arquiteture - Fase 1 (1)" src="https://github.com/user-attachments/assets/5c4c9961-9d5f-4c4c-a6a0-e2235cecfe4f" />|
 
+<a id="documentacao"></a>
 
+## 📚 Documentação complementar
+
+| Documento | Conteúdo |
+| --- | --- |
+| [Visão geral](docs/00-visao-geral.md) | Contexto e funcionalidades |
+| [Guia de documentação](docs/01-guia-de-documentacao.md) | Organização dos documentos |
+| [Decisões arquiteturais](docs/02-decisoes-arquiteturais.md) | Escolhas e justificativas |
+| [Clean Architecture](docs/07-clean-architecture.md) | Contratos e direção das dependências |
+| [Clean Code](docs/06-clean-code.md) | Práticas de legibilidade e organização |
+| [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md) | Modelagem de dados |
+| [Catálogo de endpoints](docs/03-endpoints.md) | Rotas e autorização |
+| [OpenAPI](openapi.yaml) e [Bruno](bruno/oficina-mecanica) | Contrato e chamadas da API |
+| [Kubernetes](docs/05-kubernetes.md) | Recursos, diagnóstico e carga |
+| [Organização dos manifestos](k8s/README.md) | Base e diferenças entre ambientes |
+| [Infraestrutura local](infra/local/README.md) | Kind, banco, persistência e HPA |
+| [Infraestrutura AWS](infra/aws/README.md) | EKS, RDS, acesso e remoção |
+| [Automação AWS](infra/aws/AUTOMACAO.md) | Secrets, workflows e estados |
+| [Deploy EKS](docs/06-deploy-eks.md) | Imagens, migrations e atualização da API |
+
+<a id="integrantes"></a>
 
 ## 👥 Integrantes
 
-##### João Victor — RM376616 - jhonnysket - [LinkedIn](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/)
-
-##### José Lázaro — RM371406 - joselzro - [LinkedIn](https://www.linkedin.com/in/lazaro-contato/)
-
-##### Hemily Nara — RM373944 - hemilyynara - [LinkedIn](https://www.linkedin.com/in/hemilynara/)
-
-##### Carlos Henrique — RM376201 - caohz_55485 - [LinkedIn](https://www.linkedin.com/in/carlos1br/)
-
-##### Helena Miranda — RM376202 - helenamiranda6974 - [LinkedIn](https://www.linkedin.com/in/hmirandas/)
+| Integrante | RM | Usuário | LinkedIn |
+| --- | --- | --- | --- |
+| João Victor | RM376616 | jhonnysket | [Perfil](https://www.linkedin.com/in/joão-victor-de-oliveira-63a883143/) |
+| José Lázaro | RM371406 | joselzro | [Perfil](https://www.linkedin.com/in/lazaro-contato/) |
+| Hemily Nara | RM373944 | hemilyynara | [Perfil](https://www.linkedin.com/in/hemilynara/) |
+| Carlos Henrique | RM376201 | caohz_55485 | [Perfil](https://www.linkedin.com/in/carlos1br/) |
+| Helena Miranda | RM376202 | helenamiranda6974 | [Perfil](https://www.linkedin.com/in/hmirandas/) |
