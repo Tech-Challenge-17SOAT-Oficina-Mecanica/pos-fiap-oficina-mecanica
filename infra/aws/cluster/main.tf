@@ -46,3 +46,14 @@ resource "aws_eks_node_group" "oficina" {
     max_size     = 1
   }
 }
+
+resource "aws_ecr_repository" "api" {
+  name         = var.ecr_repository
+  force_delete = false
+}
+
+resource "aws_eks_addon" "metrics" {
+  cluster_name = aws_eks_cluster.oficina.name
+  addon_name   = "metrics-server"
+  depends_on   = [aws_eks_node_group.oficina]
+}

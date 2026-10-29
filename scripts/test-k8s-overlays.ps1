@@ -37,7 +37,7 @@ foreach ($environment in @('local', 'aws')) {
         Assert ($yaml -match 'DB_HOST: postgres') 'Local deve usar o Service PostgreSQL.'
     } else {
         Assert ($kinds.Count -eq 3 -and $kinds -notcontains 'ConfigMap') 'AWS deve preservar o ConfigMap do RDS gerenciado pelo Terraform.'
-        Assert ($yaml -match 'image: 568255900869\.dkr\.ecr\.us-east-1\.amazonaws\.com/oficina-mecanica:') 'AWS deve usar ECR.'
+        Assert ($yaml -match 'image: example\.invalid/oficina-mecanica:') 'AWS deve ter um marcador sem conta fixa, substituido pelo deploy.'
         Assert ($yaml -notmatch 'image: oficina-api:local') 'AWS nao pode usar imagem exclusiva do Kind.'
     }
     Write-Host "PASS: overlay $environment renderizado e responsabilidades preservadas."

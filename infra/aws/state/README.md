@@ -31,11 +31,11 @@ Nao cria nem altera EKS, EC2, RDS, ECR ou configuracoes Kubernetes. Nao transfer
 estados existentes do computador e nao executa deploy. Nenhuma dessas etapas
 pode assumir estado vazio quando ja existem recursos gerenciados localmente.
 
-O bootstrap guarda seu estado no proprio bucket. Cluster e platform usarao chaves
-separadas quando seus backends forem migrados/configurados na proxima etapa.
+O bootstrap guarda seu estado no proprio bucket. Cluster e platform usam chaves
+separadas: cluster/terraform.tfstate e platform/terraform.tfstate.
 Cada conta precisa de seus estados; nunca reaproveitar um tfstate de outra conta.
-O provisionamento completo em contas novas ainda depende de parametrizar funcoes
-IAM, rede e imagens. Apenas trocar os Secrets nao conclui essa integracao.
+O workflow Prepare AWS infrastructure descobre funcoes/rede na conta autenticada
+e chama esse bootstrap automaticamente. Ver [automacao completa](../AUTOMACAO.md).
 
 ## Estados atuais do EKS e RDS
 

@@ -6,5 +6,6 @@ resources:
   - ../base/api
 images:
   - name: oficina-api
-    newName: 568255900869.dkr.ecr.us-east-1.amazonaws.com/oficina-mecanica
+    # O deploy preenche o URI descoberto na conta autenticada; nunca aplicar este marcador.
+    newName: example.invalid/oficina-mecanica
     newTag: DEFINIR_SHA_DO_COMMIT

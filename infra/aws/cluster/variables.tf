@@ -10,8 +10,8 @@ variable "kubernetes_version" {
 }
 
 variable "vpc_id" {
-  type    = string
-  default = "vpc-0ae7cb40d8e37d780"
+  description = "VPC descoberta na conta de destino pela pipeline."
+  type        = string
 }
 
 variable "subnet_ids" {
@@ -24,13 +24,11 @@ variable "subnet_ids" {
 }
 
 variable "cluster_role_name" {
-  type    = string
-  default = "c227945a5749351l17859999t1w568255-LabEksClusterRole-vlTG73cqhMRX"
+  type = string
 }
 
 variable "node_role_name" {
-  type    = string
-  default = "c227945a5749351l17859999t1w568255900-LabEksNodeRole-rqFbHhHxmCbN"
+  type = string
 }
 
 variable "admin_cidrs" {
@@ -56,4 +54,9 @@ variable "db_deletion_protection" {
   description = "Desativar explicitamente antes da remocao definitiva do laboratorio."
   type        = bool
   default     = true
+}
+
+variable "ecr_repository" {
+  type    = string
+  default = "oficina-mecanica"
 }

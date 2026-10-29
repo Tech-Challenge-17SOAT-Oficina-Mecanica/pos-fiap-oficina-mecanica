@@ -1,0 +1,61 @@
+name: Prepare AWS infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_account_id:
+        description: ID da conta Academy dos Secrets AWS
+        required: true
+        type: string
+      admin_cidr:
+        description: IPv4 administrativo com /32, mantido depois da execucao
+        required: true
+        type: string
+      confirm_provision:
+        description: Autorizar criacao ou atualizacao de recursos AWS com consumo de creditos
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oficina-aws-${{ inputs.expected_account_id }}
+  cancel-in-progress: false
+
+jobs:
+  provision:
+    if: inputs.confirm_provision
+    runs-on: ubuntu-latest
+    timeout-minutes: 85
+    env:
+      EXPECTED_ACCOUNT_ID: ${{ inputs.expected_account_id }}
+      ADMIN_CIDR: ${{ inputs.admin_cidr }}
+      CLUSTER_NAME: ${{ vars.AWS_CLUSTER_NAME || 'oficina-academy' }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'oficina-mecanica' }}
+      AWS_VPC_ID: ${{ vars.AWS_VPC_ID }}
+      AWS_EKS_CLUSTER_ROLE: ${{ vars.AWS_EKS_CLUSTER_ROLE }}
+      AWS_EKS_NODE_ROLE: ${{ vars.AWS_EKS_NODE_ROLE }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.35.0
+      - name: Prepare infrastructure without deploying application
+        env:
+          TF_VAR_db_password: ${{ secrets.AWS_DB_PASSWORD }}
+          TF_VAR_jwt_secret: ${{ secrets.AWS_JWT_SECRET }}
+        run: bash scripts/provision-aws.sh

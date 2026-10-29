@@ -5,15 +5,18 @@ mock_provider "aws" {
 }
 
 variables {
-  subnet_ids  = ["subnet-a", "subnet-b"]
-  admin_cidrs = ["203.0.113.10/32"]
-  db_password = "fake-test-only-password-123456"
+  vpc_id            = "vpc-test"
+  cluster_role_name = "test-cluster-role"
+  node_role_name    = "test-node-role"
+  subnet_ids        = ["subnet-a", "subnet-b"]
+  admin_cidrs       = ["203.0.113.10/32"]
+  db_password       = "fake-test-only-password-123456"
 }
 
 override_data {
   target = data.aws_subnet.selected["subnet-a"]
   values = {
-    vpc_id                  = "vpc-0ae7cb40d8e37d780"
+    vpc_id                  = "vpc-test"
     availability_zone       = "us-east-1a"
     map_public_ip_on_launch = true
   }
@@ -21,7 +24,7 @@ override_data {
 override_data {
   target = data.aws_subnet.selected["subnet-b"]
   values = {
-    vpc_id                  = "vpc-0ae7cb40d8e37d780"
+    vpc_id                  = "vpc-test"
     availability_zone       = "us-east-1b"
     map_public_ip_on_launch = true
   }

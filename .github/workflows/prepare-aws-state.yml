@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: oficina-terraform-state
+  group: oficina-aws-${{ inputs.expected_account_id }}
   cancel-in-progress: false
 
 jobs:

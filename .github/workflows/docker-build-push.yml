@@ -2,10 +2,15 @@ name: 🐳 Docker Build and Deploy
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["🏗️ Build"]
-    types: [completed]
-    branches: [main]
+    inputs:
+      expected_account_id:
+        description: ID da conta Academy preparada para receber o deploy
+        required: true
+        type: string
+
+concurrency:
+  group: oficina-aws-${{ inputs.expected_account_id }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -13,34 +18,32 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: oficina-mecanica
-  CLUSTER_NAME: oficina-academy
-  SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-  DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'refs/heads/main' }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'oficina-mecanica' }}
+  CLUSTER_NAME: ${{ vars.AWS_CLUSTER_NAME || 'oficina-academy' }}
+  EXPECTED_ACCOUNT_ID: ${{ inputs.expected_account_id }}
+  SOURCE_SHA: ${{ github.sha }}
+  DEPLOY_REF: ${{ github.ref }}
 
 jobs:
   build-and-push:
     name: 🐳 Build and Push to ECR
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
 
     steps:
       - name: 🔎 Verify CI for selected commit
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          successful_runs=$(gh api --method GET \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/build.yml/runs" \
-            -f head_sha="$SOURCE_SHA" -f status=success --jq '.workflow_runs | length')
-          if [[ "$successful_runs" -eq 0 ]]; then
-            echo '::error::Wait for Build, tests and coverage to pass for this commit before retrying.'
-            exit 1
-          fi
+          for workflow in build.yml deploy-validation.yml; do
+            successful_runs=$(gh api --method GET \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs" \
+              -f head_sha="$SOURCE_SHA" -f status=success --jq '.workflow_runs | length')
+            if [[ "$successful_runs" -eq 0 ]]; then
+              echo "::error::Wait for $workflow to pass for this commit before retrying."
+              exit 1
+            fi
+          done
 
       - name: 📥 Checkout
         uses: actions/checkout@v6
@@ -57,6 +60,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Confirm destination account
+        run: |
+          actual=$(aws sts get-caller-identity --query Account --output text)
+          test "$actual" = "$EXPECTED_ACCOUNT_ID" || { echo 'Unexpected AWS account'; exit 1; }
 
       - name: 🔑 Login to Amazon ECR
         id: ecr
@@ -88,10 +96,7 @@ jobs:
     name: 🚀 Migrate database and deploy API
     needs: build-and-push
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    concurrency:
-      group: oficina-eks-deploy
-      cancel-in-progress: false
+    timeout-minutes: 45
 
     steps:
       - name: 📥 Checkout published source
@@ -121,20 +126,19 @@ jobs:
           tar -xzf "$RUNNER_TEMP/kustomize.tar.gz" -C "$RUNNER_TEMP" kustomize
           echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
 
+      - name: Confirm destination account
+        run: |
+          actual=$(aws sts get-caller-identity --query Account --output text)
+          test "$actual" = "$EXPECTED_ACCOUNT_ID" || { echo 'Unexpected AWS account'; exit 1; }
+
       - name: ☸️ Configure cluster access
         run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
 
-      - name: 🔎 Check cluster readiness
-        shell: bash
-        run: |
-          kubectl get nodes -o wide
-          kubectl get pods,pvc -n oficina
-          if ! kubectl get nodes -o json | jq -e \
-            'any(.items[]; any(.status.conditions[]; .type == "Ready" and .status == "True"))' > /dev/null; then
-            echo '::error::No Ready nodes in EKS. Restore the node group before deploying.'
-            exit 1
-          fi
-
       - name: 🗃️ Migrate database and deploy API
         shell: bash
-        run: bash scripts/deploy-eks.sh
+        run: |
+          bash scripts/with-eks-access.sh bash -ec '
+            kubectl wait --for=condition=Ready nodes --all --timeout=180s
+            kubectl wait --for=condition=Available apiservice/v1beta1.metrics.k8s.io --timeout=180s
+            bash scripts/deploy-eks.sh
+          '

@@ -12,4 +12,5 @@ k8s/local/secret.yaml
 **/terraform.tfvars
 infra/local/cluster/kubeconfig
 infra/local/.local/
+infra/aws/.local/
 **/terraform.tfvars.json

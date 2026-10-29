@@ -6,7 +6,7 @@ set -euo pipefail
 : "${ECR_REPOSITORY:?ECR repository is required}"
 : "${GITHUB_RUN_ID:?Workflow run ID is required}"
 
-# Automatic releases follow main; manual tests follow the explicitly selected branch.
+# Manual releases follow the explicitly selected branch and require CI for the same SHA.
 deploy_ref=${DEPLOY_REF:-refs/heads/main}
 current_revision=$(git ls-remote origin "$deploy_ref" | cut -f1)
 if [[ "$SOURCE_SHA" != "$current_revision" ]]; then

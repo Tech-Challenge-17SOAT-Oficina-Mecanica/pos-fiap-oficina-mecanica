@@ -1,3 +1,6 @@
-subnet_ids  = ["subnet-00487d356304fb623", "subnet-0245a6dc98f62ae0e"]
+vpc_id            = "vpc-DA-CONTA"
+cluster_role_name = "FUNCAO-DO-CLUSTER-DA-CONTA"
+node_role_name    = "FUNCAO-DOS-NOS-DA-CONTA"
+subnet_ids  = ["subnet-DA-ZONA-A", "subnet-DA-ZONA-B"]
 admin_cidrs = ["SEU-IP-PUBLICO/32"]
 # Fornecer db_password por TF_VAR_db_password, nao neste exemplo versionado.

@@ -50,8 +50,8 @@ kubectl kustomize k8s/aws
 kubectl --context oficina-aws apply -k k8s/aws
 ```
 
-Esse overlay NAO instala Metrics Server. Preparar metricas compativeis com EKS em
-etapa separada; nao aplicar a excecao `--kubelet-insecure-tls` do Kind na AWS.
+Esse overlay NAO instala Metrics Server. O Terraform cluster o prepara como add-on
+EKS; nao aplicar a excecao `--kubelet-insecure-tls` do Kind na AWS.
 Diagnostico RDS: `kubectl --context oficina-aws apply -f k8s/aws/verificar-rds.yaml`.
 
 Nao aplicar recursivamente toda a pasta k8s: isso mistura ambientes, exemplos e

@@ -1,7 +1,7 @@
 # Deploy no EKS com Kustomize e migrations
 
 O deploy usa o cluster `oficina-academy`, na regiao `us-east-1`, e o repositorio
-ECR `oficina-mecanica`. O fluxo automatico acompanha a `main`; a execucao manual
+ECR `oficina-mecanica`. O deploy e iniciado manualmente; o merge na main nao o executa. A execucao manual
 permite testar a branch selecionada no mesmo cluster de laboratorio, antes do merge.
 
 ## Fluxo
@@ -10,7 +10,7 @@ permite testar a branch selecionada no mesmo cluster de laboratorio, antes do me
 2. O workflow `Docker Build and Deploy` publica a API com a tag do commit aprovado
    e o Flyway com a tag `<commit>-migrations`, no mesmo repositorio ECR.
 3. No mesmo arquivo `.github/workflows/docker-build-push.yml`, o job `deploy`
-   depende de `build-and-push` por `needs`. Ambos usam `workflow_run.head_sha`
+   depende de `build-and-push` por `needs`. Ambos usam `github.sha` da revisao selecionada
    do CI aprovado para checkout e imagens; nao precisam transferir artifacts.
 4. O workflow configura AWS, kubectl e Kustomize. Credenciais AWS ficam nos secrets
    `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN`.
@@ -33,10 +33,11 @@ O arquivo de workflow ja existe na branch padrao. A versao da PR adiciona
 ```bash
 gh workflow run docker-build-push.yml \
   --repo Tech-Challenge-17SOAT-Oficina-Mecanica/pos-fiap-oficina-mecanica \
-  --ref feature/k8s-deployment-service
+  --ref main \
+  -f expected_account_id=ID_DA_CONTA
 ```
 
-A execucao exige um resultado de sucesso do workflow Build para o mesmo commit
+A execucao exige sucesso de Build e Validate deployment para o mesmo commit
 (incluindo testes e cobertura). Usa o SHA da branch selecionada para as duas
 imagens, e verifica se essa branch nao avancou antes de aplicar recursos.
 O teste manual publica imagens e altera o namespace `oficina` no EKS: nao e
@@ -73,7 +74,7 @@ ECR antes da aplicacao; `kubectl apply -k k8s/aws` sozinho nao executa as migrat
 - Identidade AWS do Actions autorizada no EKS para ler o Secret por metadados,
   aplicar os manifests, criar e acompanhar Jobs, consultar logs e fazer port-forward.
   Os secrets AWS do GitHub nao concedem RBAC Kubernetes automaticamente.
-- Metrics Server para as metricas do HPA. O HPA nao aumenta o numero de nodes.
+- Metrics Server instalado pelo workflow de infraestrutura como add-on EKS. O HPA nao aumenta o numero de nodes.
 
 Nao se aplicam credenciais do banco de testes do CI neste ambiente. As credenciais
 temporarias do Academy precisam estar validas no momento da publicacao e do deploy.
@@ -124,3 +125,6 @@ Esse teste nao acessa o EKS. Backup e recuperacao do banco do cluster continuam 
 O endpoint EKS atual aceita somente os IPs administrativos configurados no Terraform.
 O runner GitHub precisa de acesso de rede autorizado e da identidade correta no EKS.
 Esses pontos e o deploy real ainda precisam ser validados; testes simulados nao os comprovam.
+
+A preparacao completa e a escolha da conta estao em [Automacao AWS](../infra/aws/AUTOMACAO.md).
+O runner recebe acesso /32 temporario, com tentativa de remocao ao terminar; nao e necessario abrir o endpoint para toda a internet.

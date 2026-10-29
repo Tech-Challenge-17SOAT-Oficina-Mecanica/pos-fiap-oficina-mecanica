@@ -578,9 +578,9 @@ a amostra observada e não representam uma garantia de capacidade em outro ambie
 
 ## 9. Imagem no Amazon ECR
 
-O workflow `.github/workflows/docker-build-push.yml` publica no repositorio ECR
-`oficina-mecanica`, em `us-east-1`, depois que o workflow **Build** termina com
-sucesso em um push na `main`. PRs e acionamentos manuais de Build nao publicam.
+O workflow `.github/workflows/docker-build-push.yml` e acionado manualmente e publica
+no ECR `oficina-mecanica`, em `us-east-1`, depois de conferir sucesso de Build e
+Validate deployment no SHA selecionado. PRs, push e acionamentos de Build nao publicam.
 
 O checkout e a tag utilizam o mesmo SHA completo aprovado pelo CI:
 
@@ -592,9 +592,9 @@ O repositorio ECR deve existir. Os Secrets do GitHub `AWS_ACCESS_KEY_ID`,
 `AWS_SECRET_ACCESS_KEY` e `AWS_SESSION_TOKEN` precisam conter as credenciais
 validas da sessao Academy. A publicacao real ainda precisa ser validada.
 
-O workflow recebido da main agora publica API e Flyway e executa migrations e
-deploy no EKS depois da publicacao, usando o mesmo SHA. Tambem permite acionamento
-manual com CI aprovado. Ver [guia de deploy](06-deploy-eks.md). As maquinas EKS ja
+O workflow publica API e Flyway e executa migrations e deploy no EKS depois da
+publicacao, usando o mesmo SHA, somente por acionamento manual com CI aprovado.
+Ver [guia de deploy](06-deploy-eks.md). As maquinas EKS ja
 possuem permissao de leitura ECR; acesso do runner ao EKS, credenciais e execucao
 real ainda precisam ser validados antes de considerar o deploy comprovado.
 
