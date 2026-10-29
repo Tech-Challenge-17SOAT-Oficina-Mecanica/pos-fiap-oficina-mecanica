@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: verificar-rds
+  namespace: oficina
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 180
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cliente-postgres
+          image: postgres:16-alpine
+          command: [sh, -ec]
+          args:
+            - |
+              wget -q -T 30 -O /tmp/rds-ca.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem
+              export PGPASSWORD="$DB_PASSWORD"
+              export PGSSLMODE=verify-full PGSSLROOTCERT=/tmp/rds-ca.pem PGCONNECT_TIMEOUT=10
+              psql -X -v ON_ERROR_STOP=1 -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+                -c 'SELECT current_database() AS banco, current_user AS usuario, ssl AS conexao_criptografada FROM pg_stat_ssl WHERE pid = pg_backend_pid();'
+          envFrom:
+            - configMapRef:
+                name: oficina-api-config
+            - secretRef:
+                name: oficina-api-secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: temporarios
+              mountPath: /tmp
+      volumes:
+        - name: temporarios
+          emptyDir: {}

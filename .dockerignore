@@ -4,4 +4,5 @@
 README.md
 docs
 tests
-k8s/secret.yaml
+k8s/local/secret.yaml
+infra

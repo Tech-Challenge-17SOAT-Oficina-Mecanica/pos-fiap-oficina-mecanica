@@ -26,7 +26,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: api
-          # O workflow substitui a imagem local pela imagem ECR do commit aprovado.
+          # Imagem local. No EKS, substituir pela imagem ECR com tag do SHA completo do commit.
           image: oficina-api:local
           imagePullPolicy: IfNotPresent
           ports:

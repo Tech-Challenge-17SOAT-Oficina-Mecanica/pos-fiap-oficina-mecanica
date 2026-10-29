@@ -3,6 +3,9 @@
 Backend do Tech Challenge da FIAP para gestão de uma oficina mecânica,
 organizado em arquitetura em camadas e DDD.
 
+Infraestrutura AWS Academy (EKS + RDS): [proposta, preparacao e limites](infra/aws/README.md).
+A configuracao AWS esta em preparacao; ainda nao foi provisionada nem integrada ao deploy.
+
 ## 🛠️ Skills necessárias
 
 Para executar o projeto, é necessário ter instalado:
@@ -17,8 +20,20 @@ executado pelos containers.
 
 ## Kubernetes - Fase 2
 
+O [guia de infraestrutura local](infra/local/README.md) descreve Terraform para Kind,
+PostgreSQL persistente, instalacao do Metrics Server e validacao do HPA.
+
+No Windows, prepare armazenamento, cluster e PostgreSQL automaticamente, da raiz:
+
+```bash
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/provisionar-infra.ps1
+```
+
+O comando reutiliza a configuracao existente e as credenciais locais. A preparacao
+das tabelas e o deploy da API/HPA seguem no guia.
+
 Os manifestos de namespace, Deployment, Service, HPA, ConfigMap e o exemplo do Secret
-estão em `k8s/`. A implementação, as variáveis de configuração, os endpoints de
+estão em `k8s/`, separados em [base, local e AWS](k8s/README.md). A implementação, as variáveis de configuração, os endpoints de
 saúde e os comandos de execução estão documentados em
 [Kubernetes](docs/05-kubernetes.md).
 
