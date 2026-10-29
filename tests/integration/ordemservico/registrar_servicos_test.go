@@ -28,7 +28,7 @@ func TestRegistrarServicosNecessarios(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(db.Close)
 
 	suffix := time.Now().UnixNano() & 0xffffffffffff
 	id := func(prefix string) string { return fmt.Sprintf(prefix+"%012x", suffix) }

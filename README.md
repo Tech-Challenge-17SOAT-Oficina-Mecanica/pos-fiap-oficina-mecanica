@@ -22,6 +22,11 @@ estão em `k8s/`. A implementação, as variáveis de configuração, os endpoin
 saúde e os comandos de execução estão documentados em
 [Kubernetes](docs/05-kubernetes.md).
 
+## Clean Code
+
+As práticas de legibilidade e organização implementadas estão documentadas em
+[Clean Code](docs/06-clean-code.md).
+
 ## 🗃️ Modelagem de dados
 
 O modelo lógico do banco de dados, com as entidades, os relacionamentos e as
