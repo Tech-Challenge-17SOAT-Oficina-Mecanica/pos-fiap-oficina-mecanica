@@ -14,18 +14,20 @@ type filaFake struct {
 	atualizadas []notificacao.Notificacao
 }
 
-func (fake *filaFake) Pendentes(_ context.Context, limite int) ([]notificacao.Notificacao, error) {
+func (fake *filaFake) ProcessarPendentes(ctx context.Context, limite int, tratar func(context.Context, notificacao.Notificacao) (notificacao.Notificacao, error)) error {
 	if fake.erroLeitura != nil {
-		return nil, fake.erroLeitura
+		return fake.erroLeitura
 	}
-	if limite < len(fake.pendentes) {
-		return fake.pendentes[:limite], nil
+	for i, aviso := range fake.pendentes {
+		if i >= limite {
+			break
+		}
+		atualizada, err := tratar(ctx, aviso)
+		if err != nil {
+			return err
+		}
+		fake.atualizadas = append(fake.atualizadas, atualizada)
 	}
-	return fake.pendentes, nil
-}
-
-func (fake *filaFake) AtualizarResultado(_ context.Context, aviso notificacao.Notificacao) error {
-	fake.atualizadas = append(fake.atualizadas, aviso)
 	return nil
 }
 

@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	clienteApplication "github.com/lazaro-contato/pos-fiap-oficina-mecanica/internal/application/cliente"
@@ -50,14 +53,20 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	db, err := database.OpenPool()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer db.Close()
 	jwt, err := segurancaInfrastructure.NewJWT(os.Getenv("JWT_SECRET"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	segurancaRepository := segurancaInfrastructure.NewPostgresRepository(db)
 	// Zero significa capacidade nao configurada: a fila fica fora da estimativa de
@@ -120,8 +129,10 @@ func main() {
 	estoqueRepository := estoqueInfrastructure.NewPostgresRepository(db)
 	registrarEntrada := estoqueApplication.NewRegistrarEntrada(estoqueRepository, enfileirarNotificacao, nil)
 
+	life := &serverLifecycle{drainDelay: 5 * time.Second, shutdownTimeout: 20 * time.Second}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", healthHandler)
+	mux.HandleFunc("GET /ready", life.readiness(readyHandler(db)))
 	mux.Handle("POST /fornecedores", segurancaPresentation.RequireScope(jwt, segurancaDominio.EscopoComprasEscrever, fornecedorPresentation.NewCadastrarHandler(
 		fornecedorApplication.NewCadastrar(fornecedorRepository),
 	)))
@@ -209,25 +220,26 @@ func main() {
 	// requisicao, enviar nao. Se o processo cair, o que estava PENDENTE continua no
 	// banco e sai na proxima subida.
 	processador := notificacaoApplication.NewProcessar(notificacaoRepository, enviadorDeNotificacao())
-	contexto, encerrar := context.WithCancel(context.Background())
-	defer encerrar()
-	go consumirNotificacoes(contexto, processador,
-		time.Duration(inteiroDoAmbiente("NOTIFICACAO_INTERVALO_SEGUNDOS", 30))*time.Second,
-		inteiroDoAmbiente("NOTIFICACAO_LOTE", 20))
-
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: sharedhttp.CORS(mux),
+	ctx, parar := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer parar()
+	server := &http.Server{Addr: ":8080", Handler: sharedhttp.CORS(mux), ReadHeaderTimeout: 5 * time.Second}
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		return err
 	}
 	log.Println("API iniciada na porta 8080")
-	log.Fatal(server.ListenAndServe())
+	return life.serve(ctx, server, listener, func(workerCtx context.Context) {
+		consumirNotificacoes(workerCtx, processador,
+			time.Duration(inteiroDoAmbiente("NOTIFICACAO_INTERVALO_SEGUNDOS", 30))*time.Second,
+			inteiroDoAmbiente("NOTIFICACAO_LOTE", 20))
+	})
 }
 
 // inteiroDoAmbiente le uma configuracao numerica, caindo no padrao quando ausente ou
 // invalida — a API nao deve deixar de subir por causa de uma variavel malformada.
 func inteiroDoAmbiente(nome string, padrao int) int {
 	valor, err := strconv.Atoi(strings.TrimSpace(os.Getenv(nome)))
-	if err != nil || valor < 0 {
+	if err != nil || valor < 0 || (nome == "NOTIFICACAO_INTERVALO_SEGUNDOS" && valor == 0) {
 		return padrao
 	}
 	return valor

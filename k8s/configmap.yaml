@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oficina-api-config
+  namespace: oficina
+data:
+  # Configuracoes sem segredo. Credenciais ficam no Secret oficina-api-secret.
+  # Todos os valores precisam ser strings.
+
+  # Endereco do PostgreSQL visto de dentro do pod; localhost seria o proprio pod.
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "oficina"
+
+  # Vazio deixa o SMTP desligado: sem RESEND_API_KEY no Secret, as notificacoes
+  # vao so para o log. Preencher com o Service ou servidor SMTP do ambiente.
+  SMTP_HOST: ""
+  SMTP_PORT: "1025"
+  SMTP_USUARIO: ""
+  EMAIL_REMETENTE: "Oficina Mecanica <onboarding@resend.dev>"
+
+  # Intervalo invalido ou zero utiliza o padrao de 30 segundos na aplicacao.
+  NOTIFICACAO_INTERVALO_SEGUNDOS: "30"
+  NOTIFICACAO_LOTE: "20"
+
+  # Zero deixa a fila fora da estimativa de entrega do orcamento.
+  CAPACIDADE_DIARIA_OS: "0"
