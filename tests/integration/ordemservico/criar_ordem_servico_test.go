@@ -92,7 +92,8 @@ func TestAbrirOrdemServicoComServicosEPecas(t *testing.T) {
 	if err != nil {
 		t.Skip("banco indisponível")
 	}
-	defer db.Close()
+	// Cleanup roda em ordem inversa: registrado antes, o fechamento do pool espera a limpeza dos dados.
+	t.Cleanup(db.Close)
 	if err := db.Ping(ctx); err != nil {
 		t.Skip("banco indisponível")
 	}
