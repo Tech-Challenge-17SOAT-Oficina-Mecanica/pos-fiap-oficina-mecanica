@@ -40,6 +40,19 @@ sem Terraform; nao aplicar exemplos com marcadores sobre credenciais reais.
 `infra/aws` cria EKS, RDS, namespace, Secret e ConfigMap com endpoint RDS e TLS.
 Nao existe PostgreSQL em pod nesse ambiente.
 
+A API usa Service LoadBalancer com NLB publico pelo controlador integrado do EKS
+tradicional. Requer sub-redes publicas descobertas pelo controlador (tag
+`kubernetes.io/role/elb=1`) e permissoes AWS para provisionar o balanceador.
+O balanceador tem custo enquanto existir. O ambiente local permanece ClusterIP.
+Esta configuracao inicial usa HTTP na porta 80; nao enviar senhas ou tokens por
+essa conexao sem configurar HTTPS. Para consultar o endereco apos o deploy:
+
+```bash
+kubectl -n oficina get service oficina-api -w
+# Testar http://<EXTERNAL-IP>/health e /ready.
+# Se permanecer Pending: kubectl -n oficina describe service oficina-api
+```
+
 Antes do deploy, substituir `DEFINIR_SHA_DO_COMMIT` em `aws/kustomization.yaml`
 pelo SHA completo publicado no ECR. Conferir conta e regiao do registry. O script
 da pipeline preenche a imagem a partir do mesmo commit aprovado pelo CI.
