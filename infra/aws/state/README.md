@@ -1,6 +1,6 @@
 # Estado Terraform: preparacao pela pipeline
 
-O workflow **Prepare AWS Terraform state** prepara o armazenamento compartilhado
+O workflow **02 · 🗂️ Prepare AWS Terraform state** prepara o armazenamento compartilhado
 em us-east-1. E manual e nao roda em PR ou push. Depois de publicado no GitHub,
 abrir Actions, selecionar esse workflow e informar o ID de 12 digitos da conta
 Academy esperada. Os tres Secrets AWS precisam pertencer a essa mesma conta.
@@ -34,7 +34,7 @@ pode assumir estado vazio quando ja existem recursos gerenciados localmente.
 O bootstrap guarda seu estado no proprio bucket. Cluster e platform usam chaves
 separadas: cluster/terraform.tfstate e platform/terraform.tfstate.
 Cada conta precisa de seus estados; nunca reaproveitar um tfstate de outra conta.
-O workflow Prepare AWS infrastructure descobre funcoes/rede na conta autenticada
+O workflow 03 · 🏗️ Prepare AWS infrastructure descobre funcoes/rede na conta autenticada
 e chama esse bootstrap automaticamente. Ver [automacao completa](../AUTOMACAO.md).
 
 ## Estados atuais do EKS e RDS

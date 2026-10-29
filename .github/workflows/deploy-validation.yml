@@ -1,4 +1,4 @@
-name: 🔎 Validate deployment
+name: 1.1 · 🔎 Validate deployment
 
 on:
   pull_request:

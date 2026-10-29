@@ -1,4 +1,4 @@
-name: Prepare AWS Terraform state
+name: 02 · 🗂️ Prepare AWS Terraform state
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Prepare AWS infrastructure
+name: 03 · 🏗️ Prepare AWS infrastructure
 
 on:
   workflow_dispatch:

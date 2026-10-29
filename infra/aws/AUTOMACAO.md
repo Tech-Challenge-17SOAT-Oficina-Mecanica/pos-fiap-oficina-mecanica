@@ -29,15 +29,15 @@ LabEksClusterRole/LabEksNodeRole. Descoberta ambigua ou rede inadequada interrom
 Nenhum push ou PR cria infraestrutura nem executa deploy AWS. As verificacoes
 continuam automaticas. O provisionamento e a entrega sao iniciados por botao:
 
-1. **Prepare AWS Terraform state**: prepara somente o bucket e seu estado. Informar
+1. **02 · 🗂️ Prepare AWS Terraform state**: prepara somente o bucket e seu estado. Informar
    expected_account_id, correspondente as credenciais. Pode ser usado separadamente
    para a transferencia dos estados existentes.
-2. **Prepare AWS infrastructure**: informar expected_account_id, admin_cidr (seu IP
+2. **03 · 🏗️ Prepare AWS infrastructure**: informar expected_account_id, admin_cidr (seu IP
    administrativo /32) e marcar confirm_provision para autorizar consumo de creditos.
    Prepara o bucket automaticamente, consulta os IDs, executa plan/apply de cluster
    e platform. Cria EKS, um no, RDS, ECR, Metrics Server, namespace, Secret e ConfigMap.
    Nao publica a API. Reexecucoes usam o estado remoto e nao recriam tudo.
-3. **Docker Build and Deploy**: informar expected_account_id e selecionar a revisao.
+3. **04 · 🐳 Docker Build and Deploy**: informar expected_account_id e selecionar a revisao.
    Exige sucesso de Build e Validate deployment no mesmo SHA. Publica API e Flyway
    no ECR, executa migrations e somente entao atualiza a API e verifica /health e
    /ready. Nao executa Terraform nem recria banco.
@@ -71,7 +71,7 @@ alvo sem o estado remoto correspondente, bloqueia. Nao importar automaticamente
 banco ou cluster desconhecidos. O ECR existente pode ser importado na mesma conta.
 
 Na conta em que ja criamos a infraestrutura pelo terminal:
-1. Executar somente Prepare AWS Terraform state com as credenciais dessa conta.
+1. Executar somente 02 · 🗂️ Prepare AWS Terraform state com as credenciais dessa conta.
 2. Guardar backup protegido dos estados locais de cluster e platform.
 3. Transferir cada estado com terraform init -migrate-state, usando o bucket dessa
    conta e as chaves cluster/terraform.tfstate e platform/terraform.tfstate.
