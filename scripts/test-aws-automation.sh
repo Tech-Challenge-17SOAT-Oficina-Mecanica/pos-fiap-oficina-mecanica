@@ -56,6 +56,12 @@ printf '#!/usr/bin/env bash\necho 198.51.100.42\n' > "$test_dir/bin/curl"
 cat > "$test_dir/bin/kubectl" <<'EOF'
 #!/usr/bin/env bash
 echo "kubectl $*" >> "$AWS_TEST_LOG"
+if [[ "$*" == *'auth can-i'* ]]; then
+  [[ "${KUBE_TEST_MODE:-existing}" != denied ]]
+  exit $?
+fi
+if [[ "${KUBE_TEST_MODE:-existing}" == lookup-failed ]]; then exit 1; fi
+if [[ "${KUBE_TEST_MODE:-existing}" == absent ]]; then exit 0; fi
 echo namespace/oficina
 EOF
 chmod +x "$test_dir/bin/"*
@@ -132,3 +138,17 @@ echo 'PASS: RDS existente sem estado remoto tambem bloqueia provisionamento.'
 if bash scripts/apply-aws-platform.sh > /dev/null 2>&1; then exit 1; fi
 ! grep -q ' apply ' "$AWS_TEST_LOG"
 echo 'PASS: namespace existente sem estado platform bloqueia recriacao.'
+
+for mode in denied lookup-failed; do
+  export KUBE_TEST_MODE=$mode
+  : > "$AWS_TEST_LOG"
+  if bash scripts/apply-aws-platform.sh > /dev/null 2>&1; then exit 1; fi
+  ! grep -Eq ' plan | apply ' "$AWS_TEST_LOG"
+done
+echo 'PASS: falha de autorizacao ou consulta Kubernetes interrompe antes do plano.'
+
+export KUBE_TEST_MODE=absent
+: > "$AWS_TEST_LOG"
+bash scripts/apply-aws-platform.sh
+grep -q 'terraform -chdir=infra/aws/platform apply' "$AWS_TEST_LOG"
+echo 'PASS: acesso autorizado e namespace ausente permitem aplicar platform.'

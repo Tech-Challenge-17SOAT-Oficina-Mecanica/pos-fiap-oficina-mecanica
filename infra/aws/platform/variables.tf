@@ -1,3 +1,9 @@
+variable "cluster_name" {
+  description = "Mesmo cluster usado na geracao do kubeconfig e do token EKS."
+  type        = string
+  default     = "oficina-academy"
+}
+
 variable "kubeconfig_path" {
   type    = string
   default = "~/.kube/config"
