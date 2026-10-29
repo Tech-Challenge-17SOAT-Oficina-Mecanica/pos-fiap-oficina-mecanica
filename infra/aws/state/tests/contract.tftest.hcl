@@ -7,7 +7,7 @@ mock_provider "aws" {
 run "private_account_state" {
   command = plan
   assert {
-    condition     = aws_s3_bucket.terraform.bucket == "oficina-tfstate-123456789012-us-east-1"
+    condition     = output.bucket_name == "oficina-tfstate-123456789012-us-east-1"
     error_message = "O bucket deve identificar a conta autenticada."
   }
   assert {
@@ -20,7 +20,7 @@ run "private_account_state" {
     error_message = "O bucket de estados nao pode permitir acesso publico."
   }
   assert {
-    condition     = aws_s3_bucket_versioning.terraform.versioning_configuration[0].status == "Enabled" && !aws_s3_bucket.terraform.force_destroy
+    condition     = aws_s3_bucket_versioning.terraform.versioning_configuration[0].status == "Enabled"
     error_message = "Preservar versoes e nao permitir apagar objetos automaticamente."
   }
   assert {

@@ -7,15 +7,9 @@ patches:
       kind: Job
       name: oficina-migrations
     patch: |-
-      apiVersion: batch/v1
-      kind: Job
-      metadata:
-        name: oficina-migrations
-      spec:
-        template:
-          spec:
-            containers:
-              - name: flyway
-                env:
-                  - name: FLYWAY_URL
-                    value: jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=verify-full&sslrootcert=/flyway/certs/aws-rds-global-bundle.pem
+      - op: test
+        path: /spec/template/spec/containers/0/env/3/name
+        value: FLYWAY_URL
+      - op: replace
+        path: /spec/template/spec/containers/0/env/3/value
+        value: jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=verify-full&sslrootcert=/flyway/certs/aws-rds-global-bundle.pem

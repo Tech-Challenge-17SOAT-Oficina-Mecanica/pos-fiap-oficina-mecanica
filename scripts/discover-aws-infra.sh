@@ -2,9 +2,11 @@
 # Source pela preparacao de infraestrutura. Descobre IDs na conta autenticada, sem alterar AWS.
 set -euo pipefail
 : "${EXPECTED_ACCOUNT_ID:?Informe o ID da conta esperada}"
-: "${ADMIN_CIDR:?Informe um IP administrativo autorizado com /32}"
-[[ "$ADMIN_CIDR" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/32$ ]] || { echo 'Use um IPv4 administrativo /32.' >&2; exit 1; }
-jq -en --arg cidr "$ADMIN_CIDR" '$cidr | split("/")[0] | split(".") | all(.[]; (tonumber <= 255))' > /dev/null || exit 1
+ADMIN_CIDR=${ADMIN_CIDR:-}
+if [[ -n "$ADMIN_CIDR" ]]; then
+  [[ "$ADMIN_CIDR" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/32$ ]] || { echo 'Use um IPv4 administrativo /32.' >&2; exit 1; }
+  jq -en --arg cidr "$ADMIN_CIDR" '$cidr | split("/")[0] | split(".") | all(.[]; (tonumber <= 255))' > /dev/null || exit 1
+fi
 export AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1 AWS_PAGER=""
 account_id=$(aws sts get-caller-identity --query Account --output text)
 [[ "$account_id" =~ ^[0-9]{12}$ && "$account_id" == "$EXPECTED_ACCOUNT_ID" ]] || {
@@ -35,5 +37,5 @@ while read -r subnet; do
   ' <<< "$routes" > /dev/null || { echo "Sub-rede sem rota publica: $subnet" >&2; exit 1; }
 done < <(jq -r '.[]' <<< "$TF_VAR_subnet_ids")
 export TF_VAR_admin_cidrs
-TF_VAR_admin_cidrs=$(jq -cn --arg cidr "$ADMIN_CIDR" '[$cidr]')
+TF_VAR_admin_cidrs=$(jq -cn --arg cidr "$ADMIN_CIDR" 'if $cidr == "" then [] else [$cidr] end')
 echo "Infraestrutura selecionada na conta $account_id; IDs obtidos da AWS."

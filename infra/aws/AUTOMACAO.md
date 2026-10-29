@@ -1,10 +1,14 @@
-# Automacao AWS: conta escolhida na execucao
+# Automacao AWS: conta configurada no GitHub
 
 A conta definitiva pode ser escolhida depois do merge. As configuracoes nao usam
 IDs pessoais de conta, VPC, sub-redes ou funcoes IAM. A regiao do laboratorio e
 us-east-1. Cada conta tem bucket e estados separados.
 
 ## Configuracao no GitHub
+
+Variable obrigatoria: AWS_ACCOUNT_ID, com o ID de 12 digitos da conta dos Secrets AWS.
+Configurar em Settings -> Secrets and variables -> Actions -> Variables.
+A pipeline confere essa conta antes de alterar recursos; o ID nao e uma senha.
 
 Secrets obrigatorios:
 - AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY e AWS_SESSION_TOKEN: sessao Academy.
@@ -29,19 +33,19 @@ LabEksClusterRole/LabEksNodeRole. Descoberta ambigua ou rede inadequada interrom
 Nenhum push ou PR cria infraestrutura nem executa deploy AWS. As verificacoes
 continuam automaticas. O provisionamento e a entrega sao iniciados por botao:
 
-1. **02 · 🗂️ Prepare AWS Terraform state**: prepara somente o bucket e seu estado. Informar
-   expected_account_id, correspondente as credenciais. Pode ser usado separadamente
-   para a transferencia dos estados existentes.
-2. **03 · 🏗️ Prepare AWS infrastructure**: informar expected_account_id, admin_cidr (seu IP
-   administrativo /32) e marcar confirm_provision para autorizar consumo de creditos.
-   Prepara o bucket automaticamente, consulta os IDs, executa plan/apply de cluster
+1. **02 · 🏗️ Prepare AWS infrastructure**: selecionar a revisao e executar.
+   O unico campo e admin_cidr, opcional: seu IPv4 publico com /32 para usar kubectl
+   no computador. O clique em Run workflow inicia o provisionamento e pode consumir
+   creditos. Prepara o S3 internamente, descobre os IDs e executa Terraform em cluster
    e platform. Cria EKS, um no, RDS, ECR, Metrics Server, namespace, Secret e ConfigMap.
-   Nao publica a API. Reexecucoes usam o estado remoto e nao recriam tudo.
-3. **04 · 🐳 Docker Build and Deploy**: informar expected_account_id e selecionar a revisao.
-   Exige sucesso de Build e Validate deployment no mesmo SHA. Publica API e Flyway
-   no ECR, executa migrations e somente entao atualiza a API e verifica /health e
-   /ready. Nao executa Terraform nem recria banco.
+   Nao publica a API. Reexecucoes usam o estado remoto.
+2. **03 · 🐳 Docker Build and Deploy**: selecionar a revisao e executar, sem formularios
+   de conta. Exige Build e Validate deployment aprovados no mesmo SHA. Publica API e
+   Flyway no ECR, executa migrations e atualiza a API, verificando /health e /ready.
+   Nao executa Terraform nem recria o banco.
 
+Nao existe workflow separado para preparar o S3; scripts/prepare-aws-state.sh
+continua sendo chamado pelo provisionamento e testado na CI.
 Planos com remocao/substituicao ou rotacao de senha/chave sao bloqueados. Uma
 mudanca desse tipo exige revisao especifica, fora desse fluxo automatico.
 Nao publicamos planos ou estados como artifacts, porque podem conter segredos.
@@ -50,10 +54,14 @@ pausa de aprovacao entre plan e apply. Conferir os logs e a conta antes de inici
 
 ## Acesso do runner ao EKS
 
-O endpoint mantem o IP administrativo configurado no Terraform. Durante platform
-ou deploy, o script adiciona somente o IPv4 /32 do runner, aguarda a atualizacao,
-executa a tarefa e remove a entrada temporaria, preservando os demais CIDRs.
-Nao abre 0.0.0.0/0 e nao aplica a excecao kubelet-insecure-tls do Kind.
+Com admin_cidr preenchido, o endpoint publico permite somente esse IP permanente;
+o runner adiciona seu /32 temporariamente e o remove ao terminar. Deixar o campo
+vazio remove o acesso administrativo permanente e mantem o endpoint privado.
+Nesse modo, a pipeline habilita o endpoint publico somente para o /32 do runner
+durante platform/deploy e o desabilita ao terminar, inclusive em falhas normais.
+Nao abre acesso publico a 0.0.0.0/0 nem altera o endpoint privado. Sem o IP opcional,
+kubectl no computador e a visualizacao dos recursos Kubernetes no console podem
+ficar sem acesso de rede; a pipeline continua funcionando.
 A identidade AWS do runner tambem precisa ter acesso Kubernetes: a identidade
 criadora recebe acesso inicial. Trocar de funcao IAM na mesma conta pode exigir
 uma autorizacao EKS adicional; credenciais renovadas da mesma funcao nao sao uma
@@ -71,7 +79,7 @@ alvo sem o estado remoto correspondente, bloqueia. Nao importar automaticamente
 banco ou cluster desconhecidos. O ECR existente pode ser importado na mesma conta.
 
 Na conta em que ja criamos a infraestrutura pelo terminal:
-1. Executar somente 02 · 🗂️ Prepare AWS Terraform state com as credenciais dessa conta.
+1. Preparar somente o S3 via script: EXPECTED_ACCOUNT_ID=ID_DA_CONTA bash scripts/prepare-aws-state.sh, com credenciais locais validas dessa conta.
 2. Guardar backup protegido dos estados locais de cluster e platform.
 3. Transferir cada estado com terraform init -migrate-state, usando o bucket dessa
    conta e as chaves cluster/terraform.tfstate e platform/terraform.tfstate.
@@ -86,7 +94,7 @@ fluxo. Revisar nomes, importacao e custos antes de iniciar outro ambiente.
 
 ## Conta nova
 
-Atualizar os Secrets AWS e os Secrets da aplicacao e informar o ID da nova conta.
+Atualizar os Secrets AWS, os Secrets da aplicacao e a Variable AWS_ACCOUNT_ID.
 A preparacao usa um bucket proprio, comeca com estado vazio e cria o ambiente.
 Isso NAO migra registros do banco nem encerra os recursos da conta anterior.
 Os limites e permissoes do Academy precisam permitir as operacoes. O provisionamento

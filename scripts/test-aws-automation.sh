@@ -30,7 +30,7 @@ case "$1 $2" in
   'eks describe-cluster') cat "$AWS_TEST_CONFIG" ;;
   'eks update-cluster-config')
     while [[ "$1" != --resources-vpc-config ]]; do shift; done
-    jq --argjson update "$2" '.publicAccessCidrs=$update.publicAccessCidrs' "$AWS_TEST_CONFIG" > "$AWS_TEST_CONFIG.next"
+    jq --argjson update "$2" '.publicAccessCidrs=$update.publicAccessCidrs | .endpointPublicAccess=$update.endpointPublicAccess' "$AWS_TEST_CONFIG" > "$AWS_TEST_CONFIG.next"
     mv "$AWS_TEST_CONFIG.next" "$AWS_TEST_CONFIG"
     echo update-test ;;
   'eks describe-update') echo Successful ;;
@@ -56,6 +56,12 @@ printf '#!/usr/bin/env bash\necho 198.51.100.42\n' > "$test_dir/bin/curl"
 cat > "$test_dir/bin/kubectl" <<'EOF'
 #!/usr/bin/env bash
 echo "kubectl $*" >> "$AWS_TEST_LOG"
+if [[ "$*" == *'auth can-i'* ]]; then
+  [[ "${KUBE_TEST_MODE:-existing}" != denied ]]
+  exit $?
+fi
+if [[ "${KUBE_TEST_MODE:-existing}" == lookup-failed ]]; then exit 1; fi
+if [[ "${KUBE_TEST_MODE:-existing}" == absent ]]; then exit 0; fi
 echo namespace/oficina
 EOF
 chmod +x "$test_dir/bin/"*
@@ -63,6 +69,11 @@ export PATH="$test_dir/bin:$PATH"
 
 (source scripts/discover-aws-infra.sh; [[ "$TF_VAR_vpc_id" == vpc-test && "$TF_VAR_cluster_role_name" == a-LabEksClusterRole-x && "$TF_VAR_subnet_ids" == '["subnet-a","subnet-b"]' ]])
 echo 'PASS: descoberta usa IDs da conta, sem valores pessoais fixos.'
+(export ADMIN_CIDR=''; source scripts/discover-aws-infra.sh; [[ "$TF_VAR_admin_cidrs" == '[]' ]])
+for cidr in '999.1.1.1/32' '1.2.3.4/24'; do
+  if (export ADMIN_CIDR=$cidr; source scripts/discover-aws-infra.sh) > /dev/null 2>&1; then exit 1; fi
+done
+echo 'PASS: IP administrativo pode ser omitido; IP informado continua validado.'
 export AWS_TEST_MODE=ambiguous
 if bash scripts/discover-aws-infra.sh > /dev/null 2>&1; then exit 1; fi
 export AWS_TEST_MODE=no-route
@@ -110,6 +121,17 @@ bash scripts/with-eks-access.sh bash -c 'exit 0'
 ! grep -q 'update-cluster-config' "$AWS_TEST_LOG"
 echo 'PASS: CIDR previamente autorizado nao e removido pelo runner.'
 
+for code in 0 7; do
+  echo '{"endpointPublicAccess":false,"endpointPrivateAccess":true,"publicAccessCidrs":["0.0.0.0/0"]}' > "$AWS_TEST_CONFIG"
+  if bash scripts/with-eks-access.sh bash -ec 'jq -e '\''.endpointPublicAccess and .publicAccessCidrs == ["198.51.100.42/32"]'\'' "$AWS_TEST_CONFIG" > /dev/null; exit "$1"' -- "$code"; then
+    [[ "$code" == 0 ]]
+  else
+    [[ $? == "$code" ]]
+  fi
+  jq -e '.endpointPublicAccess == false and .endpointPrivateAccess == true and .publicAccessCidrs == ["0.0.0.0/0"]' "$AWS_TEST_CONFIG" > /dev/null
+done
+echo 'PASS: endpoint privado abre so para runner e fecha no sucesso e na falha.'
+
 mkdir -p "$test_dir/fixture/scripts" "$test_dir/fixture/infra/aws/cluster" "$test_dir/fixture/infra/aws/platform"
 cp scripts/{provision-aws,discover-aws-infra,prepare-aws-state,terraform-safe-apply}.sh "$test_dir/fixture/scripts/"
 export TF_VAR_db_password=fake-password-123456 TF_VAR_jwt_secret=fake-jwt-key-only-for-tests-1234567890
@@ -132,3 +154,17 @@ echo 'PASS: RDS existente sem estado remoto tambem bloqueia provisionamento.'
 if bash scripts/apply-aws-platform.sh > /dev/null 2>&1; then exit 1; fi
 ! grep -q ' apply ' "$AWS_TEST_LOG"
 echo 'PASS: namespace existente sem estado platform bloqueia recriacao.'
+
+for mode in denied lookup-failed; do
+  export KUBE_TEST_MODE=$mode
+  : > "$AWS_TEST_LOG"
+  if bash scripts/apply-aws-platform.sh > /dev/null 2>&1; then exit 1; fi
+  ! grep -Eq ' plan | apply ' "$AWS_TEST_LOG"
+done
+echo 'PASS: falha de autorizacao ou consulta Kubernetes interrompe antes do plano.'
+
+export KUBE_TEST_MODE=absent
+: > "$AWS_TEST_LOG"
+bash scripts/apply-aws-platform.sh
+grep -q 'terraform -chdir=infra/aws/platform apply' "$AWS_TEST_LOG"
+echo 'PASS: acesso autorizado e namespace ausente permitem aplicar platform.'

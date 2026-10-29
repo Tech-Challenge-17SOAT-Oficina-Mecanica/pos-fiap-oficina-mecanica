@@ -32,6 +32,7 @@ jobs:
           bash scripts/test-deploy-eks.sh
           bash scripts/test-prepare-aws-state.sh
           bash scripts/test-aws-automation.sh
+          pwsh -NoProfile -File scripts/test-k8s-overlays.ps1
           kubectl kustomize k8s/local > local-rendered.yaml
           kubectl kustomize k8s/aws > app-rendered.yaml
           kubectl kustomize k8s/local/migrations > local-migrations-rendered.yaml

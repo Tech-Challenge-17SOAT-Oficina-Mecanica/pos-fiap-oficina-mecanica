@@ -1,36 +1,26 @@
-name: 03 · 🏗️ Prepare AWS infrastructure
+name: 02 · 🏗️ Prepare AWS infrastructure
 
 on:
   workflow_dispatch:
     inputs:
-      expected_account_id:
-        description: ID da conta Academy dos Secrets AWS
-        required: true
-        type: string
       admin_cidr:
-        description: IPv4 administrativo com /32, mantido depois da execucao
-        required: true
+        description: Opcional - seu IPv4 publico com /32 para acessar pelo computador
+        required: false
         type: string
-      confirm_provision:
-        description: Autorizar criacao ou atualizacao de recursos AWS com consumo de creditos
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: oficina-aws-${{ inputs.expected_account_id }}
+  group: oficina-aws-${{ vars.AWS_ACCOUNT_ID }}
   cancel-in-progress: false
 
 jobs:
   provision:
-    if: inputs.confirm_provision
     runs-on: ubuntu-latest
     timeout-minutes: 85
     env:
-      EXPECTED_ACCOUNT_ID: ${{ inputs.expected_account_id }}
+      EXPECTED_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       ADMIN_CIDR: ${{ inputs.admin_cidr }}
       CLUSTER_NAME: ${{ vars.AWS_CLUSTER_NAME || 'oficina-academy' }}
       ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'oficina-mecanica' }}
@@ -38,6 +28,8 @@ jobs:
       AWS_EKS_CLUSTER_ROLE: ${{ vars.AWS_EKS_CLUSTER_ROLE }}
       AWS_EKS_NODE_ROLE: ${{ vars.AWS_EKS_NODE_ROLE }}
     steps:
+      - name: Validate configured account
+        run: '[[ "$EXPECTED_ACCOUNT_ID" =~ ^[0-9]{12}$ ]] || { echo "Configure a Variable AWS_ACCOUNT_ID com 12 digitos."; exit 1; }'
       - uses: actions/checkout@v6
         with:
           persist-credentials: false

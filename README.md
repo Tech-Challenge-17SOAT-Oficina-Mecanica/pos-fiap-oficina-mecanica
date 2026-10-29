@@ -191,6 +191,12 @@ O Terraform está dividido em:
 
 Em `Settings → Secrets and variables → Actions`, configure:
 
+Na aba **Variables**, crie a variável de repositório **`AWS_ACCOUNT_ID`** com o ID
+de 12 dígitos da conta das credenciais AWS. O workflow lê `vars.AWS_ACCOUNT_ID`;
+cadastrá-la somente em **Secrets** não fornece esse valor.
+
+Na aba **Secrets**, configure:
+
 | Secret | Finalidade |
 | --- | --- |
 | `AWS_ACCESS_KEY_ID` | Chave de acesso temporária do Academy |
@@ -226,9 +232,8 @@ Os números dos nomes servem para orientar a execução.
 | **1.0 · 🏗️ Build** | PR, push na `main` ou acionamento manual | Compila, executa testes e verifica cobertura mínima de 80% |
 | **1.1 · 🔎 Validate deployment** | PR e push na `main` | Valida workflows, Terraform, manifestos, scripts e migrations |
 | **1.2 · 📊 SonarQube** | Abertura/atualização/reabertura de PR e push na `main` | Analisa qualidade de código |
-| **02 · 🗂️ Prepare AWS Terraform state** | Manual | Prepara somente o S3 para estados; também é chamado pelo provisionamento |
-| **03 · 🏗️ Prepare AWS infrastructure** | Manual | Prepara o S3 e cria ou atualiza a infraestrutura com Terraform |
-| **04 · 🐳 Docker Build and Deploy** | Manual | Publica imagens, executa migrations, atualiza a API e valida `/health` e `/ready` |
+| **02 · 🏗️ Prepare AWS infrastructure** | Manual | Prepara o S3 internamente e cria ou atualiza a infraestrutura com Terraform |
+| **03 · 🐳 Docker Build and Deploy** | Manual | Publica imagens, executa migrations, atualiza a API e valida `/health` e `/ready` |
 
 As verificações `1.0`, `1.1` e `1.2` podem executar em paralelo.
 **PR ou merge não dispara provisionamento nem deploy AWS.**
@@ -236,20 +241,31 @@ As verificações `1.0`, `1.1` e `1.2` podem executar em paralelo.
 Para instalar em uma conta nova:
 
 1. Aguarde as verificações do commit passarem.
-2. Acesse `Actions → 03 · Prepare AWS infrastructure → Run workflow`.
-3. Selecione a revisão, informe `expected_account_id`, seu IPv4 público com `/32`
-   em `admin_cidr` e marque a autorização de provisionamento.
+2. Configure `AWS_ACCOUNT_ID` na aba **Variables** e os secrets da conta escolhida.
+3. Acesse `Actions → 02 · Prepare AWS infrastructure → Run workflow`, selecione a
+   branch desejada e, opcionalmente, informe seu IPv4 público com `/32` em
+   `admin_cidr`. O clique em **Run workflow** inicia o provisionamento e pode consumir
+   créditos; não há campo de ID da conta nem confirmação adicional.
 4. Aguarde o término com sucesso. O cluster e o RDS estarão preparados, ainda sem a API.
-5. Execute `04 · Docker Build and Deploy` na mesma conta e revisão aprovada.
+5. Execute `03 · Docker Build and Deploy` na mesma conta e revisão aprovada.
 6. Confira a conclusão das migrations, do rollout e das verificações HTTP nos logs.
 
-A etapa `02` é auxiliar: não precisa ser executada separadamente no fluxo normal.
+Não existe workflow separado para preparar o S3: essa preparação faz parte da etapa `02`.
 O deploy exige Build e Validate deployment aprovados para o mesmo commit.
 Ele publica imagens no ECR com tags do commit e aplica migrations antes de atualizar
 os pods da API. Publicar uma imagem no ECR, sozinho, não coloca a API em execução.
 
-O IP administrativo permite usar `kubectl` no seu computador. A pipeline libera e
-remove temporariamente o IP do seu executor. Acesso, parâmetros e proteções estão
+Para uma nova versão apenas da aplicação, execute as verificações e o deploy `03`.
+Se houver mudanças na infraestrutura, execute também o provisionamento `02` antes
+do deploy. Quando a branch receber novos commits, aguarde as verificações desse
+novo commit e inicie uma nova execução; **Re-run jobs** repete o código da execução antiga.
+
+O IP administrativo opcional permite usar `kubectl` no seu computador. Sem ele,
+o endpoint Kubernetes permanece privado fora das execuções; a pipeline abre acesso
+público somente para o IP do seu executor e o fecha ao terminar. Com o IP preenchido,
+preserva esse acesso administrativo e remove somente o IP temporário do executor.
+Isso se refere à administração do Kubernetes, não a uma URL pública da API da oficina.
+Acesso, parâmetros e proteções estão
 no [guia de automação](infra/aws/AUTOMACAO.md); detalhes do deploy no
 [guia EKS](docs/06-deploy-eks.md).
 
