@@ -22,6 +22,7 @@ No ambiente local, Kind utiliza Docker como base para executar o cluster.
 - [Por que PostgreSQL](#por-que-postgresql)
 - [Pré-requisitos e execução local](#execucao-local)
 - [Kubernetes local](#kubernetes-local)
+- [Arquivos e recursos Kubernetes](#recursos-kubernetes)
 - [Infraestrutura AWS e Terraform](#infraestrutura-aws)
 - [CI/CD e workflows](#cicd)
 - [APIs e testes](#apis-e-testes)
@@ -165,6 +166,62 @@ Os manifestos são separados em `k8s/base`, `k8s/local` e `k8s/aws`.
 Consulte a [organização Kubernetes](k8s/README.md) antes de aplicar arquivos:
 namespace, credenciais e banco têm recursos gerenciados pelo Terraform.
 
+<a id="recursos-kubernetes"></a>
+
+## 📦 Arquivos e recursos Kubernetes
+
+Terraform prepara o cluster e os recursos de infraestrutura. Os manifestos de
+`k8s/` descrevem como executar a API, suas migrations e os componentes de cada
+ambiente dentro do Kubernetes. O **Kustomize** combina os arquivos compartilhados
+da base com os ajustes locais ou AWS, sem duplicar toda a configuração.
+
+```text
+k8s/
+├── base/
+│   ├── api/
+│   │   ├── deployment.yaml      # Execução, imagem, recursos e saúde da API
+│   │   ├── service.yaml         # Acesso interno estável aos pods da API
+│   │   ├── hpa.yaml             # Ajuste automático entre 2 e 5 réplicas
+│   │   └── kustomization.yaml   # Reúne os recursos da API
+│   ├── config/
+│   │   ├── configmap.yaml       # Configurações comuns sem credenciais
+│   │   └── kustomization.yaml
+│   └── migrations/
+│       ├── job.yaml             # Execução do Flyway para preparar o schema
+│       └── kustomization.yaml
+├── local/
+│   ├── database/                # statefulset.yaml, service.yaml, pv.yaml e pvc.yaml
+│   ├── metrics-server/          # Instalação adaptada ao Kind
+│   ├── migrations/             # Job Flyway para o banco local
+│   ├── namespace.yaml          # Referência do namespace gerenciado pelo Terraform
+│   ├── secret.yaml.example     # Exemplo de credenciais; não contém valores reais
+│   └── kustomization.yaml      # API e ConfigMap do ambiente local
+├── aws/
+│   ├── migrations/             # Job Flyway com TLS e certificado do RDS
+│   ├── verificar-rds.yaml      # Diagnóstico opcional da conexão ao banco
+│   └── kustomization.yaml      # API, Service e HPA com imagem substituída pelo deploy
+├── tests/
+│   └── carga-k6.yaml           # Teste de carga opcional para observar o HPA
+└── README.md                   # Instruções dos manifestos por ambiente
+```
+
+| Recurso Kubernetes | Papel no projeto |
+| --- | --- |
+| **Deployment** | Mantém os pods da API executando e controla a atualização da versão, com verificações de saúde e limites de CPU/memória. |
+| **Service** | Encaminha chamadas aos pods da API por um endereço interno estável. Nosso Service é `ClusterIP`; não cria uma URL pública. |
+| **HPA** | Usa métricas de CPU e memória para ajustar a quantidade de pods da API, com suporte do Metrics Server. |
+| **ConfigMap e Secret** | Fornecem configurações e credenciais aos containers. A base traz configurações comuns; os Secrets reais são criados pelo Terraform. Na AWS, `infra/aws/platform` também cria o ConfigMap com o endereço do RDS. |
+| **Job** | Executa as migrations com Flyway antes da atualização da API. Um erro nessa etapa interrompe o deploy. |
+| **StatefulSet, PV e PVC** | Executam o PostgreSQL e conectam seu armazenamento persistente no Kind. Esses YAMLs são aplicados pelo Terraform local; na AWS, o banco é o RDS, fora do Kubernetes. |
+
+O deploy AWS aplica `k8s/aws/migrations` e depois `k8s/aws`. Esses conjuntos não
+incluem o banco local nem recriam namespace, ConfigMap ou Secret administrados
+pelo Terraform. O diagnóstico do RDS e o teste de carga são executados
+separadamente, quando necessários.
+
+Detalhes e comandos: [manifestos Kubernetes](k8s/README.md) e
+[recursos, diagnóstico e carga](docs/05-kubernetes.md).
+
 <a id="infraestrutura-aws"></a>
 
 ## ☁️ Infraestrutura AWS e Terraform
@@ -206,7 +263,7 @@ Na aba **Secrets**, configure:
 | `AWS_JWT_SECRET` | Chave estável da API na AWS, com pelo menos 32 caracteres |
 | `CI_DB_PASSWORD` | Senha do banco temporário dos testes |
 | `JWT_SECRET` | Chave de autenticação dos testes |
-| `SONAR_TOKEN` | Token para análise de qualidade |
+| `SONAR_TOKEN` | Token da análise SonarQube, atualmente desativada |
 
 As credenciais temporárias devem pertencer à conta escolhida e estar válidas.
 Renovar a sessão não exige mudar a senha do banco nem a chave JWT da aplicação.
@@ -294,11 +351,12 @@ Os números dos nomes servem para orientar a execução.
 | --- | --- | --- |
 | **1.0 · 🏗️ Build** | PR, push na `main` ou acionamento manual | Compila, executa testes e verifica cobertura mínima de 80% |
 | **1.1 · 🔎 Validate deployment** | PR e push na `main` | Valida workflows, Terraform, manifestos, scripts e migrations |
-| **1.2 · 📊 SonarQube** | Abertura/atualização/reabertura de PR e push na `main` | Analisa qualidade de código |
+| **1.2 · 📊 SonarQube** | **Desativado no GitHub Actions** | Arquivo mantido no repositório para a análise de qualidade |
 | **02 · 🏗️ Prepare AWS infrastructure** | Manual | Prepara o S3 internamente e cria ou atualiza a infraestrutura com Terraform |
 | **03 · 🐳 Docker Build and Deploy** | Manual | Publica imagens, executa migrations, atualiza a API e valida `/health` e `/ready` |
 
-As verificações `1.0`, `1.1` e `1.2` podem executar em paralelo.
+As verificações ativas `1.0` e `1.1` podem executar em paralelo. O SonarQube (`1.2`)
+está desativado e não aparece no fluxo ativo da imagem.
 **PR ou merge não dispara provisionamento nem deploy AWS.**
 
 Para instalar em uma conta nova:
@@ -312,11 +370,6 @@ Para instalar em uma conta nova:
 4. Aguarde o término com sucesso. O cluster e o RDS estarão preparados, ainda sem a API.
 5. Execute `03 · Docker Build and Deploy` na mesma conta e revisão aprovada.
 6. Confira a conclusão das migrations, do rollout e das verificações HTTP nos logs.
-
-Não existe workflow separado para preparar o S3: essa preparação faz parte da etapa `02`.
-O deploy exige Build e Validate deployment aprovados para o mesmo commit.
-Ele publica imagens no ECR com tags do commit e aplica migrations antes de atualizar
-os pods da API. Publicar uma imagem no ECR, sozinho, não coloca a API em execução.
 
 Para uma nova versão apenas da aplicação, execute as verificações e o deploy `03`.
 Se houver mudanças na infraestrutura, execute também o provisionamento `02` antes
