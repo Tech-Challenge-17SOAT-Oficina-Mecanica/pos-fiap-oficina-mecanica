@@ -1,0 +1,73 @@
+name: 1.2 · ⏱️ API performance
+
+on:
+  pull_request:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'db/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'tests/performance/**'
+      - 'scripts/test-performance.sh'
+      - '.github/workflows/performance.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'db/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'tests/performance/**'
+      - 'scripts/test-performance.sh'
+      - '.github/workflows/performance.yml'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Perfil de carga
+        required: true
+        default: load
+        type: choice
+        options: [smoke, load]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  performance:
+    name: ⏱️ Test API performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PERF_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Run isolated API load test
+        run: bash scripts/test-performance.sh "$PERF_PROFILE"
+      - name: Publish summary
+        if: always()
+        run: |
+          if [[ -f reports/performance/summary.md ]]; then
+            cat reports/performance/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'O teste nao gerou resumo. Consulte os logs de preparacao do ambiente.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload results and environment logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/performance/
+          if-no-files-found: warn
+          retention-days: 14
