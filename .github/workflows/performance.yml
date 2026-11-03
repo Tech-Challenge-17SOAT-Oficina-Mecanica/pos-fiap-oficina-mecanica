@@ -44,26 +44,35 @@ concurrency:
 
 jobs:
   performance:
-    name: ⏱️ Test API performance
+    name: 🧪 Test API performance
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
       PERF_PROFILE: ${{ github.event_name == 'workflow_dispatch' && inputs.profile || 'smoke' }}
     steps:
-      - uses: actions/checkout@v6
+      - name: 📥 Obter código
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - name: Run isolated API load test
+      - name: 🚀 Executar teste de desempenho
+        id: load
         run: bash scripts/test-performance.sh "$PERF_PROFILE"
-      - name: Publish summary
+      - name: 📊 Publicar status e resumo
         if: always()
+        env:
+          TEST_OUTCOME: ${{ steps.load.outcome }}
         run: |
+          if [[ "$TEST_OUTCOME" == success ]]; then
+            echo "## ✅ Teste de desempenho aprovado" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ❌ Teste de desempenho não concluído com sucesso" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [[ -f reports/performance/summary.md ]]; then
             cat reports/performance/summary.md >> "$GITHUB_STEP_SUMMARY"
           else
-            echo 'O teste nao gerou resumo. Consulte os logs de preparacao do ambiente.' >> "$GITHUB_STEP_SUMMARY"
+            echo '⚠️ O teste não gerou métricas. Consulte os logs de preparação do ambiente.' >> "$GITHUB_STEP_SUMMARY"
           fi
-      - name: Upload results and environment logs
+      - name: 📦 Salvar relatórios e logs
         if: always()
         uses: actions/upload-artifact@v4
         with:

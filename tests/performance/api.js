@@ -18,6 +18,7 @@ export const options = {
     ...Object.fromEntries(operations.flatMap((operation) => [
       [`http_req_duration{operation:${operation},phase:load}`, ['p(95)<2000']],
       [`http_reqs{operation:${operation},phase:load}`, ['count>0']],
+      [`checks{operation:${operation},phase:load}`, ['rate==1']],
     ])),
   },
 };
@@ -33,7 +34,7 @@ function login(phase) {
   const body = json(response);
   const valid = check(response, {
     'login: HTTP 200 e token': (r) => r.status === 200 && typeof body.accessToken === 'string' && body.accessToken.length > 0,
-  });
+  }, { operation: 'login', phase });
   return valid ? body.accessToken : '';
 }
 
@@ -88,7 +89,7 @@ export default function (users) {
   const valid = check(response, {
     'abertura: HTTP 201, identificador e RECEBIDA': (r) => r.status === 201 &&
       /^[0-9a-f-]{36}$/i.test(created.ordemServicoId || '') && created.status === 'RECEBIDA',
-  });
+  }, { operation: 'abertura', phase: 'load' });
   if (valid) {
     const consultation = http.get(`${baseURL}/ordens-servico/${created.ordemServicoId}`, params(token, 'consulta'));
     const order = json(consultation);
@@ -97,7 +98,7 @@ export default function (users) {
       'consulta: orcamento com servico e peca': () => Array.isArray(order.orcamentos) && order.orcamentos.length === 1 &&
         order.orcamentos[0].itens.length === 2 && order.orcamentos[0].itens.some((item) => item.tipo === 'SERVICO') &&
         order.orcamentos[0].itens.some((item) => item.tipo === 'PECA'),
-    });
+    }, { operation: 'consulta', phase: 'load' });
   }
   sleep(0.5);
 }
@@ -108,12 +109,15 @@ export function handleSummary(data) {
   const lines = [
     '# Teste de desempenho da API', '',
     `Perfil: **${profile}** — ${profiles[profile].vus} usuarios virtuais por ${profiles[profile].duration}.`, '',
-    `Resultado dos thresholds: **${failed ? 'REPROVADO' : 'APROVADO'}**.`, '',
-    '| Operacao | Requisicoes | p95 (ms) | Limite p95 (ms) |', '| --- | ---: | ---: | ---: |',
+    `Resultado dos thresholds: **${failed ? '❌ REPROVADO' : '✅ APROVADO'}**.`, '',
+    '| Operacao | Status | Requisicoes | p95 (ms) | Limite p95 (ms) |', '| --- | --- | ---: | ---: | ---: |',
     ...operations.map((operation) => {
       const duration = metrics[`http_req_duration{operation:${operation},phase:load}`];
       const requests = metrics[`http_reqs{operation:${operation},phase:load}`];
-      return `| ${operation} | ${requests ? requests.values.count : 0} | ${duration ? duration.values['p(95)'].toFixed(2) : 'sem amostras'} | < 2000 |`;
+      const checks = metrics[`checks{operation:${operation},phase:load}`];
+      const passed = [duration, requests, checks].every((metric) => metric && Object.values(metric.thresholds || {}).length > 0 &&
+        Object.values(metric.thresholds).every((threshold) => threshold.ok));
+      return `| ${operation} | ${passed ? '✅ Aprovado' : '❌ Reprovado'} | ${requests ? requests.values.count : 0} | ${duration ? duration.values['p(95)'].toFixed(2) : 'sem amostras'} | < 2000 |`;
     }), '',
     `Falhas HTTP: ${((metrics.http_req_failed ? metrics.http_req_failed.values.rate : 0) * 100).toFixed(2)}%.`,
     `Verificacoes funcionais: ${((metrics.checks ? metrics.checks.values.rate : 0) * 100).toFixed(2)}% aprovadas.`, '',

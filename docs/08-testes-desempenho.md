@@ -62,6 +62,11 @@ clientes também reprovam a execução. Não há `continue-on-error`.
 
 ## Resultados
 
+As etapas do workflow são identificadas por emojis. O resumo exibe ✅ aprovado ou
+❌ reprovado para o teste e para cada operação, considerando latência, amostras e
+verificações funcionais. Falha antes da geração de métricas aparece no resumo
+com indicação para consultar os logs.
+
 Na página da execução, o resumo apresenta perfil, critérios, quantidade de
 requisições e p95 por operação. Os artifacts `performance-<run>-<attempt>` ficam
 disponíveis por 14 dias e contêm:
