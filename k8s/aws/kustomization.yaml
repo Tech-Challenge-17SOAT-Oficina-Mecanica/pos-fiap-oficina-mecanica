@@ -4,6 +4,8 @@ kind: Kustomization
 # O diagnostico verificar-rds.yaml e executado separadamente, quando necessario.
 resources:
   - ../base/api
+patches:
+  - path: service-publico.yaml
 images:
   - name: oficina-api
     # O deploy preenche o URI descoberto na conta autenticada; nunca aplicar este marcador.

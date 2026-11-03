@@ -5,6 +5,13 @@ data "aws_subnet" "selected" {
   id       = each.value
 }
 
+resource "aws_ec2_tag" "public_load_balancer" {
+  for_each    = var.subnet_ids
+  resource_id = each.value
+  key         = "kubernetes.io/role/elb"
+  value       = "1"
+}
+
 resource "aws_eks_cluster" "oficina" {
   name     = var.cluster_name
   role_arn = data.aws_iam_role.cluster.arn
