@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: oficina
+      POSTGRES_USER: oficina
+      POSTGRES_PASSWORD: ${PERF_DB_PASSWORD:?Credencial temporaria obrigatoria}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U oficina -d oficina]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${PERF_DB_PASSWORD:?Credencial temporaria obrigatoria}
+    volumes:
+      - ../../db:/db:ro
+    entrypoint: [sh, -ec]
+    command:
+      - |
+        for migration in /db/migrations/*.sql; do
+          psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina -f "$$migration"
+        done
+        psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina -f /db/seeds/V900__dados_iniciais.sql
+
+  api:
+    build:
+      context: ../..
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: oficina
+      DB_USER: oficina
+      DB_PASSWORD: ${PERF_DB_PASSWORD:?Credencial temporaria obrigatoria}
+      JWT_SECRET: ${PERF_JWT_SECRET:?Credencial temporaria obrigatoria}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/ready]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  k6:
+    image: grafana/k6:1.0.0
+    profiles: [tools]
+    user: ${PERF_UID:-1000}:${PERF_GID:-1000}
+    environment:
+      PERF_PROFILE: ${PERF_PROFILE:-smoke}
+    volumes:
+      - ./api.js:/scripts/api.js:ro
+      - ${PERF_RESULTS_DIR:?Diretorio dos resultados obrigatorio}:/results
+    command: [run, --quiet, /scripts/api.js]

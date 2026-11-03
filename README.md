@@ -555,6 +555,7 @@ pos-fiap-oficina-mecanica/
 | [Decisões arquiteturais](docs/02-decisoes-arquiteturais.md) | Escolhas e justificativas |
 | [Clean Architecture](docs/07-clean-architecture.md) | Contratos e direção das dependências |
 | [Clean Code](docs/06-clean-code.md) | Práticas de legibilidade e organização |
+| [Testes de desempenho](docs/08-testes-desempenho.md) | k6 na pipeline, perfis de carga e relatórios |
 | [Modelo Entidade-Relacionamento](docs/04-modelo-entidade-relacionamento.md) | Modelagem de dados |
 | [Catálogo de endpoints](docs/03-endpoints.md) | Rotas e autorização |
 | [OpenAPI](openapi.yaml) e [Bruno](bruno/oficina-mecanica) | Contrato e chamadas da API |
