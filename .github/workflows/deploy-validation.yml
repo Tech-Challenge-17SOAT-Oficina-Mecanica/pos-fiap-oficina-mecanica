@@ -45,8 +45,6 @@ jobs:
 
   terraform:
     name: Terraform (${{ matrix.directory }})
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -56,18 +54,6 @@ jobs:
           - infra/aws/cluster
           - infra/aws/platform
           - infra/aws/state
-    defaults:
-      run:
-        working-directory: ${{ matrix.directory }}
-    steps:
-      - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.16.6
-          terraform_wrapper: false
-      - name: Initialize without remote state
-        run: terraform init -backend=false -input=false
-      - name: Validate configuration
-        run: terraform validate
-      - name: Run contracts without provisioning
-        run: terraform test
+    uses: ./.github/workflows/terraform-ci.yml
+    with:
+      directory: ${{ matrix.directory }}
