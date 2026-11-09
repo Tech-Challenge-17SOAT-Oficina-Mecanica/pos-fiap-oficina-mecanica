@@ -359,6 +359,9 @@ As verificações ativas `1.0` e `1.1` podem executar em paralelo. O SonarQube (
 está desativado e não aparece no fluxo ativo da imagem.
 **PR ou merge não dispara provisionamento nem deploy AWS.**
 
+Os outros repositórios da organização podem chamar os workflows de Go e
+Terraform seguindo o [guia de CI reutilizável](docs/09-ci-reutilizavel.md).
+
 Para instalar em uma conta nova:
 
 1. Aguarde as verificações do commit passarem.

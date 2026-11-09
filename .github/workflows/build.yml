@@ -5,6 +5,29 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_call:
+    inputs:
+      build-package:
+        description: Pacote ou padrão Go a compilar
+        type: string
+        default: ./...
+      database:
+        description: Use postgres para habilitar a preparação do banco da oficina
+        type: string
+        default: none
+      coverage-packages:
+        description: Pacotes Go a testar para cobertura, separados por espaços
+        type: string
+        default: ./...
+      coverage-scope:
+        description: Padrão Go para o denominador da cobertura
+        type: string
+        default: ./...
+    secrets:
+      CI_DB_PASSWORD:
+        required: false
+      JWT_SECRET:
+        required: false
 
 permissions:
   contents: read
@@ -13,14 +36,20 @@ jobs:
   build:
     name: 🔨 Build application
     runs-on: ubuntu-latest
-    container: golang:1.25-alpine
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
 
+      - name: ⚙️ Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
       - name: 🔨 Build application
-        run: CGO_ENABLED=0 GOOS=linux go build -o oficina-mecanica ./cmd/oficina-mecanica
+        env:
+          BUILD_PACKAGE: ${{ inputs.build-package || './cmd/oficina-mecanica' }}
+        run: CGO_ENABLED=0 GOOS=linux go build "$BUILD_PACKAGE"
 
   test:
     name: 🧪 Test application
@@ -29,11 +58,11 @@ jobs:
     env:
       DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      DATABASE_URL: postgres://oficina:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/oficina?sslmode=disable
+      DATABASE_URL: ${{ (inputs.database || 'postgres') == 'postgres' && format('postgres://oficina:{0}@localhost:5432/oficina?sslmode=disable', secrets.CI_DB_PASSWORD) || '' }}
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: ${{ (inputs.database || 'postgres') == 'postgres' && 'postgres:16-alpine' || '' }}
         env:
           POSTGRES_DB: oficina
           POSTGRES_USER: oficina
@@ -56,13 +85,14 @@ jobs:
           go-version-file: go.mod
 
       - name: 🗃️ Init database
+        if: ${{ (inputs.database || 'postgres') == 'postgres' }}
         run: |
           docker run --rm \
             --network "${{ job.services.postgres.network }}" \
             -v "${{ github.workspace }}:/workspace" \
             -e PGPASSWORD="$DB_PASSWORD" \
             postgres:16-alpine \
-            sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
+            sh -ec 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
       - name: 🧪 Run tests
         run: go test ./...
@@ -74,11 +104,11 @@ jobs:
     env:
       DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      DATABASE_URL: postgres://oficina:${{ secrets.CI_DB_PASSWORD }}@localhost:5432/oficina?sslmode=disable
+      DATABASE_URL: ${{ (inputs.database || 'postgres') == 'postgres' && format('postgres://oficina:{0}@localhost:5432/oficina?sslmode=disable', secrets.CI_DB_PASSWORD) || '' }}
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: ${{ (inputs.database || 'postgres') == 'postgres' && 'postgres:16-alpine' || '' }}
         env:
           POSTGRES_DB: oficina
           POSTGRES_USER: oficina
@@ -101,17 +131,22 @@ jobs:
           go-version-file: go.mod
 
       - name: 🗃️ Init database
+        if: ${{ (inputs.database || 'postgres') == 'postgres' }}
         run: |
           docker run --rm \
             --network "${{ job.services.postgres.network }}" \
             -v "${{ github.workspace }}:/workspace" \
             -e PGPASSWORD="$DB_PASSWORD" \
             postgres:16-alpine \
-            sh -c 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
+            sh -ec 'for migration in /workspace/db/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < "$migration"; done; psql -v ON_ERROR_STOP=1 -h postgres -U oficina -d oficina < /workspace/db/seeds/V900__dados_iniciais.sql'
 
       - name: 📊 Enforce minimum coverage
+        env:
+          COVERAGE_PACKAGES: ${{ inputs.coverage-packages || './internal/... ./tests/integration/...' }}
+          COVERAGE_SCOPE: ${{ inputs.coverage-scope || './internal/...' }}
         run: |
-          go test -covermode=atomic -coverpkg=./internal/... -coverprofile=coverage.out ./internal/... ./tests/integration/...
+          read -ra packages <<< "$COVERAGE_PACKAGES"
+          go test -covermode=atomic -coverpkg="$COVERAGE_SCOPE" -coverprofile=coverage.out "${packages[@]}"
           coverage=$(go tool cover -func=coverage.out | awk '/^total:/ { gsub("%", "", $3); print $3 }')
           if [ -z "$coverage" ] || ! awk "BEGIN { exit !($coverage >= 80) }"; then
             echo "::error::Cobertura total ${coverage:-indisponivel}%. O mínimo é 80%."
